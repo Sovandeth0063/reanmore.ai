@@ -1,0 +1,1526 @@
+{
+  "version": "3.0",
+  "subject": "science",
+  "demo_mode": true,
+
+  "learning_rules": {
+    "never_reveal_answer_before_completion": true,
+    "correct_answer_is_backend_only": true,
+    "expected_student_answers_are_backend_only": true,
+    "student_must_attempt_before_hint": true,
+    "hint_levels": 3,
+    "hint_level_3_must_not_reveal_final_answer": true,
+    "explain_another_way_must_not_reveal_final_answer": true,
+    "wrong_answer": "give_hint_and_allow_retry",
+    "correct_answer": "move_to_next_step",
+    "final_answer_allowed_only_after_completion": true
+  },
+
+  "frontend_flow": [
+    "OCR",
+    "detect_exercises",
+    "show_multi_exercise_queue",
+    "student_selects_exercise",
+    "match_demo_case",
+    "tutor_asks_question",
+    "student_answers",
+    "correct_answer_moves_to_next_step",
+    "wrong_answer_triggers_hint",
+    "hint_1",
+    "retry",
+    "hint_2",
+    "retry",
+    "hint_3_or_explanation",
+    "explain_another_way_if_requested",
+    "complete_exercise",
+    "show_final_answer_and_celebration",
+    "move_to_next_exercise"
+  ],
+
+  "worksheet_queues": {
+
+    "page_8_identifying_animals": {
+      "page": 8,
+      "title": "Identifying animals",
+      "exercise_count": 6,
+      "exercise_ids": [
+        "science_p8_flamingo",
+        "science_p8_lobster",
+        "science_p8_camel",
+        "science_p8_giraffe",
+        "science_p8_slug",
+        "science_p8_moth"
+      ]
+    },
+
+    "page_6_grouping_animals": {
+      "page": 6,
+      "title": "Grouping animals",
+      "exercise_count": 6,
+      "exercise_ids": [
+        "science_p6_bird",
+        "science_p6_mammal",
+        "science_p6_amphibian",
+        "science_p6_reptile",
+        "science_p6_fish",
+        "science_p6_invertebrate"
+      ]
+    },
+
+    "page_44_producers_consumers": {
+      "page": 44,
+      "title": "Producers and consumers",
+      "exercise_count": 6,
+      "exercise_ids": [
+        "science_p44_a_plant_part",
+        "science_p44_b_plant_eater",
+        "science_p44_c_i_producer",
+        "science_p44_c_ii_eat_animals",
+        "science_p44_c_iii_consumers",
+        "science_p44_d_producer_word"
+      ]
+    }
+  },
+
+  "cases": {
+
+    "science_p8_flamingo": {
+      "case_id": "science_p8_flamingo",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Put a tick or cross to describe the features of the flamingo.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": true,
+        "feathers": true,
+        "hump_on_back": false,
+        "pincers": false,
+        "wings": true
+      },
+      "concept": "animal characteristics",
+
+      "ocr_style_input": {
+        "raw_text": "flamingo | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "flamingo vertebrate feathers hump on back pincers wings",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "Let's use the flamingo as an example. Look carefully at the animal and think about what features you can observe.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does a flamingo have a backbone?",
+          "expected_student_answer": "Yes"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What covers a flamingo's body: feathers, fur, or scales?",
+          "expected_student_answer": "Feathers"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Look at its back. Does it have a camel-like hump?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Does a flamingo have lobster-like pincers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 5,
+          "tutor_question": "Can you identify the large body parts birds use for flying?",
+          "expected_student_answer": "Wings"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about the main characteristics of birds.",
+        "Hint 2: Look at the flamingo's body covering and its large side body parts.",
+        "Hint 3: Compare the flamingo with the other animals in the worksheet."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about what makes a flamingo a bird.",
+        "question": "Which features would you expect a bird to have?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "flamingo",
+        "emoji": "🦩",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use the picture and ask the student to point to visible body parts.",
+        "grade_3_4": "Compare the flamingo's characteristics with other animals.",
+        "grade_5_6": "Connect the observable features to animal classification."
+      },
+
+      "final_celebration": "🌟 Great! You used animal features to identify characteristics."
+    },
+
+    "science_p8_lobster": {
+      "case_id": "science_p8_lobster",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Put a tick or cross to describe the features of the lobster.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": false,
+        "feathers": false,
+        "hump_on_back": false,
+        "pincers": true,
+        "wings": false
+      },
+      "concept": "animal characteristics and invertebrates",
+
+      "ocr_style_input": {
+        "raw_text": "lobster | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "lobster vertebrate feathers hump on back pincers wings"
+      },
+
+      "tutor_intro": "Let's inspect the lobster. Look at its body and especially its legs and claws.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does the lobster have an internal backbone like humans do?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does a lobster have feathers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Does it have a camel-like hump on its back?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Look at the front of the lobster. What special body parts can you see?",
+          "expected_student_answer": "Pincers"
+        },
+        {
+          "step": 5,
+          "tutor_question": "Does a lobster have wings?",
+          "expected_student_answer": "No"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the lobster's front claws.",
+        "Hint 2: Lobsters are not birds and do not have bird features.",
+        "Hint 3: Think about whether its body has a backbone or an external hard covering."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare the lobster with the flamingo.",
+        "question": "Which features does the lobster have that the flamingo does not?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "lobster",
+        "emoji": "🦞",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Focus on visible claws and body covering.",
+        "grade_3_4": "Use the features to classify the animal.",
+        "grade_5_6": "Connect the absence of a backbone with invertebrates."
+      },
+
+      "final_celebration": "🎉 Excellent observation! You identified the lobster's special features."
+    },
+
+    "science_p8_camel": {
+      "case_id": "science_p8_camel",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Put a tick or cross to describe the features of the camel.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": true,
+        "feathers": false,
+        "hump_on_back": true,
+        "pincers": false,
+        "wings": false
+      },
+      "concept": "animal characteristics",
+
+      "ocr_style_input": {
+        "raw_text": "camel | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "camel vertebrate feathers hump on back pincers wings"
+      },
+
+      "tutor_intro": "Look closely at the camel. Which features can you see?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does a camel have a backbone?",
+          "expected_student_answer": "Yes"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does a camel's body have feathers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What special shape can you see on the camel's back?",
+          "expected_student_answer": "Hump"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Does a camel have pincers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 5,
+          "tutor_question": "Does a camel have wings?",
+          "expected_student_answer": "No"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the camel's back.",
+        "Hint 2: Think about whether a camel is a bird or a mammal.",
+        "Hint 3: The large raised part on its back is an important clue."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare the camel with the flamingo.",
+        "question": "Which feature can you clearly see on the camel that the flamingo does not have?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "camel",
+        "emoji": "🐪",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Focus on the visible hump and body.",
+        "grade_3_4": "Classify the features.",
+        "grade_5_6": "Connect the features with mammal classification."
+      },
+
+      "final_celebration": "🌟 Great! You used visible features to classify the camel."
+    },
+
+    "science_p8_giraffe": {
+      "case_id": "science_p8_giraffe",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Put a tick or cross to describe the features of the giraffe.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": true,
+        "feathers": false,
+        "hump_on_back": false,
+        "pincers": false,
+        "wings": false
+      },
+      "concept": "animal characteristics",
+
+      "ocr_style_input": {
+        "raw_text": "giraffe | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "giraffe vertebrate feathers hump on back pincers wings"
+      },
+
+      "tutor_intro": "Let's inspect the giraffe and decide which features actually belong to it.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does a giraffe have a backbone?",
+          "expected_student_answer": "Yes"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Is its body covered with feathers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Does it have a camel-like hump?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Does it have pincers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 5,
+          "tutor_question": "Does a giraffe have wings?",
+          "expected_student_answer": "No"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about what type of animal a giraffe is.",
+        "Hint 2: Compare its body with the bird and lobster pictures.",
+        "Hint 3: Look for a backbone, feathers, claws, wings, and a hump."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the giraffe's body structure.",
+        "question": "Which of the listed features can you actually observe on the giraffe?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "giraffe",
+        "emoji": "🦒",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use picture observation.",
+        "grade_3_4": "Compare animal features.",
+        "grade_5_6": "Connect the features with vertebrate classification."
+      },
+
+      "final_celebration": "🎉 Nice observation! You checked each feature carefully."
+    },
+
+    "science_p8_slug": {
+      "case_id": "science_p8_slug",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Put a tick or cross to describe the features of the slug.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": false,
+        "feathers": false,
+        "hump_on_back": false,
+        "pincers": false,
+        "wings": false
+      },
+      "concept": "animal characteristics and invertebrates",
+
+      "ocr_style_input": {
+        "raw_text": "slug | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "slug vertebrate feathers hump on back pincers wings"
+      },
+
+      "tutor_intro": "Let's carefully observe the slug. Check each feature one at a time.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does a slug have a backbone like a giraffe or camel?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does a slug have feathers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Does it have a camel-like hump?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Does it have lobster-like pincers?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 5,
+          "tutor_question": "Does a slug have wings?",
+          "expected_student_answer": "No"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Start by thinking about whether a slug has bones inside its body.",
+        "Hint 2: Compare the slug with the lobster and birds.",
+        "Hint 3: None of the listed special body features are visible on a slug."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare the slug with the vertebrate animals in the table.",
+        "question": "What major body feature do those vertebrates have that the slug does not?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "slug",
+        "emoji": "🐌",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Focus on simple visible characteristics.",
+        "grade_3_4": "Introduce backbone versus no backbone.",
+        "grade_5_6": "Connect the observation to invertebrate classification."
+      },
+
+      "final_celebration": "🌟 Great! You checked every feature carefully."
+    },
+
+    "science_p8_moth": {
+      "case_id": "science_p8_moth",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Put a tick or cross to describe the features of the moth.",
+      "question_type": "animal_feature_classification",
+      "correct_answer": {
+        "vertebrate": false,
+        "feathers": false,
+        "hump_on_back": false,
+        "pincers": false,
+        "wings": true
+      },
+      "concept": "animal characteristics",
+
+      "ocr_style_input": {
+        "raw_text": "moth | vertebrate? | feathers? | hump on back? | pincers? | wings?",
+        "normalized_text": "moth vertebrate feathers hump on back pincers wings"
+      },
+
+      "tutor_intro": "A moth has an interesting combination of features. Let's inspect it carefully.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Does a moth have a backbone?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does a moth have feathers like a bird?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Does a moth have a hump on its back?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Does a moth have pincers like a lobster?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 5,
+          "tutor_question": "What large body structures help a moth fly?",
+          "expected_student_answer": "Wings"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the moth's body and wings.",
+        "Hint 2: Having wings does not necessarily mean having a backbone.",
+        "Hint 3: Compare the moth's wings with the flamingo's wings."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the difference between bird wings and insect wings.",
+        "question": "Does the moth need feathers to have wings?"
+      },
+
+      "visual_data": {
+        "type": "animal_feature_card",
+        "animal": "moth",
+        "emoji": "🦋",
+        "features": [
+          "vertebrate",
+          "feathers",
+          "hump_on_back",
+          "pincers",
+          "wings"
+        ],
+        "hide_feature_answers": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Focus on visible wings.",
+        "grade_3_4": "Compare wings and feathers.",
+        "grade_5_6": "Distinguish insects from vertebrate animals."
+      },
+
+      "final_celebration": "🎉 Excellent! You noticed that different animals can have wings without having the same body structure."
+    },
+
+    "science_p6_bird": {
+      "case_id": "science_p6_bird",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Write one feature of the bird animal group.",
+      "question_type": "animal_group_feature",
+      "correct_answer": "feathers",
+      "concept": "animal groups",
+
+      "ocr_style_input": {
+        "raw_text": "bird | feature",
+        "normalized_text": "bird feature"
+      },
+
+      "tutor_intro": "Let's think about what makes birds different from other animal groups.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Think of an eagle. What covers most of its body?",
+          "expected_student_answer": "Feathers"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Is that a feature shared by birds?",
+          "expected_student_answer": "Yes"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the bird picture.",
+        "Hint 2: What covers the bird's body?",
+        "Hint 3: Think about feathers."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about what you see when you look at a bird.",
+        "question": "What body covering is easy to recognize?"
+      },
+
+      "visual_data": {
+        "type": "animal_group_card",
+        "group": "bird",
+        "emoji": "🦅",
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use the picture to identify feathers.",
+        "grade_3_4": "Name one shared bird feature.",
+        "grade_5_6": "Connect feathers with bird classification."
+      },
+
+      "final_celebration": "🌟 Great! You identified a key bird feature."
+    },
+
+    "science_p6_mammal": {
+      "case_id": "science_p6_mammal",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Write one feature of the mammal animal group.",
+      "question_type": "animal_group_feature",
+      "correct_answer": "hair or fur",
+      "concept": "animal groups",
+
+      "ocr_style_input": {
+        "raw_text": "mammal | feature",
+        "normalized_text": "mammal feature"
+      },
+
+      "tutor_intro": "Look at the elephant. Think about a body covering that mammals commonly have.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What type of animal group does an elephant belong to?",
+          "expected_student_answer": "Mammal"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Can you name a body feature commonly associated with mammals?",
+          "expected_student_answer": "Hair or fur"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about dogs, cats, elephants, and humans.",
+        "Hint 2: Mammals have hair at some stage of their lives.",
+        "Hint 3: The answer is a type of body covering."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about a familiar mammal such as a dog or cat.",
+        "question": "What covers a dog or cat's body?"
+      },
+
+      "visual_data": {
+        "type": "animal_group_card",
+        "group": "mammal",
+        "emoji": "🐘",
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use familiar mammals.",
+        "grade_3_4": "Identify hair or fur as a shared feature.",
+        "grade_5_6": "Discuss mammal characteristics more precisely."
+      },
+
+      "final_celebration": "🎉 Nice! You identified an important mammal feature."
+    },
+
+    "science_p6_amphibian": {
+      "case_id": "science_p6_amphibian",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write one feature of the amphibian animal group.",
+      "question_type": "animal_group_feature",
+      "correct_answer": "moist skin",
+      "concept": "animal groups",
+
+      "ocr_style_input": {
+        "raw_text": "amphibian | feature",
+        "normalized_text": "amphibian feature"
+      },
+
+      "tutor_intro": "Let's think about the frog and how its body is different from a bird or reptile.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What animal is shown for the amphibian group?",
+          "expected_student_answer": "Frog"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does a frog have feathers, scales, or moist skin?",
+          "expected_student_answer": "Moist skin"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Can you give one feature of amphibians based on this?",
+          "expected_student_answer": "Moist skin"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about how a frog's skin looks and feels.",
+        "Hint 2: A frog does not have feathers like a bird.",
+        "Hint 3: Amphibians commonly have moist skin."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare a frog with a snake.",
+        "question": "Which one has moist skin rather than dry scales?"
+      },
+
+      "visual_data": {
+        "type": "animal_group_card",
+        "group": "amphibian",
+        "emoji": "🐸",
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Focus on the frog's skin.",
+        "grade_3_4": "Identify moist skin as a feature.",
+        "grade_5_6": "Connect amphibian skin with their life cycle and habitat."
+      },
+
+      "final_celebration": "🌟 Great observation! You identified a key amphibian feature."
+    },
+
+    "science_p6_reptile": {
+      "case_id": "science_p6_reptile",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Write one feature of the reptile animal group.",
+      "question_type": "animal_group_feature",
+      "correct_answer": "scales",
+      "concept": "animal groups",
+
+      "ocr_style_input": {
+        "raw_text": "reptile | feature",
+        "normalized_text": "reptile feature"
+      },
+
+      "tutor_intro": "Look at the snake. What covers its body?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What animal is shown for the reptile group?",
+          "expected_student_answer": "Snake"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Look closely at the snake's body. What covering can you see?",
+          "expected_student_answer": "Scales"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look closely at the snake's skin.",
+        "Hint 2: It is not feathers or fur.",
+        "Hint 3: Reptiles commonly have scales."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare the snake with the bird.",
+        "question": "What body covering does the snake have instead of feathers?"
+      },
+
+      "visual_data": {
+        "type": "animal_group_card",
+        "group": "reptile",
+        "emoji": "🐍",
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use the snake picture.",
+        "grade_3_4": "Identify scales.",
+        "grade_5_6": "Compare reptile skin with amphibian skin."
+      },
+
+      "final_celebration": "🎉 Great! You identified the reptile's body covering."
+    },
+
+    "science_p6_fish": {
+      "case_id": "science_p6_fish",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write one feature of the fish animal group.",
+      "question_type": "animal_group_feature",
+      "correct_answer": "gills",
+      "concept": "animal groups",
+
+      "ocr_style_input": {
+        "raw_text": "fish | feature",
+        "normalized_text": "fish feature"
+      },
+
+      "tutor_intro": "Let's think about what makes fish different from animals that breathe in air.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Where does a fish live most of its life?",
+          "expected_student_answer": "In water"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What body part helps fish get oxygen from water?",
+          "expected_student_answer": "Gills"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about how fish breathe underwater.",
+        "Hint 2: Fish do not use lungs in the same way humans do.",
+        "Hint 3: Think about the body part found near the sides of a fish's head."
+      ],
+
+      "explain_another_way": {
+        "message": "Imagine a fish underwater.",
+        "question": "What structure helps it take oxygen from the water?"
+      },
+
+      "visual_data": {
+        "type": "animal_group_card",
+        "group": "fish",
+        "emoji": "🐠",
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use a fish picture and simple breathing explanation.",
+        "grade_3_4": "Identify gills.",
+        "grade_5_6": "Explain how gills obtain oxygen from water."
+      },
+
+      "final_celebration": "🌟 Excellent! You connected the fish's habitat with its breathing feature."
+    },
+
+    "science_p6_invertebrate": {
+      "case_id": "science_p6_invertebrate",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "What name do we give to animals without a backbone?",
+      "question_type": "classification_definition",
+      "correct_answer": "invertebrates",
+      "concept": "vertebrates and invertebrates",
+
+      "ocr_style_input": {
+        "raw_text": "What name do we give to animals without a backbone?",
+        "normalized_text": "animals without a backbone"
+      },
+
+      "tutor_intro": "Let's connect this question with what we learned about backbones.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What do we call animals that have a backbone?",
+          "expected_student_answer": "Vertebrates"
+        },
+        {
+          "step": 2,
+          "tutor_question": "If an animal does not have a backbone, would it belong to the same group?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Do you remember the name for animals without a backbone?",
+          "expected_student_answer": "Invertebrates"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about the word vertebrate.",
+        "Hint 2: The opposite group does not have a backbone.",
+        "Hint 3: The word starts with 'in-' and describes animals without backbones."
+      ],
+
+      "explain_another_way": {
+        "message": "Compare a giraffe and a lobster.",
+        "question": "Which one belongs to the group without a backbone?"
+      },
+
+      "visual_data": {
+        "type": "classification_split",
+        "groups": [
+          "vertebrate",
+          "invertebrate"
+        ],
+        "hide_labels": false,
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use simple backbone/no-backbone examples.",
+        "grade_3_4": "Learn the terms vertebrate and invertebrate.",
+        "grade_5_6": "Classify animals using structural characteristics."
+      },
+
+      "final_celebration": "🎉 Great! You understand the difference between vertebrates and invertebrates."
+    },
+
+    "science_p44_a_plant_part": {
+      "case_id": "science_p44_a_plant_part",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Label the part of this plant that makes its food.",
+      "question_type": "plant_structure",
+      "correct_answer": "leaf",
+      "concept": "photosynthesis and plant parts",
+
+      "ocr_style_input": {
+        "raw_text": "Label the part of this plant that makes its food.",
+        "normalized_text": "plant part that makes its food"
+      },
+
+      "tutor_intro": "Plants have different parts with different jobs. Which part is mainly responsible for making food?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Think about the main visible parts of a plant. Can you name one?",
+          "expected_student_answer": "Leaf"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Which plant part receives lots of light?",
+          "expected_student_answer": "Leaf"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which part should we label as the food-making part?",
+          "expected_student_answer": "Leaf"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about which part is usually green.",
+        "Hint 2: Which part receives sunlight?",
+        "Hint 3: Plants use their leaves to make food."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about sunlight and the green part of a plant.",
+        "question": "Which plant part is exposed to sunlight?"
+      },
+
+      "visual_data": {
+        "type": "plant_diagram",
+        "parts": [
+          "roots",
+          "stem",
+          "leaves",
+          "flower"
+        ],
+        "allow_label_selection": true,
+        "highlight_answer_before_completion": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Point to the green leaf.",
+        "grade_3_4": "Connect leaves with food production.",
+        "grade_5_6": "Introduce photosynthesis."
+      },
+
+      "final_celebration": "🌱 Great! You identified the plant's food-making part."
+    },
+
+    "science_p44_b_plant_eater": {
+      "case_id": "science_p44_b_plant_eater",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Circle the living thing that is most likely to eat this plant.",
+      "question_type": "food_relationship",
+      "correct_answer": "C",
+      "concept": "herbivores and food chains",
+
+      "ocr_style_input": {
+        "raw_text": "A Owl | B Cabbage | C Rabbit | D Eagle",
+        "normalized_text": "owl cabbage rabbit eagle"
+      },
+
+      "tutor_intro": "Look at the four choices. Which one is an animal that commonly eats plants?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which choices are animals?",
+          "expected_student_answer": "Owl, rabbit, eagle"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Which animal is commonly known for eating plants such as vegetables?",
+          "expected_student_answer": "Rabbit"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which letter represents the rabbit?",
+          "expected_student_answer": "C"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: First ignore the picture that is itself a plant.",
+        "Hint 2: Think about what rabbits eat.",
+        "Hint 3: Find the letter next to the rabbit."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the food each animal normally eats.",
+        "question": "Which animal would you expect to eat leaves or vegetables?"
+      },
+
+      "visual_data": {
+        "type": "multiple_choice_images",
+        "options": [
+          {
+            "label": "A",
+            "emoji": "🦉",
+            "name": "owl"
+          },
+          {
+            "label": "B",
+            "emoji": "🥬",
+            "name": "cabbage"
+          },
+          {
+            "label": "C",
+            "emoji": "🐇",
+            "name": "rabbit"
+          },
+          {
+            "label": "D",
+            "emoji": "🦅",
+            "name": "eagle"
+          }
+        ],
+        "highlight_answer_before_completion": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use familiar animal diets.",
+        "grade_3_4": "Identify the plant-eating animal.",
+        "grade_5_6": "Introduce herbivore and food-chain terminology."
+      },
+
+      "final_celebration": "🎉 Great! You connected an animal with the food it eats."
+    },
+
+    "science_p44_c_i_producer": {
+      "case_id": "science_p44_c_i_producer",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Which living thing makes its own food?",
+      "question_type": "producer_consumer",
+      "correct_answer": "B",
+      "concept": "producers",
+
+      "ocr_style_input": {
+        "raw_text": "Which living thing makes its own food? A Owl B Cabbage C Rabbit D Eagle",
+        "normalized_text": "living thing makes its own food owl cabbage rabbit eagle"
+      },
+
+      "tutor_intro": "Let's identify which living thing can make its own food instead of eating another organism.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which option is a plant?",
+          "expected_student_answer": "Cabbage"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Do plants make their own food using sunlight?",
+          "expected_student_answer": "Yes"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which letter represents the cabbage?",
+          "expected_student_answer": "B"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look for the plant.",
+        "Hint 2: Plants can make their own food.",
+        "Hint 3: Find the letter beside the cabbage."
+      ],
+
+      "explain_another_way": {
+        "message": "Separate the choices into plants and animals.",
+        "question": "Which category contains organisms that can make their own food?"
+      },
+
+      "visual_data": {
+        "type": "multiple_choice_images",
+        "options": [
+          "A Owl",
+          "B Cabbage",
+          "C Rabbit",
+          "D Eagle"
+        ],
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use plant versus animal pictures.",
+        "grade_3_4": "Introduce the idea of a producer.",
+        "grade_5_6": "Connect producers with photosynthesis and food chains."
+      },
+
+      "final_celebration": "🌟 Excellent! You identified the organism that makes its own food."
+    },
+
+    "science_p44_c_ii_eat_animals": {
+      "case_id": "science_p44_c_ii_eat_animals",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Which living things eat other animals?",
+      "question_type": "food_relationship",
+      "correct_answer": "A and D",
+      "concept": "predators and consumers",
+
+      "ocr_style_input": {
+        "raw_text": "Which living things eat other animals? A Owl B Cabbage C Rabbit D Eagle",
+        "normalized_text": "living things eat other animals owl cabbage rabbit eagle"
+      },
+
+      "tutor_intro": "Let's look at the animals and think about what they eat.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which choices are animals that could eat other animals?",
+          "expected_student_answer": "Owl and eagle"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does cabbage eat other animals?",
+          "expected_student_answer": "No"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which letters represent the owl and eagle?",
+          "expected_student_answer": "A and D"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: First remove the plant.",
+        "Hint 2: Think about which birds hunt or eat other animals.",
+        "Hint 3: Look at the owl and eagle."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about predator behavior.",
+        "question": "Which of the pictured animals can hunt or eat another animal?"
+      },
+
+      "visual_data": {
+        "type": "multiple_choice_multi_select",
+        "options": [
+          "A Owl",
+          "B Cabbage",
+          "C Rabbit",
+          "D Eagle"
+        ],
+        "allow_multiple_selection": true,
+        "highlight_answer_before_completion": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use simple predator examples.",
+        "grade_3_4": "Identify animals that eat other animals.",
+        "grade_5_6": "Introduce predator and prey relationships."
+      },
+
+      "final_celebration": "🎉 Great! You identified the animals that can eat other animals."
+    },
+
+    "science_p44_c_iii_consumers": {
+      "case_id": "science_p44_c_iii_consumers",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Which living things are consumers?",
+      "question_type": "producer_consumer",
+      "correct_answer": "A, C and D",
+      "concept": "consumers",
+
+      "ocr_style_input": {
+        "raw_text": "Which living things are consumers? A Owl B Cabbage C Rabbit D Eagle",
+        "normalized_text": "living things are consumers owl cabbage rabbit eagle"
+      },
+
+      "tutor_intro": "A consumer gets its food by eating another living thing. Let's identify which choices do that.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which option is the plant?",
+          "expected_student_answer": "Cabbage"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Does the cabbage make its own food or eat another organism?",
+          "expected_student_answer": "Makes its own food"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which remaining choices are animals?",
+          "expected_student_answer": "Owl, rabbit, eagle"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Which letters represent those animals?",
+          "expected_student_answer": "A, C and D"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: First identify the producer.",
+        "Hint 2: Consumers need to obtain food by eating.",
+        "Hint 3: Look at the animals rather than the plant."
+      ],
+
+      "explain_another_way": {
+        "message": "Separate the picture choices into producer and animals.",
+        "question": "Which choices need to get food by eating something?"
+      },
+
+      "visual_data": {
+        "type": "producer_consumer_sort",
+        "items": [
+          "A Owl",
+          "B Cabbage",
+          "C Rabbit",
+          "D Eagle"
+        ],
+        "categories": [
+          "producer",
+          "consumer"
+        ],
+        "allow_drag_drop": true,
+        "hide_correct_categories": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use simple eat/make-food sorting.",
+        "grade_3_4": "Introduce producer versus consumer.",
+        "grade_5_6": "Connect consumers with food chains."
+      },
+
+      "final_celebration": "🌟 Excellent! You separated producers and consumers correctly."
+    },
+
+    "science_p44_d_producer_word": {
+      "case_id": "science_p44_d_producer_word",
+      "subject": "science",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write one scientific word for living things that make their own food.",
+      "question_type": "scientific_vocabulary",
+      "correct_answer": "producers",
+      "concept": "scientific vocabulary",
+
+      "ocr_style_input": {
+        "raw_text": "Write one scientific word for living things that make their own food.",
+        "normalized_text": "scientific word for living things that make their own food"
+      },
+
+      "tutor_intro": "We have already identified a living thing that can make its own food. Science has a special word for this group.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What type of living thing can make its own food?",
+          "expected_student_answer": "A plant"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Think back to the word used when we describe something that makes its own food in a food chain.",
+          "expected_student_answer": "Producer"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is the plural scientific word for living things that make their own food?",
+          "expected_student_answer": "Producers"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about the cabbage from the previous question.",
+        "Hint 2: The word starts with 'producer'.",
+        "Hint 3: Living things that make their own food are called producers."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the beginning of a simple food chain.",
+        "question": "What do we call the organism that produces its own food?"
+      },
+
+      "visual_data": {
+        "type": "food_chain",
+        "nodes": [
+          "plant",
+          "plant_eater",
+          "animal_eater"
+        ],
+        "show_labels": false,
+        "hide_target_word": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use the idea of a plant making its own food.",
+        "grade_3_4": "Learn the term producer.",
+        "grade_5_6": "Connect producers with photosynthesis and food chains."
+      },
+
+      "final_celebration": "🎉 Excellent! You learned an important scientific word."
+    }
+  },
+
+  "case_matching": {
+    "priority": [
+      "exercise_id",
+      "normalized_question_text",
+      "ocr_pattern"
+    ],
+    "never_match_using_answer": true,
+
+    "patterns": {
+
+      "science_p8_flamingo": [
+        "flamingo",
+        "flamingo vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p8_lobster": [
+        "lobster",
+        "lobster vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p8_camel": [
+        "camel",
+        "camel vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p8_giraffe": [
+        "giraffe",
+        "giraffe vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p8_slug": [
+        "slug",
+        "slug vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p8_moth": [
+        "moth",
+        "moth vertebrate feathers hump pincers wings"
+      ],
+
+      "science_p6_bird": [
+        "bird",
+        "bird feature"
+      ],
+
+      "science_p6_mammal": [
+        "mammal",
+        "mammal feature"
+      ],
+
+      "science_p6_amphibian": [
+        "amphibian",
+        "amphibian feature"
+      ],
+
+      "science_p6_reptile": [
+        "reptile",
+        "reptile feature"
+      ],
+
+      "science_p6_fish": [
+        "fish",
+        "fish feature"
+      ],
+
+      "science_p6_invertebrate": [
+        "animals without a backbone",
+        "without a backbone"
+      ],
+
+      "science_p44_a_plant_part": [
+        "part of this plant that makes its food",
+        "plant makes its food"
+      ],
+
+      "science_p44_b_plant_eater": [
+        "living thing that is most likely to eat this plant",
+        "owl cabbage rabbit eagle"
+      ],
+
+      "science_p44_c_i_producer": [
+        "which living thing makes its own food"
+      ],
+
+      "science_p44_c_ii_eat_animals": [
+        "which living things eat other animals"
+      ],
+
+      "science_p44_c_iii_consumers": [
+        "which living things are consumers"
+      ],
+
+      "science_p44_d_producer_word": [
+        "scientific word for living things that make their own food",
+        "living things that make their own food"
+      ]
+    }
+  },
+
+  "frontend_rendering_rules": {
+    "exercise_queue": {
+      "show_all_detected_exercises": true,
+      "label_format": "Ex {index}",
+      "preserve_original_order": true,
+      "allow_exercise_selection": true,
+      "selected_exercise_loads_case": true
+    },
+
+    "student_visible_case_data": [
+      "original_question",
+      "tutor_intro",
+      "current_step.tutor_question",
+      "current_step.hints",
+      "visual_data",
+      "grade_adaptation"
+    ],
+
+    "backend_only_case_data": [
+      "correct_answer",
+      "expected_student_answer",
+      "case_matching.patterns"
+    ],
+
+    "answer_reveal": {
+      "before_completion": false,
+      "after_completion": true
+    },
+
+    "hint_behavior": {
+      "wrong_attempt_1": "hint_1",
+      "wrong_attempt_2": "hint_2",
+      "wrong_attempt_3": "hint_3",
+      "after_hint_3": "allow_explain_another_way",
+      "never_use_hint_to_directly_state_final_answer": true
+    },
+
+    "explain_another_way": {
+      "must_change_explanation_strategy": true,
+      "must_not_repeat_same_hint": true,
+      "must_not_reveal_final_answer": true
+    },
+
+    "completion_behavior": {
+      "show_final_answer": true,
+      "show_final_celebration": true,
+      "offer_next_exercise": true
+    }
+  }
+}

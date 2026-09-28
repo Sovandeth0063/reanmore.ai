@@ -1,0 +1,2172 @@
+{
+  "version": "3.0",
+  "subject": "math",
+  "demo_mode": true,
+
+  "learning_rules": {
+    "never_reveal_answer_before_completion": true,
+    "correct_answer_is_backend_only": true,
+    "expected_student_answers_are_backend_only": true,
+    "student_must_attempt_before_hint": true,
+    "hint_levels": 3,
+    "hint_level_3_must_not_reveal_final_answer": true,
+    "explain_another_way_must_not_reveal_final_answer": true,
+    "wrong_answer": "give_hint_and_allow_retry",
+    "correct_answer": "move_to_next_step",
+    "final_answer_allowed_only_after_completion": true
+  },
+
+  "frontend_flow": [
+    "OCR",
+    "detect_exercises",
+    "show_multi_exercise_queue",
+    "student_selects_exercise",
+    "match_demo_case",
+    "tutor_asks_question",
+    "student_answers",
+    "correct_answer_moves_to_next_step",
+    "wrong_answer_triggers_hint",
+    "hint_1",
+    "retry",
+    "hint_2",
+    "retry",
+    "hint_3_or_explanation",
+    "explain_another_way_if_requested",
+    "complete_exercise",
+    "show_final_answer_and_celebration",
+    "move_to_next_exercise"
+  ],
+
+  "worksheet_queues": {
+    "page_1_homework_1": {
+      "page": 1,
+      "homework": "Homework 1",
+      "label": "Math HW 1",
+      "exercise_ids": [
+        "math_p1_a1",
+        "math_p1_a2",
+        "math_p1_a3",
+        "math_p1_a4",
+        "math_p1_a5",
+        "math_p1_b1",
+        "math_p1_b2",
+        "math_p1_b3",
+        "math_p1_b4",
+        "math_p1_b5",
+        "math_p1_b6"
+      ]
+    },
+
+    "page_8_homework_8": {
+      "page": 8,
+      "homework": "Homework 8",
+      "label": "Math HW 8",
+      "exercise_ids": [
+        "math_p8_a1",
+        "math_p8_a2",
+        "math_p8_a3",
+        "math_p8_a4",
+        "math_p8_b2",
+        "math_p8_b6",
+        "math_p8_b3",
+        "math_p8_b7",
+        "math_p8_b4",
+        "math_p8_b8"
+      ]
+    },
+
+    "page_16_homework_16": {
+      "page": 16,
+      "homework": "Homework 16",
+      "label": "Math HW 16",
+      "exercise_ids": [
+        "math_p16_a1",
+        "math_p16_a2",
+        "math_p16_a3",
+        "math_p16_a4",
+        "math_p16_b1",
+        "math_p16_b2",
+        "math_p16_b3",
+        "math_p16_b4",
+        "math_p16_b5",
+        "math_p16_b6"
+      ]
+    }
+  },
+
+  "cases": {
+
+    "math_p1_a1": {
+      "case_id": "math_p1_a1",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "4 + 5 + 6 = ___",
+      "question_type": "multi_addition",
+      "correct_answer": "15",
+      "concept": "addition and combining groups",
+
+      "ocr_style_input": {
+        "raw_text": "1. 4 + 5 + 6 = ___",
+        "normalized_text": "4 + 5 + 6 = ___",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "Let’s solve this together. We can add the numbers step by step. What two numbers could we add first?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Start with the first two numbers. What is 4 + 5?",
+          "expected_student_answer": "9"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Good! Now we have 9. What should we do with the 6?",
+          "expected_student_answer": "Add 6"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is 9 + 6?",
+          "expected_student_answer": "15"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Start with 4 and 5.",
+        "Hint 2: Count 5 more after 4.",
+        "Hint 3: You can think of 4 objects + 5 objects, then add 6 more objects."
+      ],
+
+      "explain_another_way": {
+        "message": "Try grouping the numbers differently. First think about 5 + 5, then use the remaining number.",
+        "question": "Can you make an easier pair of numbers before adding everything?"
+      },
+
+      "visual_data": {
+        "type": "objects",
+        "groups": [4, 5, 6],
+        "frontend_action": "show_three_groups_without_showing_total"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use objects or dots and count each group.",
+        "grade_3_4": "Add two numbers first, then add the third.",
+        "grade_5_6": "Encourage grouping numbers strategically to calculate mentally."
+      },
+
+      "final_celebration": "🎉 Great job! You combined the groups step by step."
+    },
+
+    "math_p1_a2": {
+      "case_id": "math_p1_a2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "7 + 3 + 2 + 5 = ___",
+      "question_type": "multi_addition",
+      "correct_answer": "17",
+      "concept": "multi-number addition",
+
+      "ocr_style_input": {
+        "raw_text": "2. 7 + 3 + 2 + 5 = ___",
+        "normalized_text": "7 + 3 + 2 + 5 = ___",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "There are four numbers. Let's make the calculation easier by adding some numbers together first.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which two numbers make 10: 7, 3, 2, or 5?",
+          "expected_student_answer": "7 and 3"
+        },
+        {
+          "step": 2,
+          "tutor_question": "After making 10, which two numbers are left?",
+          "expected_student_answer": "2 and 5"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is 2 + 5?",
+          "expected_student_answer": "7"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Now combine the 10 and the 7. What do you get?",
+          "expected_student_answer": "17"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look for two numbers that make 10.",
+        "Hint 2: 7 needs 3 more to make 10.",
+        "Hint 3: After making 10, add the two remaining numbers."
+      ],
+
+      "explain_another_way": {
+        "message": "Add from left to right instead.",
+        "question": "What do you get after 7 + 3, and what happens when you add 2 and then 5?"
+      },
+
+      "visual_data": {
+        "type": "number_groups",
+        "numbers": [7, 3, 2, 5],
+        "frontend_action": "allow_student_to_group_numbers"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use counters and make a group of 10.",
+        "grade_3_4": "Use number grouping to make 10.",
+        "grade_5_6": "Use mental-math grouping and associative thinking."
+      },
+
+      "final_celebration": "🌟 Nice work! You found an easier way to organize the addition."
+    },
+
+    "math_p1_a3": {
+      "case_id": "math_p1_a3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "8 + 1 + 4 = ___",
+      "question_type": "multi_addition",
+      "correct_answer": "13",
+      "concept": "addition",
+
+      "ocr_style_input": {
+        "raw_text": "3. 8 + 1 + 4 = ___",
+        "normalized_text": "8 + 1 + 4 = ___",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "Let's break this into smaller additions. Which two numbers would you like to start with?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What is 8 + 1?",
+          "expected_student_answer": "9"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Now add the remaining 4. What is 9 + 4?",
+          "expected_student_answer": "13"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Start with 8 + 1.",
+        "Hint 2: Adding 1 means move one number forward from 8.",
+        "Hint 3: After getting the first total, count 4 more."
+      ],
+
+      "explain_another_way": {
+        "message": "Think of 8 as being close to 10.",
+        "question": "If you move 2 from the 4 to make 8 into 10, how many are left?"
+      },
+
+      "visual_data": {
+        "type": "objects",
+        "groups": [8, 1, 4]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use dots or counting blocks.",
+        "grade_3_4": "Use mental addition.",
+        "grade_5_6": "Use compensation around 10."
+      },
+
+      "final_celebration": "🎉 Excellent! You solved the addition step by step."
+    },
+
+    "math_p1_a4": {
+      "case_id": "math_p1_a4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "9 + 2 + 3 + 1 = ___",
+      "question_type": "multi_addition",
+      "correct_answer": "15",
+      "concept": "multi-number addition",
+
+      "ocr_style_input": {
+        "raw_text": "4. 9 + 2 + 3 + 1 = ___",
+        "normalized_text": "9 + 2 + 3 + 1 = ___",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "Let's look for an easy pair first. Can you find numbers that make 10?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which two numbers can make 10?",
+          "expected_student_answer": "9 and 1"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What numbers are left?",
+          "expected_student_answer": "2 and 3"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is 2 + 3?",
+          "expected_student_answer": "5"
+        },
+        {
+          "step": 4,
+          "tutor_question": "Now combine your 10 and 5.",
+          "expected_student_answer": "15"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look for a pair that makes 10.",
+        "Hint 2: 9 needs only 1 more.",
+        "Hint 3: After making 10, add the two numbers that remain."
+      ],
+
+      "explain_another_way": {
+        "message": "Try adding from left to right.",
+        "question": "What do you get after 9 + 2? Continue with the remaining numbers."
+      },
+
+      "visual_data": {
+        "type": "number_grouping",
+        "numbers": [9, 2, 3, 1]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use ten frames and counters.",
+        "grade_3_4": "Group numbers to make 10.",
+        "grade_5_6": "Use mental-math strategies."
+      },
+
+      "final_celebration": "🌟 Great strategy! You made the calculation easier by grouping numbers."
+    },
+
+    "math_p1_a5": {
+      "case_id": "math_p1_a5",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "6 + 6 + 4 = ___",
+      "question_type": "multi_addition",
+      "correct_answer": "16",
+      "concept": "addition and grouping",
+
+      "ocr_style_input": {
+        "raw_text": "5. 6 + 6 + 4 = ___",
+        "normalized_text": "6 + 6 + 4 = ___",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "Let's find an easy pair first. Which two numbers could help us make a round number?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What is 6 + 4?",
+          "expected_student_answer": "10"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Which number is left?",
+          "expected_student_answer": "6"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Now add 10 and 6.",
+          "expected_student_answer": "16"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Start with the first group of 6 and count 4 more.",
+        "Hint 2: Keep 6 in your mind, then count 4 steps forward on your fingers or counters.",
+        "Hint 3: Similar example: 5 + 4 = 9 (5 objects + 4 objects). Now try 6 + 4!"
+      ],
+
+      "explain_another_way": {
+        "message": "Add the two 6s first.",
+        "question": "What is 6 + 6? Then add the remaining 4."
+      },
+
+      "visual_data": {
+        "type": "number_groups",
+        "numbers": [6, 6, 4]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use counters.",
+        "grade_3_4": "Group 6 and 4 to make 10.",
+        "grade_5_6": "Compare two different mental-math strategies."
+      },
+
+      "final_celebration": "🎉 Well done! You found a smart way to group the numbers."
+    },
+
+    "math_p1_b1": {
+      "case_id": "math_p1_b1",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "30 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "70",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "1. 30 + [ ] = 100",
+        "normalized_text": "30 + [ ] = 100",
+        "confidence": 0.98
+      },
+
+      "tutor_intro": "We need to find the missing number that helps 30 reach 100. How much more does 30 need?",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What number are we trying to reach?",
+          "expected_student_answer": "100"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Start at 30 and count by tens toward 100. How many tens do you need?",
+          "expected_student_answer": "7 tens"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What number is 7 tens?",
+          "expected_student_answer": "70"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about the distance from 30 to 100 on the number line.",
+        "Hint 2: Count up by tens from 30 toward 100 on your fingers.",
+        "Hint 3: Similar example: 40 + [ ] = 100. Moving 6 tens gives 60!"
+      ],
+
+      "explain_another_way": {
+        "message": "Use subtraction instead.",
+        "question": "If the total is 100 and you already have 30, what subtraction could find the missing part?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 30,
+        "target": 100,
+        "frontend_action": "hide_distance"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks or tens groups.",
+        "grade_3_4": "Use a number line or subtraction.",
+        "grade_5_6": "Use inverse operations."
+      },
+
+      "final_celebration": "🌟 You found the missing part needed to reach 100!"
+    },
+
+    "math_p1_b2": {
+      "case_id": "math_p1_b2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "20 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "80",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "2. 20 + [ ] = 100",
+        "normalized_text": "20 + [ ] = 100"
+      },
+
+      "tutor_intro": "Let's find how much more 20 needs to reach 100.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What is the target number?",
+          "expected_student_answer": "100"
+        },
+        {
+          "step": 2,
+          "tutor_question": "How many tens are there from 20 to 100?",
+          "expected_student_answer": "8 tens"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What number is 8 tens?",
+          "expected_student_answer": "80"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about the distance from 20 to 100 on the number line.",
+        "Hint 2: Count up by tens from 20 toward 100 on your fingers.",
+        "Hint 3: Similar example: 30 + [ ] = 100. Moving 7 tens gives 70!"
+      ],
+
+      "explain_another_way": {
+        "message": "Think of the missing number as 100 minus the number you already have.",
+        "question": "What subtraction can you use?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 20,
+        "target": 100
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens blocks.",
+        "grade_3_4": "Use a number line.",
+        "grade_5_6": "Use subtraction as the inverse operation."
+      },
+
+      "final_celebration": "🎉 Great! You found the missing amount."
+    },
+
+    "math_p1_b3": {
+      "case_id": "math_p1_b3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "35 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "65",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "3. 35 + [ ] = 100",
+        "normalized_text": "35 + [ ] = 100"
+      },
+
+      "tutor_intro": "35 is already there. Let's find the amount needed to reach 100.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How much does 35 need to reach the next multiple of 10?",
+          "expected_student_answer": "5"
+        },
+        {
+          "step": 2,
+          "tutor_question": "After reaching 40, how much more is needed to reach 100?",
+          "expected_student_answer": "60"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Combine those two parts.",
+          "expected_student_answer": "65"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: First move from 35 to the nearest ten.",
+        "Hint 2: From 35 to 40 is 5. Then think from 40 to 100.",
+        "Hint 3: Combine the two distances."
+      ],
+
+      "explain_another_way": {
+        "message": "Use subtraction.",
+        "question": "What is 100 minus 35?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 35,
+        "target": 100,
+        "show_jumps": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens and ones blocks.",
+        "grade_3_4": "Use compensation and number lines.",
+        "grade_5_6": "Use subtraction and mental calculation."
+      },
+
+      "final_celebration": "🌟 Excellent! You broke the distance into smaller parts."
+    },
+
+    "math_p1_b4": {
+      "case_id": "math_p1_b4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "48 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "52",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "4. 48 + [ ] = 100",
+        "normalized_text": "48 + [ ] = 100"
+      },
+
+      "tutor_intro": "48 is close to 50. Let's use that to make the problem easier.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How much more does 48 need to become 50?",
+          "expected_student_answer": "2"
+        },
+        {
+          "step": 2,
+          "tutor_question": "After 50, how much more is needed to reach 100?",
+          "expected_student_answer": "50"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is 2 + 50?",
+          "expected_student_answer": "52"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Move 48 to an easier number.",
+        "Hint 2: 48 needs 2 to become 50.",
+        "Hint 3: Then find the distance from 50 to 100."
+      ],
+
+      "explain_another_way": {
+        "message": "Use the inverse operation.",
+        "question": "What calculation finds the missing part when the total is 100?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 48,
+        "target": 100
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks and tens.",
+        "grade_3_4": "Break the distance into 2 and 50.",
+        "grade_5_6": "Use subtraction or compensation."
+      },
+
+      "final_celebration": "🎉 Great thinking! You used a nearby friendly number."
+    },
+
+    "math_p1_b5": {
+      "case_id": "math_p1_b5",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "67 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "33",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "5. 67 + [ ] = 100",
+        "normalized_text": "67 + [ ] = 100"
+      },
+
+      "tutor_intro": "Let's find the distance from 67 to 100 using small jumps.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How much does 67 need to reach 70?",
+          "expected_student_answer": "3"
+        },
+        {
+          "step": 2,
+          "tutor_question": "How much is needed from 70 to 100?",
+          "expected_student_answer": "30"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Combine the two distances.",
+          "expected_student_answer": "33"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Move to the nearest ten first.",
+        "Hint 2: 67 → 70 is a small jump.",
+        "Hint 3: Add that jump to the distance from 70 to 100."
+      ],
+
+      "explain_another_way": {
+        "message": "Think of the missing number as the difference between 100 and 67.",
+        "question": "What subtraction can you write?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 67,
+        "target": 100
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens and ones blocks.",
+        "grade_3_4": "Use number-line jumps.",
+        "grade_5_6": "Use subtraction and mental math."
+      },
+
+      "final_celebration": "🌟 Well done! You split the distance into easy jumps."
+    },
+
+    "math_p1_b6": {
+      "case_id": "math_p1_b6",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "54 + [ ] = 100",
+      "question_type": "missing_addend",
+      "correct_answer": "46",
+      "concept": "completing 100",
+
+      "ocr_style_input": {
+        "raw_text": "6. 54 + [ ] = 100",
+        "normalized_text": "54 + [ ] = 100"
+      },
+
+      "tutor_intro": "Let's find how much more 54 needs to reach 100.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How much does 54 need to reach 60?",
+          "expected_student_answer": "6"
+        },
+        {
+          "step": 2,
+          "tutor_question": "How much is needed from 60 to 100?",
+          "expected_student_answer": "40"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What is 6 + 40?",
+          "expected_student_answer": "46"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Move 54 to the next ten.",
+        "Hint 2: 54 needs 6 to reach 60.",
+        "Hint 3: Add the distance from 60 to 100."
+      ],
+
+      "explain_another_way": {
+        "message": "Use subtraction from the target.",
+        "question": "What is 100 minus 54?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 54,
+        "target": 100
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks.",
+        "grade_3_4": "Use jumps on a number line.",
+        "grade_5_6": "Use subtraction or compensation."
+      },
+
+      "final_celebration": "🎉 Nice! You found the missing amount."
+    },
+
+    "math_p8_a1": {
+      "case_id": "math_p8_a1",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write the hundreds, tens, and ones. Then write 10 more and 10 less: 146",
+      "question_type": "place_value",
+      "correct_answer": {
+        "hundreds": 1,
+        "tens": 4,
+        "ones": 6,
+        "ten_more": 156,
+        "ten_less": 136
+      },
+      "concept": "place value",
+
+      "ocr_style_input": {
+        "raw_text": "146",
+        "normalized_text": "146"
+      },
+
+      "tutor_intro": "Let's explore the number 146 by looking at each place.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "In 146, what digit is in the hundreds place?",
+          "expected_student_answer": "1"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What digit is in the tens place?",
+          "expected_student_answer": "4"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What digit is in the ones place?",
+          "expected_student_answer": "6"
+        },
+        {
+          "step": 4,
+          "tutor_question": "If we add one ten, which digit changes?",
+          "expected_student_answer": "The tens digit"
+        },
+        {
+          "step": 5,
+          "tutor_question": "If we remove one ten, which digit changes?",
+          "expected_student_answer": "The tens digit"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Read the number from right to left: ones, tens, hundreds.",
+        "Hint 2: The middle digit represents groups of ten.",
+        "Hint 3: Adding or removing one ten changes the tens place."
+      ],
+
+      "explain_another_way": {
+        "message": "Imagine 146 as 1 hundred, 4 tens, and 6 ones.",
+        "question": "What happens if you add one more group of ten?"
+      },
+
+      "visual_data": {
+        "type": "place_value_blocks",
+        "number": 146,
+        "show_hundreds": true,
+        "show_tens": true,
+        "show_ones": true,
+        "hide_final_values": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use physical blocks for hundreds, tens, and ones.",
+        "grade_3_4": "Use a place-value chart.",
+        "grade_5_6": "Explain the effect of adding or subtracting powers of ten."
+      },
+
+      "final_celebration": "🌟 Great place-value thinking!"
+    },
+
+    "math_p8_a2": {
+      "case_id": "math_p8_a2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write the hundreds, tens, and ones. Then write 10 more and 10 less: 308",
+      "question_type": "place_value",
+      "correct_answer": {
+        "hundreds": 3,
+        "tens": 0,
+        "ones": 8,
+        "ten_more": 318,
+        "ten_less": 298
+      },
+      "concept": "place value with zero tens",
+
+      "ocr_style_input": {
+        "raw_text": "308",
+        "normalized_text": "308"
+      },
+
+      "tutor_intro": "This number has an interesting place-value pattern. Let's inspect each position carefully.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which digit is in the hundreds place?",
+          "expected_student_answer": "3"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Which digit is in the tens place?",
+          "expected_student_answer": "0"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which digit is in the ones place?",
+          "expected_student_answer": "8"
+        },
+        {
+          "step": 4,
+          "tutor_question": "What happens to 308 when one ten is added?",
+          "expected_student_answer": "The tens place increases by 1"
+        },
+        {
+          "step": 5,
+          "tutor_question": "What happens when one ten is removed?",
+          "expected_student_answer": "The number decreases by 10"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: The middle digit is the tens place.",
+        "Hint 2: A zero in the tens place means there are no groups of ten.",
+        "Hint 3: Adding one ten means increasing the number by 10."
+      ],
+
+      "explain_another_way": {
+        "message": "Think of 308 as 300 + 8.",
+        "question": "What happens if you add one group of ten to that amount?"
+      },
+
+      "visual_data": {
+        "type": "place_value_blocks",
+        "number": 308
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks and emphasize zero tens.",
+        "grade_3_4": "Use a place-value chart.",
+        "grade_5_6": "Use expanded form."
+      },
+
+      "final_celebration": "🎉 Excellent! You handled the zero in the tens place correctly."
+    },
+
+    "math_p8_a3": {
+      "case_id": "math_p8_a3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write the hundreds, tens, and ones. Then write 10 more and 10 less: 235",
+      "question_type": "place_value",
+      "correct_answer": {
+        "hundreds": 2,
+        "tens": 3,
+        "ones": 5,
+        "ten_more": 245,
+        "ten_less": 225
+      },
+      "concept": "place value",
+
+      "ocr_style_input": {
+        "raw_text": "235",
+        "normalized_text": "235"
+      },
+
+      "tutor_intro": "Let's break 235 into hundreds, tens, and ones.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What digit is in the hundreds place?",
+          "expected_student_answer": "2"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What digit is in the tens place?",
+          "expected_student_answer": "3"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What digit is in the ones place?",
+          "expected_student_answer": "5"
+        },
+        {
+          "step": 4,
+          "tutor_question": "What happens when we add one ten?",
+          "expected_student_answer": "The tens digit increases by 1"
+        },
+        {
+          "step": 5,
+          "tutor_question": "What happens when we remove one ten?",
+          "expected_student_answer": "The tens digit decreases by 1"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: The rightmost digit is the ones.",
+        "Hint 2: The middle digit is the tens.",
+        "Hint 3: Adding or subtracting 10 changes the tens place."
+      ],
+
+      "explain_another_way": {
+        "message": "Write the number in expanded form.",
+        "question": "Can you think of 235 as hundreds + tens + ones?"
+      },
+
+      "visual_data": {
+        "type": "place_value_blocks",
+        "number": 235
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks.",
+        "grade_3_4": "Use a place-value chart.",
+        "grade_5_6": "Use expanded form and powers of ten."
+      },
+
+      "final_celebration": "🌟 Great! You understand how tens affect the number."
+    },
+
+    "math_p8_a4": {
+      "case_id": "math_p8_a4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "Write the hundreds, tens, and ones. Then write 10 more and 10 less: 472",
+      "question_type": "place_value",
+      "correct_answer": {
+        "hundreds": 4,
+        "tens": 7,
+        "ones": 2,
+        "ten_more": 482,
+        "ten_less": 462
+      },
+      "concept": "place value",
+
+      "ocr_style_input": {
+        "raw_text": "472",
+        "normalized_text": "472"
+      },
+
+      "tutor_intro": "Let's investigate the three place-value positions in 472.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which digit represents hundreds?",
+          "expected_student_answer": "4"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Which digit represents tens?",
+          "expected_student_answer": "7"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Which digit represents ones?",
+          "expected_student_answer": "2"
+        },
+        {
+          "step": 4,
+          "tutor_question": "If one ten is added, which place changes?",
+          "expected_student_answer": "Tens"
+        },
+        {
+          "step": 5,
+          "tutor_question": "If one ten is removed, which place changes?",
+          "expected_student_answer": "Tens"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the position of each digit.",
+        "Hint 2: The middle digit is the tens place.",
+        "Hint 3: Ten more or ten less changes the tens value."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about 472 as 400 + 70 + 2.",
+        "question": "Which part changes when you add or subtract 10?"
+      },
+
+      "visual_data": {
+        "type": "place_value_blocks",
+        "number": 472
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use hundreds, tens, and ones blocks.",
+        "grade_3_4": "Use a place-value chart.",
+        "grade_5_6": "Use expanded form."
+      },
+
+      "final_celebration": "🎉 Great work with place value!"
+    },
+
+    "math_p8_b2": {
+      "case_id": "math_p8_b2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "35 + 9 = ___",
+      "question_type": "addition_adjustment",
+      "correct_answer": "44",
+      "concept": "adding across a ten",
+
+      "ocr_style_input": {
+        "raw_text": "2. 35 + 9 = ___",
+        "normalized_text": "35 + 9 = ___"
+      },
+
+      "tutor_intro": "Let's make this addition easier by changing 9 into a friendlier number.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What number is 9 close to?",
+          "expected_student_answer": "10"
+        },
+        {
+          "step": 2,
+          "tutor_question": "If you add 10 instead of 9 to 35, what do you get?",
+          "expected_student_answer": "45"
+        },
+        {
+          "step": 3,
+          "tutor_question": "We added one too many. What should we do?",
+          "expected_student_answer": "Subtract 1"
+        },
+        {
+          "step": 4,
+          "tutor_question": "What number do you get after adjusting?",
+          "expected_student_answer": "44"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: 9 is close to 10.",
+        "Hint 2: Try 35 + 10 first.",
+        "Hint 3: Remember that using 10 added one extra."
+      ],
+
+      "explain_another_way": {
+        "message": "Break 9 into 5 and 4.",
+        "question": "What happens when you first add enough to reach the next ten?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 35,
+        "jumps": [10, -1]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use counters and ten frames.",
+        "grade_3_4": "Use the +10 then -1 strategy.",
+        "grade_5_6": "Compare compensation with standard addition."
+      },
+
+      "final_celebration": "🌟 Great adjustment! You used 10 and corrected it."
+    },
+
+    "math_p8_b6": {
+      "case_id": "math_p8_b6",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "74 - 9 = ___",
+      "question_type": "subtraction_adjustment",
+      "correct_answer": "65",
+      "concept": "subtracting near ten",
+
+      "ocr_style_input": {
+        "raw_text": "6. 74 - 9 = ___",
+        "normalized_text": "74 - 9 = ___"
+      },
+
+      "tutor_intro": "9 is very close to 10. Let's use that to make subtraction easier.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What number is 9 close to?",
+          "expected_student_answer": "10"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What is 74 - 10?",
+          "expected_student_answer": "64"
+        },
+        {
+          "step": 3,
+          "tutor_question": "We subtracted one too many. What should we do?",
+          "expected_student_answer": "Add 1"
+        },
+        {
+          "step": 4,
+          "tutor_question": "What is the adjusted result?",
+          "expected_student_answer": "65"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think about subtracting 10.",
+        "Hint 2: 9 is one less than 10.",
+        "Hint 3: After subtracting 10, add 1 back."
+      ],
+
+      "explain_another_way": {
+        "message": "Break 9 into smaller parts.",
+        "question": "What happens if you subtract 4 first to reach a multiple of ten?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 74,
+        "jumps": [-10, 1]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use counters.",
+        "grade_3_4": "Use the -10 then +1 strategy.",
+        "grade_5_6": "Compare compensation and standard subtraction."
+      },
+
+      "final_celebration": "🎉 Excellent! You adjusted the subtraction correctly."
+    },
+
+    "math_p8_b3": {
+      "case_id": "math_p8_b3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "58 + 11 = ___",
+      "question_type": "addition_by_tens",
+      "correct_answer": "69",
+      "concept": "adding tens and ones",
+
+      "ocr_style_input": {
+        "raw_text": "3. 58 + 11 = ___",
+        "normalized_text": "58 + 11 = ___"
+      },
+
+      "tutor_intro": "Let's split 11 into tens and ones.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many tens and ones are in 11?",
+          "expected_student_answer": "1 ten and 1 one"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What happens when you add 10 to 58?",
+          "expected_student_answer": "68"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Now add the remaining 1.",
+          "expected_student_answer": "69"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Split 11 into 10 + 1.",
+        "Hint 2: Add the 10 first.",
+        "Hint 3: Then add the remaining 1."
+      ],
+
+      "explain_another_way": {
+        "message": "Use column addition with tens and ones.",
+        "question": "What happens to the tens column when you add one ten?"
+      },
+
+      "visual_data": {
+        "type": "base_ten_blocks",
+        "start": 58,
+        "add": "1 ten + 1 one"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens rods and ones.",
+        "grade_3_4": "Split 11 into 10 + 1.",
+        "grade_5_6": "Use mental math or column addition."
+      },
+
+      "final_celebration": "🌟 Great! You separated tens and ones correctly."
+    },
+
+    "math_p8_b7": {
+      "case_id": "math_p8_b7",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "52 - 11 = ___",
+      "question_type": "subtraction_by_tens",
+      "correct_answer": "41",
+      "concept": "subtracting tens and ones",
+
+      "ocr_style_input": {
+        "raw_text": "7. 52 - 11 = ___",
+        "normalized_text": "52 - 11 = ___"
+      },
+
+      "tutor_intro": "Let's split 11 into a ten and a one.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How can we split 11 into tens and ones?",
+          "expected_student_answer": "10 + 1"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What is 52 - 10?",
+          "expected_student_answer": "42"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Now subtract the remaining 1.",
+          "expected_student_answer": "41"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Think of 11 as 10 + 1.",
+        "Hint 2: Subtract the ten first.",
+        "Hint 3: Then subtract one more."
+      ],
+
+      "explain_another_way": {
+        "message": "Use place value.",
+        "question": "Which digit changes when you subtract one ten?"
+      },
+
+      "visual_data": {
+        "type": "base_ten_blocks",
+        "start": 52,
+        "remove": "1 ten + 1 one"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use blocks.",
+        "grade_3_4": "Subtract tens first.",
+        "grade_5_6": "Compare mental math and column subtraction."
+      },
+
+      "final_celebration": "🎉 Nice! You handled the tens and ones separately."
+    },
+
+    "math_p8_b4": {
+      "case_id": "math_p8_b4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "27 + 30 = ___",
+      "question_type": "addition_by_tens",
+      "correct_answer": "57",
+      "concept": "adding tens",
+
+      "ocr_style_input": {
+        "raw_text": "4. 27 + 30 = ___",
+        "normalized_text": "27 + 30 = ___"
+      },
+
+      "tutor_intro": "30 is made of three tens. Let's see what happens when we add three tens to 27.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many tens are in 30?",
+          "expected_student_answer": "3"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What happens when you add 3 tens to 27?",
+          "expected_student_answer": "The tens increase by 3"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What number do you get?",
+          "expected_student_answer": "57"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: 30 means three groups of ten.",
+        "Hint 2: Count 27 → 37 → 47 → 57.",
+        "Hint 3: Adding 30 changes the tens, not the ones."
+      ],
+
+      "explain_another_way": {
+        "message": "Use a number line with jumps of 10.",
+        "question": "Can you make three jumps of ten from 27?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 27,
+        "jumps": [10, 10, 10]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens blocks.",
+        "grade_3_4": "Use jumps of 10.",
+        "grade_5_6": "Use place-value reasoning."
+      },
+
+      "final_celebration": "🌟 Great! You added three tens."
+    },
+
+    "math_p8_b8": {
+      "case_id": "math_p8_b8",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "91 - 20 = ___",
+      "question_type": "subtraction_by_tens",
+      "correct_answer": "71",
+      "concept": "subtracting tens",
+
+      "ocr_style_input": {
+        "raw_text": "8. 91 - 20 = ___",
+        "normalized_text": "91 - 20 = ___"
+      },
+
+      "tutor_intro": "20 means two tens. Let's remove two tens from 91.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many tens are in 20?",
+          "expected_student_answer": "2"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What happens when you subtract two tens from 91?",
+          "expected_student_answer": "The tens decrease by 2"
+        },
+        {
+          "step": 3,
+          "tutor_question": "What number remains?",
+          "expected_student_answer": "71"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: 20 is two groups of ten.",
+        "Hint 2: Count backward 10 twice.",
+        "Hint 3: 91 → 81 → 71."
+      ],
+
+      "explain_another_way": {
+        "message": "Use a number line.",
+        "question": "Can you make two backward jumps of 10?"
+      },
+
+      "visual_data": {
+        "type": "number_line",
+        "start": 91,
+        "jumps": [-10, -10]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use tens blocks.",
+        "grade_3_4": "Use backward jumps of 10.",
+        "grade_5_6": "Explain using place value."
+      },
+
+      "final_celebration": "🎉 Well done! You subtracted two tens correctly."
+    },
+
+    "math_p16_a1": {
+      "case_id": "math_p16_a1",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "How many days are in this month?",
+      "question_type": "calendar_reading",
+      "correct_answer": "31",
+      "concept": "days in a month",
+
+      "ocr_style_input": {
+        "raw_text": "How many days are in this month?",
+        "normalized_text": "how many days are in this month"
+      },
+
+      "tutor_intro": "Let's use the August 2026 calendar in the worksheet. Look at the last numbered date.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What month is shown on the calendar?",
+          "expected_student_answer": "August"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What is the last numbered date shown?",
+          "expected_student_answer": "31"
+        },
+        {
+          "step": 3,
+          "tutor_question": "So how many days does this month have?",
+          "expected_student_answer": "31"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the bottom of the calendar.",
+        "Hint 2: Find the largest date number.",
+        "Hint 3: The last date tells you the total number of days."
+      ],
+
+      "explain_another_way": {
+        "message": "Read the calendar from the first date to the last date.",
+        "question": "What number does the calendar finish on?"
+      },
+
+      "visual_data": {
+        "type": "calendar",
+        "month": "August",
+        "year": 2026,
+        "highlight_last_date": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Count calendar dates with visual support.",
+        "grade_3_4": "Read the last date.",
+        "grade_5_6": "Explain how calendar dates represent elapsed days."
+      },
+
+      "final_celebration": "🌟 Great calendar reading!"
+    },
+
+    "math_p16_a2": {
+      "case_id": "math_p16_a2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "What day is 14 August?",
+      "question_type": "calendar_day_lookup",
+      "correct_answer": "Friday",
+      "concept": "reading weekdays from a calendar",
+
+      "ocr_style_input": {
+        "raw_text": "What day is 14 August?",
+        "normalized_text": "what day is 14 august"
+      },
+
+      "tutor_intro": "Let's find the date 14 on the calendar and look at the weekday column it is under.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Find the number 14. Which row is it in?",
+          "expected_student_answer": "The row containing 9 to 15"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Look at the weekday heading above 14. What column is it under?",
+          "expected_student_answer": "Friday"
+        },
+        {
+          "step": 3,
+          "tutor_question": "So what day is 14 August?",
+          "expected_student_answer": "Friday"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Find 14 first.",
+        "Hint 2: Follow the same column upward to the weekday heading.",
+        "Hint 3: The weekday heading above 14 gives the answer."
+      ],
+
+      "explain_another_way": {
+        "message": "Use the known calendar sequence around 14 August.",
+        "question": "What weekdays appear for 12, 13, 14, and 15 August?"
+      },
+
+      "visual_data": {
+        "type": "calendar",
+        "month": "August",
+        "year": 2026,
+        "target_date": 14,
+        "highlight_answer": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Trace from the date to the weekday heading.",
+        "grade_3_4": "Read the weekday column.",
+        "grade_5_6": "Use weekday sequences and calendar reasoning."
+      },
+
+      "final_celebration": "🎉 Great job reading the calendar column!"
+    },
+
+    "math_p16_a3": {
+      "case_id": "math_p16_a3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "What date is one week after 8 August?",
+      "question_type": "calendar_elapsed_time",
+      "correct_answer": "15 August",
+      "concept": "one week equals seven days",
+
+      "ocr_style_input": {
+        "raw_text": "What date is one week after 8 August?",
+        "normalized_text": "what date is one week after 8 august"
+      },
+
+      "tutor_intro": "Let's move forward exactly one week on the calendar. Remember that one week has seven days.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many days are in one week?",
+          "expected_student_answer": "7"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Start at 8 August. What date comes one day later?",
+          "expected_student_answer": "9 August"
+        },
+        {
+          "step": 3,
+          "tutor_question": "If we move forward seven days, where do we land?",
+          "expected_student_answer": "15 August"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: One week contains seven days.",
+        "Hint 2: Count seven calendar squares forward from 8.",
+        "Hint 3: Start counting after 8: 9, 10, 11, 12, 13, 14, then the next date."
+      ],
+
+      "explain_another_way": {
+        "message": "Use the fact that the same weekday repeats after one week.",
+        "question": "Find 8 August and move to the same weekday in the next row."
+      },
+
+      "visual_data": {
+        "type": "calendar",
+        "month": "August",
+        "year": 2026,
+        "start_date": 8,
+        "movement_days": 7,
+        "highlight_answer": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Physically count seven calendar squares.",
+        "grade_3_4": "Use the one-week relationship.",
+        "grade_5_6": "Explain using elapsed-time reasoning."
+      },
+
+      "final_celebration": "🌟 Excellent! You used the calendar to move forward one full week."
+    },
+
+    "math_p16_a4": {
+      "case_id": "math_p16_a4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "Circle 31 August.",
+      "question_type": "calendar_visual_selection",
+      "correct_answer": "31",
+      "concept": "calendar date identification",
+
+      "ocr_style_input": {
+        "raw_text": "Circle 31 August.",
+        "normalized_text": "circle 31 august"
+      },
+
+      "tutor_intro": "Let's find the date 31 on the August calendar. You will choose it yourself.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "What number are you looking for?",
+          "expected_student_answer": "31"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Look at the calendar. Can you find the number 31?",
+          "expected_student_answer": "31"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Tap or circle the date you found.",
+          "expected_student_answer": "student selects 31"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look near the end of the calendar.",
+        "Hint 2: Find the largest date number.",
+        "Hint 3: The month ends with the date you are looking for."
+      ],
+
+      "explain_another_way": {
+        "message": "Find the last numbered square in August.",
+        "question": "What number is written there?"
+      },
+
+      "visual_data": {
+        "type": "interactive_calendar",
+        "month": "August",
+        "year": 2026,
+        "target": 31,
+        "reveal_target_before_selection": false,
+        "allow_student_circle": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use a large interactive calendar.",
+        "grade_3_4": "Locate the date independently.",
+        "grade_5_6": "Explain why 31 is the final date."
+      },
+
+      "final_celebration": "🎉 You found the correct date on the calendar!"
+    },
+
+    "math_p16_b1": {
+      "case_id": "math_p16_b1",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "1 week = ____ days",
+      "question_type": "time_fact",
+      "correct_answer": "7",
+      "concept": "weeks and days",
+
+      "ocr_style_input": {
+        "raw_text": "1 week = ____ days",
+        "normalized_text": "1 week equals blank days"
+      },
+
+      "tutor_intro": "Let's use the calendar to remember how many days make one full week.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many weekday columns are shown in a full week?",
+          "expected_student_answer": "7"
+        },
+        {
+          "step": 2,
+          "tutor_question": "How many days does one full week have?",
+          "expected_student_answer": "7"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the seven weekday headings.",
+        "Hint 2: Count Sunday through Saturday.",
+        "Hint 3: A full week has the same number of days as the calendar columns."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the seven days you name during a week.",
+        "question": "Can you name them from Sunday to Saturday?"
+      },
+
+      "visual_data": {
+        "type": "weekday_row",
+        "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Count the weekday names.",
+        "grade_3_4": "Recall the week-to-day relationship.",
+        "grade_5_6": "Use the relationship in elapsed-time problems."
+      },
+
+      "final_celebration": "🌟 Great! You know the relationship between weeks and days."
+    },
+
+    "math_p16_b2": {
+      "case_id": "math_p16_b2",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "1 fortnight = ____ weeks",
+      "question_type": "time_fact",
+      "correct_answer": "2",
+      "concept": "fortnight",
+
+      "ocr_style_input": {
+        "raw_text": "1 fortnight = ____ weeks",
+        "normalized_text": "1 fortnight equals blank weeks"
+      },
+
+      "tutor_intro": "The worksheet gives us a clue about a fortnight. Let's use the information provided.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Look at the calendar facts on the worksheet. What does it say about a fortnight?",
+          "expected_student_answer": "A fortnight is 2 weeks"
+        },
+        {
+          "step": 2,
+          "tutor_question": "So how many weeks should go in the blank?",
+          "expected_student_answer": "2"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: The worksheet includes this fact.",
+        "Hint 2: Find the line that says '1 fortnight'.",
+        "Hint 3: A fortnight is made from two weeks."
+      ],
+
+      "explain_another_way": {
+        "message": "Think of a fortnight as two complete weeks.",
+        "question": "If one week has seven days, how many weeks make a fortnight?"
+      },
+
+      "visual_data": {
+        "type": "calendar_blocks",
+        "groups": 2,
+        "label": "weeks"
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Show two weekly calendar rows.",
+        "grade_3_4": "Use the worksheet fact.",
+        "grade_5_6": "Connect fortnight to 14 days."
+      },
+
+      "final_celebration": "🎉 Great! You understood the meaning of fortnight."
+    },
+
+    "math_p16_b3": {
+      "case_id": "math_p16_b3",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "easy",
+      "original_question": "1 year = ____ months",
+      "question_type": "time_fact",
+      "correct_answer": "12",
+      "concept": "months in a year",
+
+      "ocr_style_input": {
+        "raw_text": "1 year = ____ months",
+        "normalized_text": "1 year equals blank months"
+      },
+
+      "tutor_intro": "Let's think about the full calendar year.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "How many month names are listed from January to December?",
+          "expected_student_answer": "12"
+        },
+        {
+          "step": 2,
+          "tutor_question": "So how many months are in one year?",
+          "expected_student_answer": "12"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Start with January.",
+        "Hint 2: Count through December.",
+        "Hint 3: There are twelve month names in the full year."
+      ],
+
+      "explain_another_way": {
+        "message": "Use the month list printed on the worksheet.",
+        "question": "How many month names can you count?"
+      },
+
+      "visual_data": {
+        "type": "month_list",
+        "months": [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December"
+        ]
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Count the month cards.",
+        "grade_3_4": "Recall the number of months.",
+        "grade_5_6": "Use months in duration calculations."
+      },
+
+      "final_celebration": "🌟 Excellent! You know how the calendar year is organized."
+    },
+
+    "math_p16_b4": {
+      "case_id": "math_p16_b4",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "A common year = ____ days",
+      "question_type": "time_fact",
+      "correct_answer": "365",
+      "concept": "common year",
+
+      "ocr_style_input": {
+        "raw_text": "A common year = ____ days",
+        "normalized_text": "a common year equals blank days"
+      },
+
+      "tutor_intro": "The worksheet gives us information about common and leap years. Let's find the correct fact.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Look at the calendar facts. What kind of year has 365 days?",
+          "expected_student_answer": "A common year"
+        },
+        {
+          "step": 2,
+          "tutor_question": "What number should fill the blank?",
+          "expected_student_answer": "365"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the printed calendar facts.",
+        "Hint 2: Compare common year and leap year.",
+        "Hint 3: The common year has fewer days than the leap year."
+      ],
+
+      "explain_another_way": {
+        "message": "Use the number of days in the months of a normal year.",
+        "question": "What total is given for a common year on the worksheet?"
+      },
+
+      "visual_data": {
+        "type": "fact_cards",
+        "cards": [
+          "common year",
+          "leap year"
+        ],
+        "hide_values": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use simple year cards.",
+        "grade_3_4": "Read the worksheet fact.",
+        "grade_5_6": "Explain the difference between common and leap years."
+      },
+
+      "final_celebration": "🎉 Great calendar knowledge!"
+    },
+
+    "math_p16_b5": {
+      "case_id": "math_p16_b5",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "A leap year = ____ days",
+      "question_type": "time_fact",
+      "correct_answer": "366",
+      "concept": "leap year",
+
+      "ocr_style_input": {
+        "raw_text": "A leap year = ____ days",
+        "normalized_text": "a leap year equals blank days"
+      },
+
+      "tutor_intro": "Let's use the leap-year fact printed on the worksheet.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Look at the calendar facts. What number is written next to leap year?",
+          "expected_student_answer": "366"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Why does a leap year have one more day than a common year?",
+          "expected_student_answer": "Because February has an extra day"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Compare leap year with common year.",
+        "Hint 2: A leap year has one extra day.",
+        "Hint 3: Look at the February fact on the worksheet."
+      ],
+
+      "explain_another_way": {
+        "message": "Start with the common-year number and think about the extra leap-day.",
+        "question": "What happens when one extra day is added?"
+      },
+
+      "visual_data": {
+        "type": "year_comparison",
+        "common_year": 365,
+        "leap_year": 366,
+        "show_answer_before_attempt": false
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use 365 and one extra day visually.",
+        "grade_3_4": "Use the worksheet facts.",
+        "grade_5_6": "Explain the additional February day."
+      },
+
+      "final_celebration": "🌟 Excellent! You connected leap years with the extra day."
+    },
+
+    "math_p16_b6": {
+      "case_id": "math_p16_b6",
+      "subject": "math",
+      "grade_level": "grade_3_4",
+      "difficulty": "medium",
+      "original_question": "February usually has ____ days",
+      "question_type": "time_fact",
+      "correct_answer": "28",
+      "concept": "days in February",
+
+      "ocr_style_input": {
+        "raw_text": "February usually has ____ days",
+        "normalized_text": "february usually has blank days"
+      },
+
+      "tutor_intro": "Let's use the calendar facts on the worksheet to answer this.",
+
+      "steps": [
+        {
+          "step": 1,
+          "tutor_question": "Which month are we thinking about?",
+          "expected_student_answer": "February"
+        },
+        {
+          "step": 2,
+          "tutor_question": "Look at the printed calendar facts. What does it say about February usually?",
+          "expected_student_answer": "28 days"
+        },
+        {
+          "step": 3,
+          "tutor_question": "Why can February sometimes have one extra day?",
+          "expected_student_answer": "Because of leap years"
+        }
+      ],
+
+      "hints": [
+        "Hint 1: Look at the February fact on the worksheet.",
+        "Hint 2: February usually has fewer days than other months.",
+        "Hint 3: Compare a normal February with a leap-year February."
+      ],
+
+      "explain_another_way": {
+        "message": "Think about the difference between a common year and a leap year.",
+        "question": "What is the usual February number before the extra leap day?"
+      },
+
+      "visual_data": {
+        "type": "calendar_month",
+        "month": "February",
+        "show_day_grid": true,
+        "hide_answer": true
+      },
+
+      "grade_adaptations": {
+        "grade_1_2": "Use a February calendar and count dates.",
+        "grade_3_4": "Use the calendar fact.",
+        "grade_5_6": "Explain the relationship between February and leap years."
+      },
+
+      "final_celebration": "🎉 Great! You understand February and leap years."
+    }
+  },
+
+  "case_matching": {
+    "priority": [
+      "exercise_id",
+      "normalized_question_text",
+      "ocr_pattern"
+    ],
+    "never_match_using_answer": true,
+
+    "patterns": {
+      "math_p1_a1": ["4 + 5 + 6"],
+      "math_p1_a2": ["7 + 3 + 2 + 5"],
+      "math_p1_a3": ["8 + 1 + 4"],
+      "math_p1_a4": ["9 + 2 + 3 + 1"],
+      "math_p1_a5": ["6 + 6 + 4"],
+
+      "math_p1_b1": ["30 + [ ] = 100", "30 + ___ = 100"],
+      "math_p1_b2": ["20 + [ ] = 100", "20 + ___ = 100"],
+      "math_p1_b3": ["35 + [ ] = 100", "35 + ___ = 100"],
+      "math_p1_b4": ["48 + [ ] = 100", "48 + ___ = 100"],
+      "math_p1_b5": ["67 + [ ] = 100", "67 + ___ = 100"],
+      "math_p1_b6": ["54 + [ ] = 100", "54 + ___ = 100"],
+
+      "math_p8_a1": ["146"],
+      "math_p8_a2": ["308"],
+      "math_p8_a3": ["235"],
+      "math_p8_a4": ["472"],
+
+      "math_p8_b2": ["35 + 9"],
+      "math_p8_b6": ["74 - 9"],
+      "math_p8_b3": ["58 + 11"],
+      "math_p8_b7": ["52 - 11"],
+      "math_p8_b4": ["27 + 30"],
+      "math_p8_b8": ["91 - 20"],
+
+      "math_p16_a1": ["How many days are in this month"],
+      "math_p16_a2": ["What day is 14 August"],
+      "math_p16_a3": ["What date is one week after 8 August"],
+      "math_p16_a4": ["Circle 31 August"],
+
+      "math_p16_b1": ["1 week = ____ days", "1 week = ___ days"],
+      "math_p16_b2": ["1 fortnight = ____ weeks", "1 fortnight = ___ weeks"],
+      "math_p16_b3": ["1 year = ____ months", "1 year = ___ months"],
+      "math_p16_b4": ["A common year = ____ days", "A common year = ___ days"],
+      "math_p16_b5": ["A leap year = ____ days", "A leap year = ___ days"],
+      "math_p16_b6": ["February usually has ____ days", "February usually has ___ days"]
+    }
+  },
+
+  "frontend_rendering_rules": {
+    "exercise_queue": {
+      "show_all_detected_exercises": true,
+      "label_format": "Ex {index}",
+      "preserve_original_order": true,
+      "allow_exercise_selection": true,
+      "selected_exercise_loads_case": true
+    },
+
+    "student_visible_case_data": [
+      "original_question",
+      "tutor_intro",
+      "current_step.tutor_question",
+      "current_step.hints",
+      "visual_data",
+      "grade_adaptation"
+    ],
+
+    "backend_only_case_data": [
+      "correct_answer",
+      "expected_student_answer",
+      "case_matching.patterns"
+    ],
+
+    "answer_reveal": {
+      "before_completion": false,
+      "after_completion": true
+    },
+
+    "hint_behavior": {
+      "wrong_attempt_1": "hint_1",
+      "wrong_attempt_2": "hint_2",
+      "wrong_attempt_3": "hint_3",
+      "after_hint_3": "allow_explain_another_way",
+      "never_use_hint_to_directly_state_final_answer": true
+    },
+
+    "explain_another_way": {
+      "must_change_explanation_strategy": true,
+      "must_not_repeat_same_hint": true,
+      "must_not_reveal_final_answer": true
+    },
+
+    "completion_behavior": {
+      "show_final_answer": true,
+      "show_final_celebration": true,
+      "offer_next_exercise": true
+    }
+  }
+}
