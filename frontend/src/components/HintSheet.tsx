@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StepItem, Language } from '../types';
 import { Lightbulb, Sparkles, HelpCircle, X, ChevronRight } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
+import { resolveStepHints } from '../utils/hintHelper';
 
 interface HintSheetProps {
   step: StepItem;
@@ -18,6 +19,10 @@ export const HintSheet: React.FC<HintSheetProps> = ({
 }) => {
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1);
   const isKhmer = language === 'km';
+  const resolved = resolveStepHints(step, language);
+  const rawStep = step as any;
+  const stepNumber = step?.stepNumber || rawStep?.step_number || 1;
+  const totalSteps = step?.totalSteps || rawStep?.total_steps || 3;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -49,12 +54,12 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             <div>
               <h3 id="hint-sheet-title" className="text-base sm:text-lg font-black text-white font-heading flex items-center gap-1.5 drop-shadow-[1px_1px_0px_#1B4332]">
                 <Lightbulb className="w-5 h-5 text-white fill-white" />
-                {isKhmer ? 'តម្រុយពី ReanMore' : "Tunsay's Hints"}
+                {isKhmer ? 'តម្រុយពី ReanMore' : "ReanMore's Hints"}
               </h3>
               <p className="text-xs text-white font-bold">
                 {isKhmer 
-                  ? `ជំហានទី ${step.stepNumber} នៃ ${step.totalSteps}` 
-                  : `Step ${step.stepNumber} of ${step.totalSteps}`}
+                  ? `ជំហានទី ${stepNumber} នៃ ${totalSteps}` 
+                  : `Step ${stepNumber} of ${totalSteps}`}
               </p>
             </div>
           </div>
@@ -119,7 +124,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
                 {isKhmer ? 'តម្រុយតូច៖' : 'Small hint:'}
               </div>
               <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed">
-                {isKhmer ? step.hint1.khmer : step.hint1.eng}
+                {resolved.hint1}
               </p>
             </div>
           )}
@@ -131,7 +136,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
                 {isKhmer ? 'តម្រុយធំជាង៖' : 'Bigger hint:'}
               </div>
               <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed">
-                {isKhmer ? step.hint2.khmer : step.hint2.eng}
+                {resolved.hint2}
               </p>
             </div>
           )}
@@ -140,10 +145,10 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             <div className="bg-[#40916C] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-3 animate-fadeIn">
               <div className="flex items-center gap-2 text-white font-black text-sm">
                 <Sparkles className="w-4 h-4 text-white" />
-                {isKhmer ? step.hint3.titleKhmer : step.hint3.titleEng}
+                {resolved.hint3Title}
               </div>
               <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed bg-white p-3 rounded-xl border-2 border-[#1B4332]">
-                {isKhmer ? step.hint3.exampleKhmer : step.hint3.exampleEng}
+                {resolved.hint3Example}
               </p>
             </div>
           )}

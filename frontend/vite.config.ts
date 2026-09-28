@@ -1,37 +1,68 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { defineConfig } from "vite";
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        "@": path.resolve(__dirname, "./src"),
       },
     },
     server: {
       proxy: {
-        '/api': {
-          target: 'http://localhost:9000',
+        "/api": {
+          target: "http://localhost:9000",
           changeOrigin: true,
         },
-        '/process-homework': {
-          target: 'http://localhost:9003',
+        "/process-homework": {
+          target: "http://localhost:9003",
           changeOrigin: true,
         },
-        '/ocr': {
-          target: 'http://localhost:9003',
+        "/ocr": {
+          target: "http://localhost:9003",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/ocr/, ''),
+          rewrite: (path) => path.replace(/^\/ocr/, ""),
         },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+      hmr: process.env.DISABLE_HMR !== "true",
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === "true" ? null : {},
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("/src/data/")) {
+              return "content-data";
+            }
+            if (id.includes("/src/services/translationService")) {
+              return "content-i18n";
+            }
+            if (!id.includes("node_modules")) {
+              return undefined;
+            }
+
+            if (id.includes("react") || id.includes("react-dom")) {
+              return "vendor-react";
+            }
+            if (id.includes("lucide-react")) {
+              return "vendor-icons";
+            }
+            if (id.includes("motion")) {
+              return "vendor-motion";
+            }
+            if (id.includes("@google/genai")) {
+              return "vendor-ai";
+            }
+            return "vendor-libs";
+          },
+        },
+      },
     },
   };
 });

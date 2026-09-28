@@ -1,5 +1,12 @@
-import { HomeworkProblem, TutorSession, TutorStep, TutorStepStatus, VisualData } from '../types';
-import { ALL_HARDCODED_CASES, getWorksheetImageForCase, RawHardcodedCase } from '../data/hardcodedCases';
+import { HomeworkProblem, TutorSession, TutorStep, TutorStepStatus, VisualData, Grade, Subject } from '../types';
+import {
+  ALL_HARDCODED_CASES,
+  getWorksheetImageForCase,
+  RawHardcodedCase,
+  MATH_QUEUES,
+  SCIENCE_QUEUES,
+  WORKSHEET_IMAGES,
+} from '../data/hardcodedCases';
 
 function gradeToKey(grade: number): string {
   if (grade <= 2) return 'grade_1_2';
@@ -71,11 +78,13 @@ export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
   // 1. Khmer & English Affirmative / Negative Cross-Language Matching
   const affirmative = new Set([
     'yes', 'true', 'correct', 'y', 't', 'has', 'tick', '✓', 'check',
-    'បាទ', 'ចាស', 'មាន', 'ពិតជាមាន', 'ត្រូវ', 'ពិតមែន', 'បាទ/ចាស', 'បាទមាន', 'ចាសមាន', 'ពិត', 'គ្រីស'
+    'បាទ', 'ចាស', 'មាន', 'ពិតជាមាន', 'ត្រូវ', 'ពិតមែន', 'បាទ/ចាស', 'បាទមាន', 'ចាសមាន', 'ពិត', 'គ្រីស',
+    '✓ មាន', 'មានរោមស្លាប', 'មានស្លាប', 'មានដង្កៀប', 'មានបូក'
   ]);
   const negative = new Set([
     'no', 'false', 'incorrect', 'n', 'f', 'none', 'cross', '✗', 'x',
-    'ទេ', 'គ្មាន', 'មិនមាន', 'អត់', 'ខុស', 'មិនពិត', 'អត់ទេ', 'អត់មាន', 'មិនមែន', 'ខ្វែង'
+    'ទេ', 'គ្មាន', 'មិនមាន', 'អត់', 'ខុស', 'មិនពិត', 'អត់ទេ', 'អត់មាន', 'មិនមែន', 'ខ្វែង',
+    '✗ គ្មាន', 'គ្មានទេ'
   ]);
 
   if ((affirmative.has(s) || [...affirmative].some(w => s.startsWith(w))) && 
@@ -88,11 +97,45 @@ export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
     return true;
   }
 
+  // 1b. Feature Presence Cross-Matching (Worksheet Table Classification)
+  // When an animal has the feature, answering affirmative (Yes / ✓ / មាន)
+  // or answering the feature name (Feathers / Wings / etc.) are equivalent.
+  const featureAffirmatives: Record<string, string[]> = {
+    vertebrate: ['vertebrate', 'vertebrates', 'backbone', 'has backbone', 'ឆ្អឹងកង', 'ឆ្អឹងខ្នង', 'សត្វមានឆ្អឹងកង'],
+    feathers: ['feathers', 'feather', 'has feathers', 'រោម', 'រោមស្លាប', 'មានរោមស្លាប'],
+    wings: ['wings', 'wing', 'has wings', 'ស្លាប', 'មានស្លាប'],
+    pincers: ['pincers', 'pincer', 'claws', 'claw', 'has pincers', 'ដង្កៀប', 'ក្រញ៉ាំ', 'មានដង្កៀប'],
+    hump: ['hump', 'hump on back', 'has hump on back', 'បូក', 'បូកនៅលើខ្នង', 'បូកខ្នង', 'មានបូក'],
+  };
+
+  for (const feats of Object.values(featureAffirmatives)) {
+    const eIsFeat = feats.some(f => e === f || e.includes(f));
+    const sIsFeat = feats.some(f => s === f || s.includes(f));
+    const sIsAffirm = affirmative.has(s) || [...affirmative].some(w => s.startsWith(w));
+    const eIsAffirm = affirmative.has(e) || [...affirmative].some(w => e.startsWith(w));
+
+    if ((eIsFeat && sIsAffirm) || (sIsFeat && eIsAffirm) || (eIsFeat && sIsFeat)) {
+      return true;
+    }
+  }
+
   // 2. Multiple Choice Khmer Letters mapping (ក -> a, ខ -> b, គ -> c, ឃ -> d)
   const khmerLetters: Record<string, string> = { 'ក': 'a', 'ខ': 'b', 'គ': 'c', 'ឃ': 'd' };
   const sMapped = khmerLetters[s] || s;
   const eMapped = khmerLetters[e] || e;
   if (sMapped === eMapped) return true;
+
+  // 2b. Option Letter Prefix matching (e.g. student selected "C (ទន្សាយ / Rabbit)" or "គ. សត្វទន្សាយ", expected is "C")
+  const sLetterMatch = s.match(/^([a-d]|[ក-ឃ])(?:\.|\s|\)|\()/i);
+  if (sLetterMatch) {
+    const sCleanLetter = khmerLetters[sLetterMatch[1].toLowerCase()] || sLetterMatch[1].toLowerCase();
+    if (sCleanLetter === eMapped || sCleanLetter === e) return true;
+  }
+  const eLetterMatch = e.match(/^([a-d]|[ក-ឃ])(?:\.|\s|\)|\()/i);
+  if (eLetterMatch) {
+    const eCleanLetter = khmerLetters[eLetterMatch[1].toLowerCase()] || eLetterMatch[1].toLowerCase();
+    if (sMapped === eCleanLetter || s === eCleanLetter) return true;
+  }
 
   // 3. Numerical equality (e.g. "9" === "9" or "09" === "9")
   const numS = Number(s);
@@ -132,12 +175,41 @@ export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
     ['wings', 'wing', 'has wings', 'ស្លាប', 'មានស្លាប'],
     ['pincers', 'pincer', 'claws', 'claw', 'has pincers', 'ដង្កៀប', 'ក្រញ៉ាំ', 'មានដង្កៀប'],
     ['hump', 'hump on back', 'has hump on back', 'បូក', 'បូកនៅលើខ្នង', 'បូកខ្នង'],
-    ['producer', 'producers', 'makes own food', 'អ្នកផលិត', 'រុក្ខជាតិ'],
-    ['consumer', 'consumers', 'eats others', 'អ្នកស៊ី', 'អ្នកប្រើប្រាស់', 'សត្វ'],
+    ['producer', 'producers', 'makes own food', 'makes its own food', 'បង្កើតអាហារដោយខ្លួនឯង', 'អ្នកផលិត', 'រុក្ខជាតិ'],
+    ['consumer', 'consumers', 'eats others', 'eats other organisms', 'ស៊ីសារពាង្គកាយដទៃ', 'អ្នកស៊ី', 'អ្នកប្រើប្រាស់', 'សត្វ'],
     ['leaves', 'leaf', 'ស្លឹក', 'ស្លឹកឈើ'],
     ['rabbit', 'ទន្សាយ'],
     ['cabbage', 'ស្ពៃ', 'ស្ពៃក្តោប'],
-    ['b, d', 'b and d', 'owl and eagle', 'b, c', 'b and c', 'ខ និង ឃ', 'ខ, ឃ']
+    ['b, d', 'b and d', 'owl and eagle', 'owl & eagle', 'a and d', 'a & d', 'b, c', 'b and c', 'ខ និង ឃ', 'ខ, ឃ', 'ទីទុយ និងឥន្ទ្រី', 'a និង d', 'a, d'],
+    ['a, c and d', 'a, c & d', 'a, c, d', 'a c d', 'a c និង d', 'consumers', 'អ្នកស៊ី'],
+    ['in water', 'water', 'ក្នុងទឹក', 'ទឹក'],
+    ['gills', 'gill', 'ស្រកី', 'ស្រកីត្រី'],
+    ['moist skin', 'smooth skin', 'ស្បែកសើម', 'ស្បែករលោងសើម', 'ស្បែករលោង'],
+    ['frog', 'កង្កែប'],
+    ['snake', 'ពស់'],
+    ['scales', 'scale', 'ស្រកា'],
+    ['mammal', 'mammals', 'ថនិកសត្វ'],
+    ['hair or fur', 'hair', 'fur', 'រោមសត្វ', 'រោម'],
+    ['a plant', 'plant', 'plants', 'រុក្ខជាតិ'],
+    ['eyes', 'eye', 'ភ្នែក'],
+    ['sight', 'see', 'ការមើលឃើញ', 'មើលឃើញ'],
+    ['ears', 'ear', 'ត្រចៀក'],
+    ['hearing', 'hear', 'ការស្តាប់', 'ការស្តាប់ឮ', 'ស្តាប់'],
+    ['nose', 'ច្រមុះ'],
+    ['smell', 'ការហិតក្លិន', 'ហិតក្លិន'],
+    ['tongue', 'អណ្តាត'],
+    ['taste', 'ការភ្លក្ស', 'ការភ្លក្សរសជាតិ', 'ភ្លក្ស'],
+    ['skin', 'ស្បែក'],
+    ['touch', 'ការប៉ះ', 'ការប៉ះដឹង', 'ប៉ះដឹង'],
+    ['kitten', 'cat', 'កូនឆ្មា', 'ឆ្មា'],
+    ['stone', 'rock', 'ដុំថ្ម', 'ថ្ម'],
+    ['solid', 'solids', 'សភាពរឹង', 'រឹង'],
+    ['liquid', 'liquids', 'សភាពរាវ', 'រាវ'],
+    ['gas', 'gases', 'សភាពឧស្ម័ន', 'ឧស្ម័ន'],
+    ['melting', 'melt', 'melts', 'ការរលាយ', 'រលាយ'],
+    ['roots', 'root', 'ឫស', 'ឬស'],
+    ['stem', 'stems', 'ដើម', 'ដើមឈើ'],
+    ['herbivores', 'herbivore', 'plant eater', 'plant eaters', 'សត្វស៊ីរុក្ខជាតិ', 'ស៊ីរុក្ខជាតិ'],
   ];
 
   for (const group of synonymGroups) {
@@ -232,8 +304,126 @@ export function isAnswerCorrect(studentRaw: string, expectedRaw: string): boolea
 }
 
 import { matchCaseFromProblem, matchCaseId } from './caseMatcher';
-
 import { getKhmerCaseData } from './translationService';
+
+export const P8_ANIMAL_ANSWERS: Record<string, Record<string, boolean>> = {
+  flamingo: { vertebrate: true, feathers: true, hump_on_back: false, pincers: false, wings: true },
+  lobster:  { vertebrate: false, feathers: false, hump_on_back: false, pincers: true, wings: false },
+  camel:    { vertebrate: true, feathers: false, hump_on_back: true, pincers: false, wings: false },
+  giraffe:  { vertebrate: true, feathers: false, hump_on_back: false, pincers: false, wings: false },
+  slug:     { vertebrate: false, feathers: false, hump_on_back: false, pincers: false, wings: false },
+  moth:     { vertebrate: false, feathers: false, hump_on_back: false, pincers: false, wings: true },
+};
+
+export const SCIENCE_STEP_OPTIONS: Record<string, Record<number, string[]>> = {
+  science_p6_bird: {
+    1: ['រោមស្លាប (Feathers)', 'រោមសត្វ (Fur)', 'ស្រកា (Scales)'],
+    2: ['បាទ/ចាស ពិតមែន (Yes)', 'ទេ មិនមែនទេ (No)'],
+  },
+  science_p6_mammal: {
+    1: ['ថនិកសត្វ (Mammal)', 'សត្វស្លាប (Bird)', 'សត្វល្មូន (Reptile)', 'សត្វឥតឆ្អឹងកង (Invertebrate)'],
+    2: ['រោមសត្វ (Hair or fur)', 'រោមស្លាប (Feathers)', 'ស្រកា (Scales)'],
+  },
+  science_p6_amphibian: {
+    1: ['កង្កែប (Frog)', 'ពស់ (Snake)', 'ត្រី (Fish)', 'បក្សី (Bird)'],
+    2: ['ស្បែករលោងសើម (Moist skin)', 'រោមស្លាប (Feathers)', 'ស្រកា (Scales)'],
+    3: ['ស្បែករលោងសើម (Moist skin)', 'រោមសត្វ (Fur)', 'ស្លាប (Wings)'],
+  },
+  science_p6_reptile: {
+    1: ['ពស់ (Snake)', 'កង្កែប (Frog)', 'សត្វស្លាប (Bird)', 'ថនិកសត្វ (Mammal)'],
+    2: ['ស្រកា (Scales)', 'រោមស្លាប (Feathers)', 'រោមសត្វ (Fur)'],
+  },
+  science_p6_fish: {
+    1: ['ក្នុងទឹក (In water)', 'លើគោក (On land)', 'លើដើមឈើ (In trees)'],
+    2: ['ស្រកី (Gills)', 'សួត (Lungs)', 'ច្រមុះ (Nose)'],
+  },
+  science_p6_invertebrate: {
+    1: ['សត្វមានឆ្អឹងកង (Vertebrates)', 'សត្វឥតឆ្អឹងកង (Invertebrates)', 'រុក្ខជាតិ (Plants)'],
+    2: ['ទេ មិនមែនទេ (No)', 'បាទ/ចាស (Yes)'],
+    3: ['សត្វឥតឆ្អឹងកង (Invertebrates)', 'សត្វមានឆ្អឹងកង (Vertebrates)', 'ថនិកសត្វ (Mammals)'],
+  },
+  science_p44_a_plant_part: {
+    1: ['ស្លឹក (Leaf)', 'ឫស (Roots)', 'ដើម (Stem)', 'ផ្កា (Flower)'],
+    2: ['ស្លឹក (Leaf)', 'ឫស (Roots)', 'ដើម (Stem)'],
+    3: ['ស្លឹក (Leaf)', 'ឫស (Roots)', 'ដើម (Stem)', 'ផ្កា (Flower)'],
+  },
+  science_p44_b_plant_eater: {
+    1: ['ទីទុយ ទន្សាយ ឥន្ទ្រី (Owl, rabbit, eagle)', 'ស្ពៃក្តោបប៉ុណ្ណោះ (Only cabbage)', 'ទន្សាយតែមួយ (Only rabbit)'],
+    2: ['សត្វទន្សាយ (Rabbit)', 'សត្វទីទុយ (Owl)', 'សត្វឥន្ទ្រី (Eagle)', 'ស្ពៃក្តោប (Cabbage)'],
+    3: ['C (ទន្សាយ / Rabbit)', 'A (ទីទុយ / Owl)', 'B (ស្ពៃក្តោប / Cabbage)', 'D (ឥន្ទ្រី / Eagle)'],
+  },
+  science_p44_c_i_producer: {
+    1: ['B (ស្ពៃក្តោប / Cabbage)', 'A (ទីទុយ / Owl)', 'C (ទន្សាយ / Rabbit)', 'D (ឥន្ទ្រី / Eagle)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    3: ['B', 'A', 'C', 'D'],
+  },
+  science_p44_c_ii_eat_animals: {
+    1: ['ទីទុយ និងឥន្ទ្រី (Owl and eagle)', 'ទន្សាយ និងស្ពៃក្តោប (Rabbit and cabbage)', 'ស្ពៃក្តោបប៉ុណ្ណោះ (Only cabbage)'],
+    2: ['ទេ មិនមែនទេ (No)', 'បាទ/ចាស (Yes)'],
+    3: ['A និង D (Owl and eagle)', 'B និង C', 'A និង B', 'C និង D'],
+  },
+  science_p44_c_iii_consumers: {
+    1: ['B (ស្ពៃក្តោប / Cabbage)', 'A (ទីទុយ / Owl)', 'C (ទន្សាយ / Rabbit)', 'D (ឥន្ទ្រី / Eagle)'],
+    2: ['បង្កើតអាហារដោយខ្លួនឯង (Makes own food)', 'ស៊ីសារពាង្គកាយដទៃ (Eats others)'],
+    3: ['ទីទុយ ទន្សាយ ឥន្ទ្រី (Owl, rabbit, eagle)', 'ស្ពៃក្តោបប៉ុណ្ណោះ (Cabbage only)', 'ទន្សាយប៉ុណ្ណោះ (Rabbit only)'],
+    4: ['A, C និង D (A, C and D)', 'A និង B', 'តែ B ប៉ុណ្ណោះ', 'ទាំងអស់'],
+  },
+  science_p44_d_producer_word: {
+    1: ['រុក្ខជាតិ (A plant)', 'សត្វ (An animal)', 'ផ្សិត (Fungi)'],
+    2: ['អ្នកផលិត (Producer)', 'អ្នកស៊ី (Consumer)', 'អ្នកបរបាញ់ (Predator)'],
+    3: ['អ្នកផលិត (Producers)', 'អ្នកស៊ី (Consumers)', 'សត្វស៊ីរុក្ខជាតិ (Herbivores)'],
+  },
+  science_g1_eyes: {
+    1: ['ភ្នែក (Eyes)', 'ត្រចៀក (Ears)', 'ច្រមុះ (Nose)'],
+    2: ['ការមើលឃើញ (Sight)', 'ការស្តាប់ (Hearing)', 'ការហិតក្លិន (Smell)'],
+  },
+  science_g1_ears: {
+    1: ['ត្រចៀក (Ears)', 'ភ្នែក (Eyes)', 'មាត់ (Mouth)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+  },
+  science_g1_nose: {
+    1: ['ច្រមុះ (Nose)', 'អណ្តាត (Tongue)', 'ត្រចៀក (Ears)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+  },
+  science_g1_tongue: {
+    1: ['អណ្តាត (Tongue)', 'ធ្មេញ (Teeth)', 'បបូរមាត់ (Lips)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+  },
+  science_g1_hands: {
+    1: ['ស្បែក (Skin)', 'សក់ (Hair)', 'ក្រចក (Nails)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+  },
+  science_g1_living: {
+    1: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    2: ['ទេ (No)', 'បាទ/ចាស (Yes)'],
+    3: ['កូនឆ្មា (Kitten)', 'ដុំថ្ម (Stone)'],
+  },
+  science_g2_plant_needs: {
+    1: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    2: ['ទឹក (Water)', 'ប្រេង (Oil)', 'ទឹកផ្លែឈើ (Juice)'],
+  },
+  science_g2_plant_parts: {
+    1: ['ឫស (Roots)', 'ស្លឹក (Leaves)', 'ផ្កា (Flower)'],
+    2: ['ដើម (Stem)', 'ឫស (Roots)', 'ផ្លែ (Fruit)'],
+  },
+  science_g2_habitats: {
+    1: ['ទេ (No)', 'បាទ/ចាស (Yes)'],
+    2: ['ក្នុងទឹក (In water)', 'លើដើមឈើ (In trees)', 'វាលខ្សាច់ (In desert)'],
+  },
+  science_g3_matter_ice: {
+    1: ['សភាពរឹង (Solid)', 'សភាពរាវ (Liquid)', 'សភាពឧស្ម័ន (Gas)'],
+    2: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    3: ['ការរលាយ (Melting)', 'ការកក (Freezing)', 'ការរំហួត (Evaporation)'],
+  },
+  science_g3_matter_states: {
+    1: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    2: ['សភាពរាវ (Liquid)', 'សភាពរឹង (Solid)', 'សភាពឧស្ម័ន (Gas)'],
+  },
+  science_g3_animal_diet: {
+    1: ['បាទ/ចាស (Yes)', 'ទេ (No)'],
+    2: ['សត្វស៊ីរុក្ខជាតិ (Herbivores)', 'សត្វស៊ីសាច់ (Carnivores)', 'អ្នកផលិត (Producers)'],
+  },
+};
 
 export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 4): HomeworkProblem {
   if (!problem) return problem;
@@ -259,10 +449,54 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
     const kStep = khmerCase?.steps?.[idx];
     const qKhmer = kStep?.questionKhmer || s.tutor_question;
     const socraticKhmer = kStep?.socraticPromptKhmer || qKhmer;
-    const h1Khmer = kStep?.hint1Khmer || (idx === 0 ? khmerCase?.hintsKhmer?.[0] : undefined) || hcase.hints?.[0] || 'ចាប់ផ្ដើមដោយពិនិត្យមើលសំណួរក្នុងជំហាននេះដោយយកចិត្តទុកដាក់។';
-    const h2Khmer = kStep?.hint2Khmer || (idx === 0 ? khmerCase?.hintsKhmer?.[1] : undefined) || hcase.hints?.[1] || 'រាប់ ឬគណនាជាជំហានៗដោយផ្អែកលើតម្រុយដំបូង។';
-    const h3Khmer = kStep?.hint3Khmer || (idx === 0 ? khmerCase?.hintsKhmer?.[2] : undefined) || hcase.hints?.[2] || (gradeAdaptation ? `ការណែនាំ៖ ${gradeAdaptation}` : 'ព្យាយាមគិតម្តងមួយជំហានៗ!');
-    const expKhmer = kStep?.explainKhmer || khmerCase?.explainKhmer?.messageKhmer || hcase.explain_another_way?.message || s.tutor_question;
+    const isEngText = (str?: string) => Boolean(str && /^[A-Za-z0-9\s.,!?:;'"()\-_/+%=]+$/.test(str.trim()));
+
+    const defaultH1 = hcase.subject === 'science'
+      ? 'ពិនិត្យមើលលក្ខណៈពិសេសរបស់សត្វ ឬរុក្ខជាតិក្នុងសំណួរដោយយកចិត្តទុកដាក់។'
+      : 'ចាប់ផ្ដើមដោយពិនិត្យមើលសំណួរក្នុងជំហាននេះដោយយកចិត្តទុកដាក់។';
+    const defaultH2 = hcase.subject === 'science'
+      ? 'គិតអំពីលក្ខណៈជីវវិទ្យា និងប្រៀបធៀបជាមួយក្រុមសត្វដទៃទៀត។'
+      : 'រាប់ ឬគណនាជាជំហានៗដោយផ្អែកលើតម្រុយដំបូង។';
+    const defaultH3 = gradeAdaptation
+      ? `ការណែនាំ៖ ${gradeAdaptation}`
+      : (hcase.subject === 'science' ? 'ពិចារណាលើរូបរាង និងលក្ខណៈសម្គាល់ចម្បង!' : 'ព្យាយាមគិតម្តងមួយជំហានៗ!');
+
+    const h1Khmer = (kStep?.hint1Khmer && !isEngText(kStep.hint1Khmer) ? kStep.hint1Khmer : null)
+      || (khmerCase?.hintsKhmer?.[0] && !isEngText(khmerCase.hintsKhmer[0]) ? khmerCase.hintsKhmer[0] : null)
+      || defaultH1;
+
+    const h2Khmer = (kStep?.hint2Khmer && !isEngText(kStep.hint2Khmer) ? kStep.hint2Khmer : null)
+      || (khmerCase?.hintsKhmer?.[1] && !isEngText(khmerCase.hintsKhmer[1]) ? khmerCase.hintsKhmer[1] : null)
+      || defaultH2;
+
+    const h3Khmer = (kStep?.hint3Khmer && !isEngText(kStep.hint3Khmer) ? kStep.hint3Khmer : null)
+      || (khmerCase?.hintsKhmer?.[2] && !isEngText(khmerCase.hintsKhmer[2]) ? khmerCase.hintsKhmer[2] : null)
+      || defaultH3;
+
+    const expKhmer = (kStep?.explainKhmer && !isEngText(kStep.explainKhmer) ? kStep.explainKhmer : null)
+      || (khmerCase?.explainKhmer?.messageKhmer && !isEngText(khmerCase.explainKhmer.messageKhmer) ? khmerCase.explainKhmer.messageKhmer : null)
+      || qKhmer;
+
+    // Option & answer resolution for science & interactive cases
+    let stepOptions: string[] | undefined = undefined;
+    let stepInputFormat: 'mcq' | 'number' | 'text' = 'text';
+    let stepCorrectAnswer = s.expected_student_answer;
+
+    if (hcase.subject === 'science') {
+      const p8Match = targetCaseId.match(/science_p8_([a-z]+)/);
+      if (p8Match) {
+        const p8Animal = p8Match[1];
+        const p8Features = ['vertebrate', 'feathers', 'hump_on_back', 'pincers', 'wings'];
+        const feat = p8Features[idx];
+        const hasFeat = P8_ANIMAL_ANSWERS[p8Animal]?.[feat] ?? (s.expected_student_answer.toLowerCase() === 'yes');
+        stepCorrectAnswer = hasFeat ? 'Yes' : 'No';
+        stepOptions = ['✓ មាន (Yes)', '✗ គ្មាន (No)'];
+        stepInputFormat = 'mcq';
+      } else if (SCIENCE_STEP_OPTIONS[targetCaseId]?.[s.step]) {
+        stepOptions = SCIENCE_STEP_OPTIONS[targetCaseId][s.step];
+        stepInputFormat = 'mcq';
+      }
+    }
 
     return {
       id: `${targetCaseId}-step-${s.step}`,
@@ -270,8 +504,9 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
       totalSteps: totalSteps,
       questionKhmer: qKhmer,
       questionEng: s.tutor_question,
-      inputFormat: 'text' as const,
-      correctAnswer: s.expected_student_answer,
+      inputFormat: stepInputFormat,
+      ...(stepOptions ? { options: stepOptions } : {}),
+      correctAnswer: stepCorrectAnswer,
       socraticPromptKhmer: socraticKhmer,
       socraticPromptEng: s.tutor_question,
       hint1: {
@@ -311,5 +546,123 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
     steps,
   };
 }
+
+/**
+ * Returns the complete list of hardcoded exercises for Math or Science,
+ * strictly focused on early primary (Grade 1 - 3).
+ * Prevents loading any exercises higher than Grade 3.
+ */
+export function getHardcodedProblemsBySubject(
+  subject: 'math' | 'science',
+  grade: number = 2
+): { problems: HomeworkProblem[]; imageUri: string } {
+  // Strictly clamp grade between Grade 1 and Grade 3
+  const targetGrade = Math.min(Math.max(grade || 2, 1), 3);
+  let queueKey = 'page_1_homework_1';
+
+  if (subject === 'math') {
+    if (targetGrade <= 2) {
+      queueKey = 'page_1_homework_1';
+    } else {
+      queueKey = 'page_8_homework_8';
+    }
+  } else {
+    // Science queue selection: Grade 1-2 (senses & living) or Grade 3 (plants, habitats & matter)
+    if (targetGrade <= 2) {
+      queueKey = 'grade_1_senses_and_body';
+    } else {
+      queueKey = 'grade_2_3_plants_and_matter';
+    }
+  }
+
+  const queueMeta = subject === 'math' ? MATH_QUEUES[queueKey] : SCIENCE_QUEUES[queueKey];
+  const imageUri = WORKSHEET_IMAGES[queueKey] || '';
+
+  if (!queueMeta || !queueMeta.exercise_ids) {
+    return { problems: [], imageUri };
+  }
+
+  const problems: HomeworkProblem[] = queueMeta.exercise_ids
+    .map((caseId, idx) => {
+      const hcase = ALL_HARDCODED_CASES[caseId];
+      if (!hcase) return null;
+      const khmerData = getKhmerCaseData(caseId);
+
+      let titleEng = `Exercise ${idx + 1}`;
+      let titleKhmer = `លំហាត់ទី ${idx + 1}`;
+
+      if (subject === 'math') {
+        const expr = hcase.original_question || hcase.ocr_style_input?.normalized_text || '';
+        titleEng = `${idx + 1}. ${expr}`;
+        titleKhmer = `លំហាត់ ${idx + 1}៖ ${khmerData?.statementKhmer || expr}`;
+      } else {
+        const scienceTitleMap: Record<string, { en: string; km: string }> = {
+          science_g1_eyes: { en: 'Eyes & Sight', km: 'ភ្នែក និងការមើលឃើញ' },
+          science_g1_ears: { en: 'Ears & Hearing', km: 'ត្រចៀក និងការស្តាប់ឮ' },
+          science_g1_nose: { en: 'Nose & Smell', km: 'ច្រមុះ និងការហិតក្លិន' },
+          science_g1_tongue: { en: 'Tongue & Taste', km: 'អណ្តាត និងការភ្លក្សរសជាតិ' },
+          science_g1_hands: { en: 'Skin & Touch', km: 'ស្បែក និងការប៉ះដឹង' },
+          science_g1_living: { en: 'Living vs Non-Living', km: 'ភាវៈរស់ និងភាវៈឥតជីវិត' },
+          science_g2_plant_needs: { en: 'What Plants Need', km: 'តម្រូវការរបស់រុក្ខជាតិ' },
+          science_g2_plant_parts: { en: 'Plant Parts', km: 'ផ្នែកសំខាន់ៗនៃរុក្ខជាតិ' },
+          science_g2_habitats: { en: 'Animal Habitats', km: 'ជម្រកធម្មជាតិរបស់សត្វ' },
+          science_g3_matter_ice: { en: 'Ice & Melting', km: 'ទឹកកក និងការរលាយ' },
+          science_g3_matter_states: { en: 'States of Matter', km: 'សភាពនៃរូបធាតុ' },
+          science_g3_animal_diet: { en: 'Animal Diets', km: 'របបអាហារសត្វ' },
+        };
+
+        const animalMatch = caseId.match(/science_p8_([a-z]+)/);
+        const animalName = animalMatch ? animalMatch[1] : '';
+        const animalMap: Record<string, { en: string; km: string }> = {
+          flamingo: { en: 'Flamingo', km: 'សត្វផ្លាមីងហ្គោ' },
+          lobster: { en: 'Lobster', km: 'សត្វបង្កង' },
+          camel: { en: 'Camel', km: 'សត្វអូដ្ឋ' },
+          giraffe: { en: 'Giraffe', km: 'សត្វហ្ស៊ីរ៉ាហ្វ' },
+          slug: { en: 'Slug', km: 'ខ្យងដង្កូវឥតសម្បក' },
+          moth: { en: 'Moth', km: 'មេអំបៅរាត្រី' },
+        };
+
+        if (scienceTitleMap[caseId]) {
+          titleEng = `${idx + 1}. ${scienceTitleMap[caseId].en}`;
+          titleKhmer = `លំហាត់ ${idx + 1}៖ ${scienceTitleMap[caseId].km}`;
+        } else if (animalName && animalMap[animalName]) {
+          titleEng = animalMap[animalName].en;
+          titleKhmer = animalMap[animalName].km;
+        } else {
+          titleEng = hcase.concept || `Exercise ${idx + 1}`;
+          titleKhmer = khmerData?.statementKhmer?.slice(0, 25) || `លំហាត់ទី ${idx + 1}`;
+        }
+      }
+
+      // Strictly map problem grade to Grade 1 - 3
+      let resolvedGrade: Grade = 2;
+      if (caseId.startsWith('science_g1_')) resolvedGrade = 1;
+      else if (caseId.startsWith('science_g2_')) resolvedGrade = 2;
+      else if (caseId.startsWith('science_g3_')) resolvedGrade = 3;
+      else if (caseId.startsWith('math_p1_')) resolvedGrade = (targetGrade <= 2 ? (targetGrade as Grade) : 2);
+      else if (caseId.startsWith('math_p8_')) resolvedGrade = 3;
+      else resolvedGrade = (targetGrade as Grade);
+
+      const baseProblem: HomeworkProblem = {
+        id: caseId,
+        titleEng,
+        titleKhmer,
+        grade: resolvedGrade,
+        subject: hcase.subject as Subject,
+        problemStatementKhmer: khmerData?.statementKhmer || hcase.original_question,
+        problemStatementEng: hcase.original_question,
+        imageUri,
+        visualData: hcase.visual_data,
+        concept: hcase.concept,
+        steps: [],
+      };
+
+      return enrichProblemFromCase(baseProblem, resolvedGrade);
+    })
+    .filter(Boolean) as HomeworkProblem[];
+
+  return { problems, imageUri };
+}
+
 
 

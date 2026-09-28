@@ -4,6 +4,7 @@ import { TunsayAvatar } from './TunsayAvatar';
 import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
+import { fastValidateStepAnswer } from '../services/answerValidationService';
 
 interface StepCardProps {
   step: StepItem;
@@ -28,7 +29,7 @@ export const StepCard: React.FC<StepCardProps> = ({
 }) => {
   const isKhmer = language === 'km';
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none');
+  const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect' | 'near_miss'>('none');
   const [typedAnswer, setTypedAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,9 +52,16 @@ export const StepCard: React.FC<StepCardProps> = ({
     const cleaned = cleanBilingualOption(rawOption, language);
     setSelectedOption(cleaned);
     setIsSubmitting(true);
+
+    // Fast deterministic check (< 1ms)
+    const fast = fastValidateStepAnswer(cleaned, step, language);
+    if (fast.isDeterministic) {
+      setFeedback(fast.isCorrect ? 'correct' : fast.feedbackType);
+    }
+
     const res = onAnswerSubmit(cleaned);
     const isCorrect = typeof res === 'boolean' ? res : await res;
-    setFeedback(isCorrect ? 'correct' : 'incorrect');
+    setFeedback(isCorrect ? 'correct' : (fast.feedbackType || 'incorrect'));
     if (!isCorrect) {
       setIsSubmitting(false);
     }
@@ -63,9 +71,16 @@ export const StepCard: React.FC<StepCardProps> = ({
     e.preventDefault();
     if (!typedAnswer.trim() || isSubmitting || feedback === 'correct') return;
     setIsSubmitting(true);
+
+    // Fast deterministic check (< 1ms)
+    const fast = fastValidateStepAnswer(typedAnswer.trim(), step, language);
+    if (fast.isDeterministic) {
+      setFeedback(fast.isCorrect ? 'correct' : fast.feedbackType);
+    }
+
     const res = onAnswerSubmit(typedAnswer.trim());
     const isCorrect = typeof res === 'boolean' ? res : await res;
-    setFeedback(isCorrect ? 'correct' : 'incorrect');
+    setFeedback(isCorrect ? 'correct' : (fast.feedbackType || 'incorrect'));
     if (!isCorrect) {
       setIsSubmitting(false);
     }
@@ -194,16 +209,20 @@ export const StepCard: React.FC<StepCardProps> = ({
         </div>
       )}
 
-      {feedback === 'incorrect' && (
+      {(feedback === 'incorrect' || feedback === 'near_miss') && (
         <div className="p-2.5 sm:p-3.5 bg-[#2D6A4F] text-white rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] flex items-center justify-between gap-2 font-black text-xs sm:text-sm animate-fadeIn">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3] shrink-0" />
-            <span>{isKhmer ? 'ព្យាយាមម្តងទៀត! មើលតម្រុយខាងក្រោម' : 'Try again! Check the hint below'}</span>
+            <span>
+              {feedback === 'near_miss'
+                ? (isKhmer ? '💡 ជិតត្រូវហើយ! មើលតម្រុយខាងក្រោម' : '💡 So close! Check the hint below')
+                : (isKhmer ? 'ព្យាយាមម្តងទៀត! មើលតម្រុយខាងក្រោម' : 'Try again! Check the hint below')}
+            </span>
           </div>
           <button
             type="button"
             onClick={onOpenHints}
-            className="px-2.5 py-1 bg-[#40916C] text-white rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] text-xs font-black cursor-pointer shrink-0"
+            className="px-2.5 py-1 bg-[#40916C] text-white rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] text-xs font-black cursor-pointer shrink-0 hover:scale-105 active:scale-95 transition-transform"
           >
             {isKhmer ? 'តម្រុយ' : 'Hint'}
           </button>

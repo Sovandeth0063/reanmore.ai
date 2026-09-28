@@ -12,11 +12,11 @@ import { WorksheetProgressPanel } from './WorksheetProgressPanel';
 import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
 import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
-import { enrichProblemFromCase, isAnswerCorrect } from '../services/hardcodedTutorProvider';
+import { enrichProblemFromCase } from '../services/hardcodedTutorProvider';
+import { fastValidateStepAnswer } from '../services/answerValidationService';
 import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, Trash2, MessageSquare, Sparkles, Layers, Menu, X, RotateCcw } from 'lucide-react';
 import { ALL_HARDCODED_CASES } from '../data/hardcodedCases';
 import { matchCaseId } from '../services/caseMatcher';
-import { cleanBilingualOption } from '../utils/language';
 import {
   updateActivity,
   findActiveActivity,
@@ -467,6 +467,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [isExplainOpen, setIsExplainOpen] = useState(false);
+  const [activeModalStep, setActiveModalStep] = useState<StepItem | null>(null);
 
   // 💬 Socratic Stepper Solution Journey Drawer state 💬
   const [isAllStepsDrawerOpen, setIsAllStepsDrawerOpen] = useState(false);
@@ -755,8 +756,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!currentStep || isAdvancingStepRef.current) return false;
 
     const stepNum = currentStep.stepNumber || currentStepIndex + 1;
-    const total = activeProblem?.steps?.length || currentStep.totalSteps || 3;
-    const nextStep = activeProblem?.steps?.[currentStepIndex + 1];
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -772,49 +771,67 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsSayoThinking(true);
     lastInteractionRef.current = Date.now();
 
-    const directMatch = isAnswerCorrect(studentAnswer, currentStep.correctAnswer) ||
-      cleanBilingualOption(studentAnswer, profile.language).toLowerCase().trim() ===
-      cleanBilingualOption(currentStep.correctAnswer, profile.language).toLowerCase().trim();
+    // Fast deterministic validation (< 1ms)
+    const fastResult = fastValidateStepAnswer(
+      studentAnswer,
+      currentStep,
+      profile.language,
+      activeProblem,
+      currentStepIndex
+    );
 
-    let isCorrect = directMatch;
-    let tutorReplyKhmer = '';
-    let tutorReplyEng = '';
+    let isCorrect = fastResult.isCorrect;
+    let tutorReplyKhmer = fastResult.tutorReplyKhmer;
+    let tutorReplyEng = fastResult.tutorReplyEng;
 
-    if (directMatch) {
+    if (fastResult.isDeterministic) {
+      // Numbers, arithmetic, MCQs, and binary choices are verified in 0ms!
       setIsSayoThinking(false);
-      if (nextStep) {
-        tutorReplyKhmer = `🎉 **ជំហានទី ${stepNum} នៃ ${total} ត្រឹមត្រូវហើយ!**\n\nចម្លើយរបស់អ្នកគឺ **"${studentAnswer}"** ពិតជាត្រឹមត្រូវល្អណាស់!\n\n👉 **ជំហានទី ${nextStep.stepNumber || currentStepIndex + 2} បន្ទាប់**៖ ${nextStep.questionKhmer || nextStep.questionEng}`;
-        tutorReplyEng = `🎉 **Step ${stepNum} of ${total} is Correct!**\n\nYour answer **"${studentAnswer}"** is spot on!\n\n👉 **Next Step ${nextStep.stepNumber || currentStepIndex + 2}**: ${nextStep.questionEng || nextStep.questionKhmer}`;
-      } else {
-        tutorReplyKhmer = `🏆 **អបអរសាទរ! អ្នកបានបញ្ចប់ជំហានទី ${stepNum} នៃ ${total} ទាំងអស់ហើយ!**\n\nចម្លើយចុងក្រោយគឺ **"${studentAnswer}"** ត្រឹមត្រូវល្អណាស់! ពូកែខ្លាំងណាស់!`;
-        tutorReplyEng = `🏆 **Congratulations! You completed all ${total} steps!**\n\nYour final answer **"${studentAnswer}"** is correct! Excellent work!`;
-      }
     } else {
-      // Send through LLM AI to evaluate near-correct conceptual answers and explain
+      // Only for open-ended conceptual explanations: evaluate with LLM
       const evalPrompt = `[Student Answer Evaluation for Step ${stepNum}: "${currentStep.questionEng || currentStep.questionKhmer}"]. The student answered: "${studentAnswer}". The target expected concept is: "${currentStep.correctAnswer}". Please determine if this answer is conceptually correct, nearly correct, or needs rethinking. Explain encouragingly in child-friendly words.`;
       
-      const sayoRes = await askTunsayTutor(evalPrompt, activeProblem, profile.language, activeSessionId);
-      setIsSayoThinking(false);
+      try {
+        const sayoRes = await askTunsayTutor(evalPrompt, activeProblem, profile.language, activeSessionId);
+        setIsSayoThinking(false);
 
-      tutorReplyKhmer = sayoRes.textKhmer || '';
-      tutorReplyEng = sayoRes.textEng || '';
+        if (sayoRes?.textKhmer || sayoRes?.textEng) {
+          tutorReplyKhmer = sayoRes.textKhmer || '';
+          tutorReplyEng = sayoRes.textEng || '';
 
-      const combined = (tutorReplyEng + ' ' + tutorReplyKhmer).toLowerCase();
-      const isAffirmative = combined.includes('correct') ||
-        combined.includes('spot on') ||
-        combined.includes('great job') ||
-        combined.includes('ត្រឹមត្រូវ') ||
-        combined.includes('ល្អណាស់') ||
-        combined.includes('ពូកែណាស់');
-      const isNegative = combined.includes('not quite') ||
-        combined.includes('incorrect') ||
-        combined.includes('try again') ||
-        combined.includes('មិនទាន់ត្រឹមត្រូវ') ||
-        combined.includes('ព្យាយាមម្តងទៀត');
+          const combined = (tutorReplyEng + ' ' + tutorReplyKhmer).toLowerCase();
+          const isAffirmative = combined.includes('correct') ||
+            combined.includes('spot on') ||
+            combined.includes('great job') ||
+            combined.includes('ត្រឹមត្រូវ') ||
+            combined.includes('ល្អណាស់') ||
+            combined.includes('ពូកែណាស់');
+          const isNegative = combined.includes('not quite') ||
+            combined.includes('incorrect') ||
+            combined.includes('try again') ||
+            combined.includes('មិនទាន់ត្រឹមត្រូវ') ||
+            combined.includes('ព្យាយាមម្តងទៀត');
 
-      if (isAffirmative && !isNegative) {
-        isCorrect = true;
+          if (isAffirmative && !isNegative) {
+            isCorrect = true;
+          }
+        }
+      } catch {
+        setIsSayoThinking(false);
       }
+    }
+
+    // Sync answer to backend in background
+    if (activeSessionId) {
+      fetch('/api/step/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          step_number: stepNum,
+          student_answer: studentAnswer,
+        })
+      }).catch(() => {});
     }
 
     const tutorMsg: ChatMessage = {
@@ -1417,8 +1434,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       visualData={activeProblem?.visualData || (activeProblem?.id ? ALL_HARDCODED_CASES[activeProblem.id]?.visual_data : null) || (stepCardData.widget as any)?.visualData}
                       completedStepIndices={stepCardData.completedSteps}
                       isLatest={msg.id === messages[messages.length - 1]?.id}
-                      onOpenHints={() => handleStepHint(msg.id)}
+                      onOpenHints={() => {
+                        setActiveModalStep(stepCardData.activeStep);
+                        setIsHintOpen(true);
+                        handleStepHint(msg.id);
+                      }}
                       onOpenExplainDifferently={() => {
+                        setActiveModalStep(stepCardData.activeStep);
                         setIsExplainOpen(true);
                       }}
                       onOpenAllSteps={() => handleOpenAllSteps(msg.id, stepCardData.widget)}
@@ -1555,6 +1577,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       : undefined
                   }
                   onOpenHints={() => {
+                    setActiveModalStep(currentStep || null);
                     setIsHintOpen(true);
                     if (currentActivityRef.current) {
                       const act = findActiveActivity(activeSessionId);
@@ -1566,6 +1589,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     }
                   }}
                   onOpenExplainDifferently={() => {
+                    setActiveModalStep(currentStep || null);
                     setIsExplainOpen(true);
                     if (currentActivityRef.current) {
                       const act = findActiveActivity(activeSessionId);
@@ -1640,19 +1664,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* Sheets Modals */}
-      {currentStep && (
+      {(activeModalStep || currentStep) && (
         <>
           <HintSheet
-            step={currentStep}
+            step={activeModalStep || currentStep!}
             isOpen={isHintOpen}
             language={profile.language}
-            onClose={() => setIsHintOpen(false)}
+            onClose={() => {
+              setIsHintOpen(false);
+              setActiveModalStep(null);
+            }}
           />
           <ExplanationCard
-            step={currentStep}
+            step={activeModalStep || currentStep!}
             isOpen={isExplainOpen}
             language={profile.language}
-            onClose={() => setIsExplainOpen(false)}
+            onClose={() => {
+              setIsExplainOpen(false);
+              setActiveModalStep(null);
+            }}
           />
         </>
       )}

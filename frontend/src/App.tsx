@@ -8,7 +8,7 @@ import { HomeworkScanner } from './components/HomeworkScanner';
 import { LoginModal } from './components/LoginModal';
 import { ForestBackground } from './components/ForestBackground';
 import { markSessionAbandoned } from './utils/reportUtils';
-import { enrichProblemFromCase } from './services/hardcodedTutorProvider';
+import { enrichProblemFromCase, getHardcodedProblemsBySubject } from './services/hardcodedTutorProvider';
 import { AuthService } from './services/authService';
 
 const STORAGE_KEY = 'reanmore_sessions_v2';
@@ -75,8 +75,8 @@ export default function App() {
     const acc = AuthService.getCurrentUser();
     return acc ? acc.profile : {
       name: 'សុជា (Sochea)',
-      grade: 4,
-      subject: 'math',
+      grade: 2,
+      subject: 'science',
       language: 'km',
       role: 'student',
     };
@@ -125,9 +125,9 @@ export default function App() {
         if (target?.worksheetQueue?.problems?.length) {
           const activeIdx = target.worksheetQueue.activeIndex || 0;
           const prob = target.worksheetQueue.problems[activeIdx] || target.problem || target.worksheetQueue.problems[0];
-          if (prob) return enrichProblemFromCase(prob, 4);
+          if (prob) return enrichProblemFromCase(prob, 2);
         } else if (target?.problem) {
-          return enrichProblemFromCase(target.problem, 4);
+          return enrichProblemFromCase(target.problem, 2);
         }
       }
     } catch {}
@@ -410,6 +410,13 @@ export default function App() {
   }, [profile, syncSessionToBackend]);
 
   const handleStartChatWithProblem = (problem?: HomeworkProblem, initialQuery?: string) => {
+    if (problem && (problem.subject === 'math' || problem.subject === 'science')) {
+      const { problems, imageUri } = getHardcodedProblemsBySubject(problem.subject, profile.grade);
+      if (problems.length > 0) {
+        handleHomeworkScanned(problems, 0, imageUri);
+        return;
+      }
+    }
     const enriched = problem ? enrichProblemFromCase(problem, profile.grade) : undefined;
     setActiveProblem(enriched);
     setInitialChatQuery(initialQuery);
@@ -436,12 +443,18 @@ export default function App() {
     setIsScannerOpen(false);
 
     // Initialize worksheet queue with all exercises on the scanned page
+    const subjectTitle = initialProblem.subject === 'math'
+      ? (profile.language === 'km' ? 'កិច្ចការផ្ទះគណិតវិទ្យា' : 'Math Homework')
+      : initialProblem.subject === 'science'
+      ? (profile.language === 'km' ? 'កិច្ចការផ្ទះវិទ្យាសាស្ត្រ' : 'Science Homework')
+      : (profile.language === 'km' ? 'ទំព័រលំហាត់' : 'Worksheet');
+
     const queue: WorksheetQueue = {
       problems: enrichedProblems,
       activeIndex: initialIndex,
       completedIds: [],
       worksheetTitle: enrichedProblems.length > 1
-        ? (profile.language === 'km' ? `ទំព័រលំហាត់ (${enrichedProblems.length} លំហាត់)` : `Worksheet (${enrichedProblems.length} Exercises)`)
+        ? `${subjectTitle} (${enrichedProblems.length} ${profile.language === 'km' ? 'លំហាត់' : 'Exercises'})`
         : undefined,
     };
     setWorksheetQueue(queue);
@@ -617,6 +630,7 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B4332]/60 backdrop-blur-sm p-4 animate-fadeIn">
           <HomeworkScanner
             language={profile.language}
+            grade={profile.grade}
             onHomeworkConfirmed={handleHomeworkScanned}
             onCancel={() => setIsScannerOpen(false)}
           />

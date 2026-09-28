@@ -1,4 +1,4 @@
-import { HomeworkProblem, Language } from '../types';
+import { HomeworkProblem, Language } from "../types";
 
 interface BackendResponse {
   category: string;
@@ -18,8 +18,11 @@ interface BackendResponse {
 // ──────────────────────────────────────────────
 // 1. Grade & Age Adapted Socratic System Prompts (Following promt.md)
 // ──────────────────────────────────────────────
-export function getGradeAdaptedSystemPrompt(grade: number = 4, language: Language = 'km'): string {
-  const isKm = language === 'km';
+export function getGradeAdaptedSystemPrompt(
+  grade: number = 4,
+  language: Language = "km",
+): string {
+  const isKm = language === "km";
   if (grade <= 2) {
     // Grade 1-2 (Ages 6-7): Early Elementary
     return isKm
@@ -69,19 +72,41 @@ export function getGradeAdaptedSystemPrompt(grade: number = 4, language: Languag
 // ──────────────────────────────────────────────
 const UNSAFE_KEYWORDS = [
   // Violence / Danger
-  'cheat', 'hack', 'fight', 'kill', 'die', 'gun', 'weapon', 'bomb', 'hurt',
+  "cheat",
+  "hack",
+  "fight",
+  "kill",
+  "die",
+  "gun",
+  "weapon",
+  "bomb",
+  "hurt",
   // Inappropriate for children
-  'boyfriend', 'girlfriend', 'dating', 'kiss', 'sexy', 'naked',
+  "boyfriend",
+  "girlfriend",
+  "dating",
+  "kiss",
+  "sexy",
+  "naked",
   // Academic dishonesty
-  'write essay for me', 'do my homework', 'give me answer', 'answer this',
-  'solve this for me', 'just tell me', 'copy', 'plagiar',
+  "write essay for me",
+  "do my homework",
+  "give me answer",
+  "answer this",
+  "solve this for me",
+  "just tell me",
+  "copy",
+  "plagiar",
   // Off-topic
-  'who is your father', 'who made you', 'are you real', 'marry me',
+  "who is your father",
+  "who made you",
+  "are you real",
+  "marry me",
 ];
 
 function isUnsafePrompt(prompt: string): boolean {
   const lower = prompt.toLowerCase();
-  return UNSAFE_KEYWORDS.some(kw => lower.includes(kw));
+  return UNSAFE_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 // ──────────────────────────────────────────────
@@ -89,18 +114,20 @@ function isUnsafePrompt(prompt: string): boolean {
 // ──────────────────────────────────────────────
 function formatMathInline(text: string): string {
   // Replace common patterns with visually friendly versions
-  return text
-    // Fractions: 1/2, 3/4 etc.
-    .replace(/(\d+)\/(\d+)(?!\d)/g, '$1⁄$2')
-    // Multiplication: 2x3 or 2*3 → 2 × 3
-    .replace(/(\d+)\s*\*\s*(\d+)/g, '$1 × $2')
-    .replace(/(\d+)\s*x\s*(\d+)/gi, '$1 × $2')
-    // Division: 10÷2 → 10 ÷ 2
-    .replace(/(\d+)\s*÷\s*(\d+)/g, '$1 ÷ $2')
-    // Square root: sqrt(9) → √9
-    .replace(/sqrt\((\d+)\)/gi, '√$1')
-    // Equals with spaces for readability
-    .replace(/(\S+)=(\S+)/g, '$1 = $2');
+  return (
+    text
+      // Fractions: 1/2, 3/4 etc.
+      .replace(/(\d+)\/(\d+)(?!\d)/g, "$1⁄$2")
+      // Multiplication: 2x3 or 2*3 → 2 × 3
+      .replace(/(\d+)\s*\*\s*(\d+)/g, "$1 × $2")
+      .replace(/(\d+)\s*x\s*(\d+)/gi, "$1 × $2")
+      // Division: 10÷2 → 10 ÷ 2
+      .replace(/(\d+)\s*÷\s*(\d+)/g, "$1 ÷ $2")
+      // Square root: sqrt(9) → √9
+      .replace(/sqrt\((\d+)\)/gi, "√$1")
+      // Equals with spaces for readability
+      .replace(/(\S+)=(\S+)/g, "$1 = $2")
+  );
 }
 
 // ──────────────────────────────────────────────
@@ -131,12 +158,30 @@ function parseSteps(text: string): string[] {
 // ──────────────────────────────────────────────
 // 4. Better Fallback Messages (Socratic Redirect)
 // ──────────────────────────────────────────────
-function getSocraticFallback(_language: Language, prompt: string): { textKhmer: string; textEng: string } {
+function getSocraticFallback(
+  _language: Language,
+  prompt: string,
+): { textKhmer: string; textEng: string } {
   const promptLower = prompt.toLowerCase();
 
   // Math-related fallback
-  const mathKeywords = ['plus', 'add', 'minus', 'subtract', 'times', 'multiply', 'divide', 'fraction', '+', '-', '×', '÷', '=', '?'];
-  const isMath = mathKeywords.some(kw => promptLower.includes(kw));
+  const mathKeywords = [
+    "plus",
+    "add",
+    "minus",
+    "subtract",
+    "times",
+    "multiply",
+    "divide",
+    "fraction",
+    "+",
+    "-",
+    "×",
+    "÷",
+    "=",
+    "?",
+  ];
+  const isMath = mathKeywords.some((kw) => promptLower.includes(kw));
 
   if (isMath) {
     return {
@@ -146,8 +191,18 @@ function getSocraticFallback(_language: Language, prompt: string): { textKhmer: 
   }
 
   // Science-related fallback
-  const scienceKeywords = ['plant', 'water', 'animal', 'earth', 'sun', 'moon', 'weather', 'body', 'food'];
-  const isScience = scienceKeywords.some(kw => promptLower.includes(kw));
+  const scienceKeywords = [
+    "plant",
+    "water",
+    "animal",
+    "earth",
+    "sun",
+    "moon",
+    "weather",
+    "body",
+    "food",
+  ];
+  const isScience = scienceKeywords.some((kw) => promptLower.includes(kw));
 
   if (isScience) {
     return {
@@ -169,10 +224,14 @@ function getSocraticFallback(_language: Language, prompt: string): { textKhmer: 
 export async function askReanMoreTutor(
   userPrompt: string,
   problemContext?: HomeworkProblem,
-  language: Language = 'km',
-  sessionId?: string
-): Promise<{ textKhmer: string; textEng: string; isSafetyRefusal?: boolean; stepWidget?: any }> {
-
+  language: Language = "km",
+  sessionId?: string,
+): Promise<{
+  textKhmer: string;
+  textEng: string;
+  isSafetyRefusal?: boolean;
+  stepWidget?: any;
+}> {
   // ── Safety Check FIRST ──
   if (isUnsafePrompt(userPrompt)) {
     return {
@@ -185,37 +244,40 @@ export async function askReanMoreTutor(
   try {
     const activeIdx = problemContext?.activeStepIndex ?? 0;
     const activeStepObj = problemContext?.steps?.[activeIdx];
-    const response = await fetch('/api/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const grade = problemContext?.grade ?? 4;
+    const gradeLevel =
+      grade <= 2 ? "grade_1_2" : grade <= 4 ? "grade_3_4" : "grade_5_6";
+    const response = await fetch("/api/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: userPrompt,
         session_id: sessionId,
-        grade_level: problemContext?.grade ? `grade_${problemContext.grade}_${problemContext.grade + 2}` : 'grade_1_3',
-        language: language === 'km' ? 'km' : 'en',
-        problem_context: problemContext ? {
-          id: problemContext.id,
-          titleEng: problemContext.titleEng,
-          titleKhmer: problemContext.titleKhmer,
-          statementEng: problemContext.problemStatementEng,
-          statementKhmer: problemContext.problemStatementKhmer,
-          concept: problemContext.concept,
-          totalSteps: problemContext.steps?.length,
-          activeStepIndex: activeIdx,
-          currentStepQuestion: activeStepObj?.questionEng,
-          currentStepQuestionKhmer: activeStepObj?.questionKhmer,
-          visualData: problemContext.visualData,
-        } : null,
+        grade_level: problemContext?.grade ? gradeLevel : "grade_1_3",
+        language: language === "km" ? "km" : "en",
+        problem_context: problemContext
+          ? {
+              id: problemContext.id,
+              titleEng: problemContext.titleEng,
+              titleKhmer: problemContext.titleKhmer,
+              statementEng: problemContext.problemStatementEng,
+              statementKhmer: problemContext.problemStatementKhmer,
+              concept: problemContext.concept,
+              totalSteps: problemContext.steps?.length,
+              activeStepIndex: activeIdx,
+              currentStepQuestion: activeStepObj?.questionEng,
+              currentStepQuestionKhmer: activeStepObj?.questionKhmer,
+              visualData: problemContext.visualData,
+            }
+          : null,
         active_step: activeStepObj || null,
         exercise_id: problemContext?.id,
-        // Send Grade & Age adapted Socratic system prompt to backend
-        system_prompt: getGradeAdaptedSystemPrompt(problemContext?.grade || 4, language),
       }),
     });
 
     if (response.ok) {
       const data: BackendResponse = await response.json();
-      let text = data.solution || '';
+      let text = data.solution || "";
 
       // Apply math formatting
       text = formatMathInline(text);
@@ -224,19 +286,19 @@ export async function askReanMoreTutor(
       const steps = parseSteps(text);
       if (steps.length > 1) {
         // Rejoin with clear visual separation
-        text = steps.map((step, i) => `${i + 1}. ${step.trim()}`).join('\n\n');
+        text = steps.map((step, i) => `${i + 1}. ${step.trim()}`).join("\n\n");
       }
 
-      if (language === 'km') {
+      if (language === "km") {
         return {
           textKhmer: text,
-          textEng: '',
+          textEng: "",
           isSafetyRefusal: false,
           stepWidget: data.step_widget,
         };
       } else {
         return {
-          textKhmer: '',
+          textKhmer: "",
           textEng: text,
           isSafetyRefusal: false,
           stepWidget: data.step_widget,
@@ -244,7 +306,7 @@ export async function askReanMoreTutor(
       }
     }
   } catch (err) {
-    console.error('Backend API error:', err);
+    console.error("Backend API error:", err);
   }
 
   // ── Fallback: Socratic redirect ──

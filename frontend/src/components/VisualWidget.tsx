@@ -197,6 +197,7 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
           animal={v.animal ?? ''}
           emoji={v.emoji ?? '🐾'}
           features={v.features ?? []}
+          step={step}
           onSelect={(val) => onSelect?.(val)}
         />
       );

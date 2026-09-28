@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StepItem, Language } from '../types';
 import { RefreshCw, X, Sparkles, HeartHandshake } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
+import { resolveStepHints } from '../utils/hintHelper';
 
 interface ExplanationCardProps {
   step: StepItem;
@@ -18,6 +19,9 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
 }) => {
   const isKhmer = language === 'km';
   const [activeTab, setActiveTab] = useState<'simple' | 'analogy'>('simple');
+  const resolved = resolveStepHints(step, language);
+  const rawStep = step as any;
+  const analogyType = rawStep?.explainDifferently?.analogyType;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,8 +34,6 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const { explainDifferently } = step;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B4332]/60 backdrop-blur-xs p-4 animate-fadeIn text-[#1B4332]">
@@ -54,7 +56,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? 'ពន្យល់តាមរបៀបផ្សេង' : 'Explain Differently'}
               </h3>
               <p className="text-xs font-bold text-[#1B4332]">
-                {isKhmer ? 'ReanMoreពន្យល់តាមរបៀបងាយយល់!' : 'Tunsay explains in simpler ways!'}
+                {isKhmer ? 'ReanMore ពន្យល់តាមរបៀបងាយយល់!' : 'ReanMore explains in simpler ways!'}
               </p>
             </div>
           </div>
@@ -91,6 +93,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 : 'bg-white text-[#1B4332]/80 hover:bg-[#40916C]/50'
             }`}
           >
+            <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
             {isKhmer ? 'ឧទាហរណ៍រូបភាព' : 'Analogy & Visual'}
           </button>
         </div>
@@ -104,7 +107,7 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
                 {isKhmer ? 'ពន្យល់យ៉ាងងាយស្រួលយល់៖' : 'Simple explanation:'}
               </div>
               <p className="text-base text-[#1B4332] font-black leading-relaxed bg-white p-3.5 rounded-xl border-2 border-[#1B4332]">
-                {isKhmer ? explainDifferently.simpleKhmer : explainDifferently.simpleEng}
+                {resolved.simpleExplanation}
               </p>
             </div>
           )}
@@ -113,37 +116,39 @@ export const ExplanationCard: React.FC<ExplanationCardProps> = ({
             <div className="bg-[#40916C] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-3 animate-fadeIn">
               <div className="flex items-center gap-2 text-white font-black text-sm">
                 <Sparkles className="w-4 h-4 text-white" />
-                {isKhmer ? explainDifferently.analogyTitle : explainDifferently.analogyTitle}
+                {resolved.analogyTitle}
               </div>
               <p className="text-base text-[#1B4332] font-black leading-relaxed bg-white p-3.5 rounded-xl border-2 border-[#1B4332]">
-                {isKhmer ? explainDifferently.analogyKhmer : explainDifferently.analogyEng}
+                {resolved.analogyExplanation}
               </p>
 
               {/* Visual representation card */}
-              <div className="p-4 bg-white rounded-xl border-2 border-[#1B4332] flex flex-col items-center justify-center text-center">
-                {explainDifferently.analogyType === 'apples' && (
-                  <div className="flex flex-wrap items-center justify-center gap-2 my-2">
-                    {[1, 2, 3, 4, 5].map((box) => (
-                      <div key={box} className="p-2 bg-[#E8F5E9] border-2 border-[#1B4332] rounded-xl flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_#1B4332]">
-                        <span className="text-xs font-black text-[#1B4332]">Box {box}:</span>
-                        <span className="text-xs font-black text-white px-2 py-0.5 bg-[#1B4332] rounded-md border border-[#1B4332]">8 Items</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {analogyType && (
+                <div className="p-4 bg-white rounded-xl border-2 border-[#1B4332] flex flex-col items-center justify-center text-center">
+                  {analogyType === 'apples' && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 my-2">
+                      {[1, 2, 3, 4, 5].map((box) => (
+                        <div key={box} className="p-2 bg-[#E8F5E9] border-2 border-[#1B4332] rounded-xl flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_#1B4332]">
+                          <span className="text-xs font-black text-[#1B4332]">Box {box}:</span>
+                          <span className="text-xs font-black text-white px-2 py-0.5 bg-[#1B4332] rounded-md border border-[#1B4332]">8 Items</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {explainDifferently.analogyType === 'water' && (
-                  <div className="flex items-center justify-center gap-3 my-2 text-sm sm:text-base font-black">
-                    <span className="p-2.5 bg-[#A7CDB4] text-[#1B4332] rounded-2xl border-2 border-[#1B4332]">
-                      {isKhmer ? 'ទឹកកករឹង' : 'Solid Ice'}
-                    </span>
-                    <span className="text-xs text-[#1B4332] font-black">&rarr; +Heat &rarr;</span>
-                    <span className="p-2.5 bg-[#2D6A4F] text-white rounded-2xl border-2 border-[#1B4332]">
-                      {isKhmer ? 'ទឹករាវ' : 'Liquid Water'}
-                    </span>
-                  </div>
-                )}
-              </div>
+                  {analogyType === 'water' && (
+                    <div className="flex items-center justify-center gap-3 my-2 text-sm sm:text-base font-black">
+                      <span className="p-2.5 bg-[#A7CDB4] text-[#1B4332] rounded-2xl border-2 border-[#1B4332]">
+                        {isKhmer ? 'ទឹកកករឹង' : 'Solid Ice'}
+                      </span>
+                      <span className="text-xs text-[#1B4332] font-black">&rarr; +Heat &rarr;</span>
+                      <span className="p-2.5 bg-[#2D6A4F] text-white rounded-2xl border-2 border-[#1B4332]">
+                        {isKhmer ? 'ទឹករាវ' : 'Liquid Water'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -319,7 +319,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
           <button
             type="button"
             onClick={onOpenHints}
-            className="px-2.5 py-1 bg-[#40916C] text-white rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] text-xs font-black cursor-pointer shrink-0"
+            className="px-2.5 py-1 bg-[#40916C] text-white rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] text-xs font-black cursor-pointer shrink-0 hover:scale-105 active:scale-95 transition-transform"
           >
             {isKhmer ? 'តម្រុយ' : 'Hint'}
           </button>

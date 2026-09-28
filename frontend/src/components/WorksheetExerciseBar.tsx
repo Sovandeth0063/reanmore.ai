@@ -72,10 +72,15 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
         {problems.map((prob, idx) => {
           const isDone = completedSet.has(prob.id);
           const isActive = idx === activeIndex;
-          const label = isKhmer ? `លំហាត់ ${idx + 1}` : `Ex ${idx + 1}`;
+          const subjectEmoji = prob.subject === 'math' ? '🔢' : prob.subject === 'science' ? '🧪' : '📖';
+          const shortTitle = isKhmer
+            ? (prob.titleKhmer || `លំហាត់ ${idx + 1}`)
+            : (prob.titleEng || `Exercise ${idx + 1}`);
+          // Truncate label to keep pills compact
+          const truncated = shortTitle.length > 20 ? shortTitle.slice(0, 18) + '…' : shortTitle;
 
           let pillClass =
-            'shrink-0 flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-black border-2 cursor-pointer transition-all select-none whitespace-nowrap ';
+            'shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-black border-2 cursor-pointer transition-all select-none whitespace-nowrap ';
 
           if (isActive && !isDone) {
             pillClass +=
@@ -98,16 +103,17 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
               aria-pressed={isActive}
             >
               {isDone ? (
-                <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                <CheckCircle className="w-3 h-3 shrink-0" />
               ) : isActive ? (
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#40916C] rounded-full border border-white shrink-0 animate-pulse" />
+                <span className="w-1.5 h-1.5 bg-[#40916C] rounded-full border border-white shrink-0 animate-pulse" />
               ) : (
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#1B4332]/30 rounded-full shrink-0" />
+                <span className="text-[10px]">{subjectEmoji}</span>
               )}
-              {label}
+              {truncated}
             </button>
           );
         })}
+
       </div>
 
       {/* Progress fraction */}

@@ -1,22 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, RefreshCw, CheckCircle, ArrowLeft, Sparkles, BookOpen, AlertCircle } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
-import { HomeworkProblem, Language } from '../types';
+import { HomeworkProblem, Language, Grade } from '../types';
 import { MOCK_PROBLEMS } from '../data/mockProblems';
 import { processHomeworkImage } from '../services/ocrService';
+import { getHardcodedProblemsBySubject } from '../services/hardcodedTutorProvider';
 
 interface HomeworkScannerProps {
   language?: Language;
+  grade?: Grade;
   onHomeworkConfirmed: (problems: HomeworkProblem[], initialIndex?: number, imageUri?: string) => void;
   onCancel: () => void;
 }
 
 export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
   language = 'km',
+  grade = 2,
   onHomeworkConfirmed,
   onCancel
 }) => {
   const isKhmer = language === 'km';
+  const effectiveGrade = Math.min(Math.max(grade || 2, 1), 3);
   const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm'>('capture');
   const [imageUri, setImageUri] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -51,15 +55,18 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
       objectUrlRef.current = null;
     }
     setUploadedFile(null);
-    const subjectProblems = MOCK_PROBLEMS.filter(p => p.subject === subject);
-    const chosenProblems = subjectProblems.length > 0 ? subjectProblems : [MOCK_PROBLEMS[0]];
-    const mainProblem = chosenProblems[0];
+
+    // Route to curriculum exercises for this subject (Grade 1-3)
+    const { problems, imageUri: hardcodedImage } = getHardcodedProblemsBySubject(subject, effectiveGrade);
+    const chosenProblems = problems.length > 0 ? problems : MOCK_PROBLEMS.filter(p => p.subject === subject);
+    const mainProblem = chosenProblems[0] || MOCK_PROBLEMS[0];
 
     setDetectedProblems(chosenProblems);
     setSelectedProblem(mainProblem);
     setAnalysisError(null);
-    setImageUri(mainProblem.imageUri || 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80');
-    setStage('preview');
+    setImageUri(hardcodedImage || mainProblem.imageUri || '');
+    // Directly open the exercise selector so the user can choose which exercise to proceed with!
+    setStage('confirm');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,7 +194,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                       🔢
                     </div>
                     <span className="text-[10px] font-black text-[#1B4332] bg-white group-hover:bg-[#1B4332] group-hover:text-white px-2.5 py-0.5 rounded-full border-2 border-[#1B4332] transition-colors">
-                      {isKhmer ? 'ថ្នាក់ទី ៤ • គណិត' : 'Grade 4 • Math'}
+                      {isKhmer ? `ថ្នាក់ទី ${effectiveGrade} • គណិត` : `Grade ${effectiveGrade} • Math`}
                     </span>
                   </div>
 
@@ -219,7 +226,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                       🧪
                     </div>
                     <span className="text-[10px] font-black text-[#1B4332] bg-white group-hover:bg-[#1B4332] group-hover:text-white px-2.5 py-0.5 rounded-full border-2 border-[#1B4332] transition-colors">
-                      {isKhmer ? 'ថ្នាក់ទី ៤ • វិទ្យាសាស្ត្រ' : 'Grade 4 • Science'}
+                      {isKhmer ? `ថ្នាក់ទី ${effectiveGrade} • វិទ្យាសាស្ត្រ` : `Grade ${effectiveGrade} • Science`}
                     </span>
                   </div>
 
@@ -317,28 +324,80 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
               </div>
             )}
 
-            {/* Multiple Exercise Selector if > 1 exercises detected */}
+            {/* Multiple Exercise Selector if > 1 exercises detected — Kid-Friendly Cards */}
             {detectedProblems.length > 1 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
-                  {isKhmer ? 'ជ្រើសរើសលំហាត់ដែលចង់ដោះស្រាយមុន៖' : 'Select Exercise to Solve:'}
+              <div className="space-y-2">
+                <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5">
+                  <span>👆</span>
+                  {isKhmer ? 'ចុចជ្រើសរើសលំហាត់ដែលចង់ធ្វើ៖' : 'Tap the exercise you want to start:'}
                 </p>
-                <div className="flex gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
+                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-0.5 no-scrollbar">
                   {detectedProblems.map((prob, idx) => {
                     const isSelected = selectedProblem.id === prob.id;
-                    const label = prob.titleKhmer || prob.titleEng || `Problem ${idx + 1}`;
+                    const subjectEmoji = prob.subject === 'math' ? '🔢' : prob.subject === 'science' ? '🧪' : '📖';
+                    const titleKh = prob.titleKhmer || (isKhmer ? `លំហាត់ ${idx + 1}` : `Exercise ${idx + 1}`);
+                    const titleEn = prob.titleEng || `Exercise ${idx + 1}`;
+                    const displayTitle = isKhmer ? titleKh : titleEn;
+                    const preview = (prob.problemStatementKhmer || prob.problemStatementEng || '').slice(0, 60);
                     return (
                       <button
                         key={prob.id || idx}
                         type="button"
                         onClick={() => setSelectedProblem(prob)}
-                        className={`px-3 py-1.5 rounded-xl border-2 font-black text-xs shrink-0 cursor-pointer transition-all ${
+                        aria-pressed={isSelected}
+                        className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-2xl border-3 cursor-pointer transition-all select-none ${
                           isSelected
-                            ? 'bg-[#1B4332] text-white border-[#1B4332] shadow-[2px_2px_0px_#2D6A4F] scale-[1.02]'
-                            : 'bg-white text-[#1B4332] border-[#1B4332] hover:bg-[#E8F5E9]'
+                            ? 'bg-[#1B4332] text-white border-[#1B4332] shadow-[3px_3px_0px_#40916C] scale-[1.01]'
+                            : 'bg-white text-[#1B4332] border-[#1B4332]/40 hover:border-[#1B4332] hover:bg-[#E8F5E9] shadow-[2px_2px_0px_#1B4332]/20 hover:shadow-[2px_2px_0px_#1B4332]'
                         }`}
                       >
-                        {label}
+                        {/* Big number badge */}
+                        <div className={`shrink-0 w-11 h-11 rounded-2xl border-2 flex flex-col items-center justify-center font-black transition-colors ${
+                          isSelected
+                            ? 'bg-[#40916C] border-[#40916C] text-white'
+                            : 'bg-[#E8F5E9] border-[#1B4332]/20 text-[#1B4332]'
+                        }`}>
+                          <span className="text-base leading-none">{subjectEmoji}</span>
+                          <span className="text-[10px] leading-tight mt-0.5">{idx + 1}</span>
+                        </div>
+
+                        {/* Text block */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-black text-sm leading-snug truncate ${
+                            isSelected ? 'text-white' : 'text-[#1B4332]'
+                          }`}>
+                            {displayTitle}
+                          </p>
+                          {preview && (
+                            <p className={`text-[11px] font-bold leading-snug mt-0.5 line-clamp-1 ${
+                              isSelected ? 'text-white/75' : 'text-[#1B4332]/60'
+                            }`}>
+                              {preview}{preview.length >= 60 ? '…' : ''}
+                            </p>
+                          )}
+                          {prob.grade && (
+                            <span className={`mt-1 inline-block text-[10px] font-black px-1.5 py-0.5 rounded-full border ${
+                              isSelected
+                                ? 'bg-white/20 border-white/40 text-white'
+                                : 'bg-[#E8F5E9] border-[#1B4332]/20 text-[#2D6A4F]'
+                            }`}>
+                              {isKhmer ? `ថ្នាក់ ${prob.grade}` : `Gr. ${prob.grade}`}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Check / uncheck indicator */}
+                        <div className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-[#40916C] border-white'
+                            : 'bg-transparent border-[#1B4332]/30'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -373,7 +432,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 onClick={() => setStage('capture')}
                 className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1 transition-all cursor-pointer hover:bg-gray-50"
               >
-                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ថតឡើងវិញ' : 'Retake Photo'}
+                <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? (uploadedFile ? 'ថតឡើងវិញ' : 'ត្រឡប់') : (uploadedFile ? 'Retake Photo' : 'Back')}
               </button>
               <button
                 type="button"
