@@ -137,7 +137,7 @@ class StepWidgetPayload(BaseModel):
             if self.current_step_index not in self.completed_steps:
                 self.completed_steps.append(self.current_step_index)
 
-        if self.current_step_index + 1 < self.total_steps:
+        if self.current_step_index + 1 < len(self.steps):
             self.current_step_index += 1
             next_step = self.get_active_step()
             if next_step and next_step.status != "completed":
@@ -150,7 +150,7 @@ class StepWidgetPayload(BaseModel):
         Jumps to a specific step index.
         Returns True if successful, False if target_index is invalid.
         """
-        if 0 <= target_index < self.total_steps:
+        if 0 <= target_index < len(self.steps):
             self.current_step_index = target_index
             target_step = self.steps[target_index]
             if target_step.status == "pending":

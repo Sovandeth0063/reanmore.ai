@@ -43,6 +43,8 @@ from app.services.llm.providers.gemini_provider import GeminiProvider
 from app.services.llm.providers.openai_provider import OpenAIProvider
 # pyrefly: ignore [missing-import]
 from app.services.llm.providers.ollama_provider import OllamaProvider
+# pyrefly: ignore [missing-import]
+from app.core.config import settings
 
 
 
@@ -172,21 +174,21 @@ def test_provider_swap_without_code_change():
 def test_ollama_provider_integration():
     ollama_p = OllamaProvider()
     assert ollama_p.name == "ollama"
-    assert "llama3.2:3b" in ollama_p.default_model
+    assert ollama_p.default_model == settings.OLLAMA_MODEL
 
     # If local Ollama is available, test live generation; otherwise verify schema/availability
     if ollama_p.is_available():
         resp = ollama_p.generate_text("Say 1+1=2", max_tokens=10)
         assert isinstance(resp, LLMResponse)
         assert resp.provider == "ollama"
-        assert resp.model_name == "llama3.2:3b"
+        assert resp.model_name == ollama_p.default_model
         assert len(resp.text) > 0
 
 
 def test_llm_manager_defaults_gemini_primary_ollama_fallback():
     mgr = LLMManager()
-    assert mgr.primary_provider_name == "gemini"
-    assert mgr.fallback_provider_name == "ollama"
+    assert mgr.primary_provider_name == settings.LLM_PRIMARY_PROVIDER.lower()
+    assert mgr.fallback_provider_name == settings.LLM_FALLBACK_PROVIDER
     assert "ollama" in mgr.get_registered_providers()
     assert "gemini" in mgr.get_registered_providers()
 
@@ -197,7 +199,7 @@ def test_provider_specific_temperature_configuration():
     ollama = mgr.get_provider("ollama")
 
     assert gemini.default_temperature == 0.7
-    assert ollama.default_temperature == 0.2
+    assert ollama.default_temperature == settings.OLLAMA_TEMPERATURE
 
     # Verify custom mock provider with custom default temperature
     mock_creative = MockLLMProvider(default_temperature=0.9)

@@ -59,7 +59,7 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
     e_clean = expected_answer.strip().lower().translate(khmer_digits)
 
     # 1. Exact match
-    if s_clean == e_clean or e_clean in s_clean:
+    if s_clean == e_clean:
         return True
 
     # 2. Khmer & English Affirmative / Negative Cross-Language Matching

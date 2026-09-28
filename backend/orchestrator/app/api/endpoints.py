@@ -10,6 +10,7 @@ import re
 import time
 import uuid
 import asyncio
+from collections import OrderedDict
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
@@ -22,7 +23,7 @@ from app.infrastructure.database import (
     delete_session_from_db,
     get_student_telemetry_stats,
 )
-from app.services.socratic.graph import socratic_graph
+from app.services.socratic.graph import socratic_graph, _is_answer_equivalent
 from app.services.socratic.card_schema import StepWidgetPayload
 from app.services.socratic.prompts.controller import socratic_prompt_controller as prompt_controller
 from app.services.session import session_manager
@@ -105,7 +106,8 @@ class TranslateResponse(BaseModel):
     target_lang: str = "km"
 
 
-_translation_cache: Dict[str, str] = {}
+_TRANSLATION_CACHE_LIMIT = 512
+_translation_cache: "OrderedDict[str, str]" = OrderedDict()
 
 
 async def translate_to_khmer(text: str) -> str:
@@ -118,14 +120,29 @@ async def translate_to_khmer(text: str) -> str:
     
     cached = _translation_cache.get(text.strip())
     if cached:
+        _translation_cache.move_to_end(text.strip())
         return cached
 
     try:
         prompt = prompt_controller.get_translation_to_khmer_prompt(text)
         resp = await llm_service.generate_text_async(prompt, model_tier=ModelTier.TRANSLATION)
         translated = resp.text.strip()
+        # Reject mock LLM test artifacts and return the original text
+        if (
+            getattr(resp, "provider", "") == "mock"
+            or not translated
+            or "mock llm" in translated.lower()
+            or translated == "Mock LLM generated response."
+        ):
+            logger.info("translate_to_khmer: received mock LLM response, keeping original text.")
+            return text
+
         if translated:
-            _translation_cache[text.strip()] = translated
+            cache_key = text.strip()
+            _translation_cache[cache_key] = translated
+            _translation_cache.move_to_end(cache_key)
+            while len(_translation_cache) > _TRANSLATION_CACHE_LIMIT:
+                _translation_cache.popitem(last=False)
             return translated
         return text
     except Exception as e:
@@ -371,7 +388,12 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 if tasks:
                     results = await asyncio.gather(*tasks, return_exceptions=True)
                     for (step_obj, field, h_idx), res_text in zip(targets, results):
-                        if isinstance(res_text, str) and res_text:
+                        if (
+                            isinstance(res_text, str)
+                            and res_text
+                            and "mock llm" not in res_text.lower()
+                            and res_text != "Mock LLM generated response."
+                        ):
                             if field == "hints" and h_idx is not None:
                                 step_obj["hints"][h_idx] = res_text
                             else:
@@ -635,31 +657,27 @@ async def submit_step_answer(request: StepAnswerRequest):
         widget_dict = session.step_widget
 
     if not widget_dict or "steps" not in widget_dict or not widget_dict["steps"]:
-        return {
-            "session_id": request.session_id,
-            "step_number": request.step_number,
-            "student_answer": request.student_answer,
-            "is_correct": request.is_correct if request.is_correct is not None else True,
-            "message": "Answer recorded"
-        }
+        raise HTTPException(status_code=400, detail="No active problem session found.")
 
     step_idx = request.step_number - 1
-    total_steps = widget_dict.get("total_steps", len(widget_dict["steps"]))
+    total_steps = len(widget_dict["steps"])
 
     if 0 <= step_idx < len(widget_dict["steps"]):
         target_step = widget_dict["steps"][step_idx]
-        expected_ans = target_step.get("expected_answer", "")
-
-        is_correct = request.is_correct
-        if is_correct is None:
-            ans_clean = request.student_answer.strip().lower()
-            exp_clean = str(expected_ans).strip().lower()
-            is_correct = ans_clean == exp_clean or (exp_clean and exp_clean in ans_clean)
+        expected_ans = target_step.get("expected_answer")
+        is_correct = bool(
+            expected_ans is not None
+            and str(expected_ans).strip()
+            and _is_answer_equivalent(request.student_answer, str(expected_ans))
+        )
 
         target_step["student_answer"] = request.student_answer
         target_step["status"] = "completed" if is_correct else "in_progress"
 
-        completed_steps = widget_dict.get("completed_steps", [])
+        completed_steps = [
+            index for index in widget_dict.get("completed_steps", [])
+            if isinstance(index, int) and 0 <= index < total_steps
+        ]
         if is_correct and step_idx not in completed_steps:
             completed_steps.append(step_idx)
             widget_dict["completed_steps"] = completed_steps
@@ -688,11 +706,60 @@ async def submit_step_answer(request: StepAnswerRequest):
             "step_widget": widget_dict
         }
 
+    raise HTTPException(
+        status_code=400,
+        detail=f"Step {request.step_number} is out of bounds (valid steps: 1-{total_steps}).",
+    )
+
+
+class StepValidateRequest(BaseModel):
+    student_answer: str
+    expected_answer: str
+    step_number: Optional[int] = 1
+    language: Optional[str] = "km"
+    hints: Optional[List[str]] = None
+
+
+@router.post("/step/validate")
+async def fast_validate_answer_endpoint(request: StepValidateRequest):
+    """
+    Ultra-fast (< 5ms) deterministic answer evaluation for inline math and science steps.
+    Instantly returns near-miss detection, encouraging child-friendly feedback, and progressive hints.
+    """
+    is_correct = _is_answer_equivalent(request.student_answer, request.expected_answer)
+    near_miss = False
+    diff = None
+
+    try:
+        ns = float(re.sub(r"[^\d.]", "", str(request.student_answer)))
+        ne = float(re.sub(r"[^\d.]", "", str(request.expected_answer)))
+        diff = abs(ns - ne)
+        if diff in (1, 2):
+            near_miss = True
+    except Exception:
+        pass
+
+    is_km = request.language == "km"
+    if is_correct:
+        msg_km = f"🎉 ត្រឹមត្រូវហើយ! ចម្លើយ «{request.student_answer}» ពិតជាត្រឹមត្រូវ!"
+        msg_en = f"🎉 Correct! Your answer '{request.student_answer}' is spot on!"
+    elif near_miss and diff == 1:
+        msg_km = f"💡 ជិតត្រូវហើយ! ចម្លើយ «{request.student_answer}» ខ្វះតែ ១ ទៀតប៉ុណ្ណោះ! សាកល្បងរាប់បន្ថែម ១ ទៀតណា៎! 🍎"
+        msg_en = f"💡 So close! Your answer '{request.student_answer}' is just 1 away! Try counting on 1 more! 🍎"
+    elif near_miss and diff == 2:
+        msg_km = f"💡 ជិតដល់ហើយ! ចម្លើយ «{request.student_answer}» គឺជិតត្រូវណាស់ (ខ្វះតែ ២ ទៀត)!"
+        msg_en = f"💡 Almost there! Your answer '{request.student_answer}' is very close (just 2 away)!"
+    else:
+        msg_km = f"🤔 ព្យាយាមម្តងទៀតណា៎! ចម្លើយ «{request.student_answer}» មិនទាន់ត្រឹមត្រូវឡើយ។"
+        msg_en = f"🤔 Try again! '{request.student_answer}' is not quite right."
+
     return {
-        "session_id": request.session_id,
-        "step_number": request.step_number,
-        "student_answer": request.student_answer,
-        "is_correct": request.is_correct if request.is_correct is not None else True
+        "is_correct": is_correct,
+        "near_miss": near_miss,
+        "difference": diff,
+        "feedback_khmer": msg_km,
+        "feedback_eng": msg_en,
+        "feedback": msg_km if is_km else msg_en,
     }
 
 
@@ -737,12 +804,13 @@ async def get_student_stats():
     except Exception as e:
         logger.error(f"Error computing student stats: {e}", exc_info=True)
         return {
-            "current_streak": 1,
-            "best_streak": 1,
-            "total_xp": 50,
+            "available": False,
+            "current_streak": 0,
+            "best_streak": 0,
+            "total_xp": 0,
             "total_sessions": 0,
             "total_turns": 0,
-            "has_studied_today": True,
+            "has_studied_today": False,
             "error": str(e)
         }
 

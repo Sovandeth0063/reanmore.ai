@@ -138,6 +138,19 @@ def test_service_registry():
     assert len(registry.get_all_clients()) == 2
 
 
+@pytest.mark.asyncio
+async def test_service_client_keeps_configured_url_after_connection_failure():
+    client = ServiceClientFactory.create_math_client("http://math-service:9001")
+    client.retry_config = RetryConfig(max_retries=0)
+    client.client.get = AsyncMock(side_effect=ConnectionError("service unavailable"))
+
+    with pytest.raises(ConnectionError):
+        await client.health()
+
+    assert client.base_url == "http://math-service:9001"
+    await client.close()
+
+
 # ==========================================
 # 3. Health Check Service Tests
 # ==========================================

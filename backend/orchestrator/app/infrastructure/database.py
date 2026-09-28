@@ -5,6 +5,7 @@ Description: Asynchronous PostgreSQL database engine setup, ORM schemas, and hel
 """
 
 from datetime import datetime
+import asyncio
 from typing import Any, Dict, List, Optional
 from sqlalchemy import String, Text, DateTime, Boolean, Integer, Float, ForeignKey, JSON, select, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -66,30 +67,37 @@ class TelemetryLog(Base):
 # Setup Engine and async session factory
 engine = create_async_engine(settings.DATABASE_URL, echo=False, connect_args={"timeout": 1.5})
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+database_ready = False
 
 async def init_db():
     """
     Initializes database tables and migrates columns during application startup.
     """
+    global database_ready
+    database_ready = False
     logger.info("Initializing Postgres database tables...")
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            from sqlalchemy import text
-            migration_sqls = [
-                "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS session_title VARCHAR(255);",
-                "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS session_title_khmer VARCHAR(255);",
-                "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS worksheet_data JSON;",
-                "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS image_uri TEXT;"
-            ]
-            for sql in migration_sqls:
-                try:
+    from sqlalchemy import text
+    migration_sqls = [
+        "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS session_title VARCHAR(255);",
+        "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS session_title_khmer VARCHAR(255);",
+        "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS worksheet_data JSON;",
+        "ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS image_uri TEXT;"
+    ]
+    for attempt in range(1, 6):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                for sql in migration_sqls:
                     await conn.execute(text(sql))
-                except Exception as ex:
-                    logger.debug(f"Migration statement ignored: {ex}")
-        logger.info("Postgres database tables initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing Postgres database: {e}", exc_info=True)
+            logger.info("Postgres database tables initialized successfully.")
+            database_ready = True
+            return
+        except Exception as e:
+            if attempt == 5:
+                logger.error("Postgres initialization failed after %s attempts; continuing in degraded mode: %s", attempt, e, exc_info=True)
+                return
+            logger.warning("Postgres is not ready (attempt %s/5): %s", attempt, e)
+            await asyncio.sleep(attempt)
 
 
 async def save_session_and_telemetry(

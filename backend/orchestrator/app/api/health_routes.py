@@ -18,6 +18,7 @@ from app.infrastructure.health_checks import (
     check_postgres_health,
 )
 from app.infrastructure.clients import get_service_registry
+from app.infrastructure import database as database_state
 from app.infrastructure.metrics import get_metrics_snapshot
 from app.services.session import session_manager
 
@@ -43,9 +44,11 @@ async def readiness_check(request: Request) -> Dict[str, Any]:
     last_health = health_service.get_last_health()
     readiness = last_health.readiness.value if last_health else "ready"
 
+    ready = readiness == "ready" and database_state.database_ready
     return {
-        "ready": readiness in ("ready", "degraded"),
-        "status": readiness,
+        "ready": ready,
+        "status": readiness if database_state.database_ready else "database_unavailable",
+        "database": "up" if database_state.database_ready else "down",
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 

@@ -82,8 +82,11 @@ class SessionContext:
                 s for s in self.step_widget["steps"]
                 if s.get("status") == "completed"
             ]
-            completed_indices = self.step_widget.get("completed_steps", [])
-            total_steps = self.step_widget.get("total_steps", len(self.step_widget["steps"]))
+            completed_indices = {
+                index for index in self.step_widget.get("completed_steps", [])
+                if isinstance(index, int) and 0 <= index < len(self.step_widget["steps"])
+            }
+            total_steps = len(self.step_widget["steps"])
             if len(completed_indices) >= total_steps and total_steps > 0:
                 self.is_problem_complete = True
 

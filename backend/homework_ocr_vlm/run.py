@@ -15,7 +15,7 @@ if __name__ == "__main__":
         "app.main:app",
         host=settings.app_host,
         port=settings.app_port,
-        reload=True,
-        reload_dirs=["app"],
+        reload=settings.debug,
+        reload_dirs=["app"] if settings.debug else None,
         log_level="debug" if settings.debug else "info",
     )

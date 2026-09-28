@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # ──────────────────────────────────────────────
@@ -7,6 +7,11 @@ services:
   redis:
     image: redis/redis-stack-server:latest
     container_name: science-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     ports:
       - "6379:6379"
     networks:
@@ -16,6 +21,15 @@ services:
     image: postgres:15-alpine
     container_name: science-postgres
     restart: always
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-science_chatbot}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -58,9 +72,12 @@ services:
       - QDRANT_HOST=qdrant
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-science_chatbot}
     depends_on:
-      - redis
-      - qdrant
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
     networks:
       science-network:
         aliases:
@@ -77,6 +94,7 @@ services:
     env_file:
       - .env
     environment:
+      - MATH_SERVICE_PORT=${MATH_SERVICE_PORT:-9001}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
       science-network:
@@ -93,6 +111,7 @@ services:
     env_file:
       - .env
     environment:
+      - SCIENCE_SERVICE_PORT=${SCIENCE_SERVICE_PORT:-9002}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
       science-network:
@@ -112,13 +131,13 @@ services:
     env_file:
       - .env
     environment:
+      - APP_PORT=${HOMEWORK_SCANNER_PORT:-9003}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     networks:
       science-network:
         aliases:
           - ocr-service
           - weg-ocr-service
-
 
 networks:
   science-network:

@@ -9,4 +9,4 @@ COPY app/ ./app/
 
 EXPOSE 9002
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9002"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${SCIENCE_SERVICE_PORT:-9002}"]

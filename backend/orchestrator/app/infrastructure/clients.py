@@ -193,13 +193,6 @@ class HttpxServiceClient(BaseServiceClient):
                 return result
             except (httpx.ConnectError, httpx.TimeoutException, asyncio.TimeoutError) as e:
                 last_exception = e
-                if isinstance(e, httpx.ConnectError):
-                    for docker_host in ["math-service", "science-service", "homework-scanner"]:
-                        if docker_host in self.base_url:
-                            new_base = self.base_url.replace(docker_host, "localhost")
-                            logger.info(f"[{self.name}] ConnectError with {docker_host}, falling back to {new_base}")
-                            self.base_url = new_base
-                            break
                 if attempt >= self.retry_config.max_retries:
                     break
                 await asyncio.sleep(self.retry_config.get_backoff_sec(attempt))
