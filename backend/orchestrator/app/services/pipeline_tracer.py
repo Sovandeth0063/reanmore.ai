@@ -197,8 +197,8 @@ def determine_routing(
         )
 
     subj_upper = subject.upper()
-    math_url = getattr(settings, "MATH_SERVICE_URL", "http://localhost:8001")
-    science_url = getattr(settings, "SCIENCE_SERVICE_URL", "http://localhost:8002")
+    math_url = getattr(settings, "MATH_SERVICE_URL", "http://localhost:9001")
+    science_url = getattr(settings, "SCIENCE_SERVICE_URL", "http://localhost:9002")
 
     if subj_upper == "MATH":
         if intent == "STEP_ANSWER_ATTEMPT":

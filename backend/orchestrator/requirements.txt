@@ -11,6 +11,8 @@ langgraph-checkpoint-redis
 pyyaml>=6.0
 sqlalchemy>=2.0.0
 asyncpg>=0.29.0
+greenlet>=3.0.0
+python-multipart>=0.0.9
 
 
 

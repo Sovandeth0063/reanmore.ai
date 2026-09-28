@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
+import re
 from app.services.socratic.card_schema import SocraticStep, StepWidgetPayload, SocraticResponse
 from app.services.socratic.state import TutorState
 from app.services.socratic.hint_engine import HintEngine
@@ -526,17 +527,17 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
 def route_by_intent(state: TutorState) -> str:
     intent = state.get("detected_intent", StudentIntent.INITIAL_QUESTION.value)
 
-    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED"):
+    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED", "OFF_TOPIC"):
         return "deflect"
-    elif intent == StudentIntent.REQUEST_HINT.value:
+    elif intent in (StudentIntent.REQUEST_HINT.value, "HINT", "REQUEST_HINT"):
         return "request_hint"
-    elif intent == "NAVIGATION_JUMP":
+    elif intent in ("NAVIGATION_JUMP", "NAVIGATE_STEP"):
         return "navigate_step"
-    elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "AMBIGUOUS"):
+    elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "CLARIFY", "AMBIGUOUS", "REQUEST_CLARIFICATION"):
         return "clarify"
-    elif intent == StudentIntent.STEP_ANSWER_ATTEMPT.value:
+    elif intent in (StudentIntent.STEP_ANSWER_ATTEMPT.value, "STEP_ATTEMPT", "STEP_ANSWER_ATTEMPT"):
         return "validate_attempt"
-    elif intent == StudentIntent.INITIAL_QUESTION.value:
+    elif intent in (StudentIntent.INITIAL_QUESTION.value, "INITIAL_SOLVE", "INITIAL_QUESTION", "REQUEST_PRACTICE"):
         return "initial_problem"
     return "clarify"
 

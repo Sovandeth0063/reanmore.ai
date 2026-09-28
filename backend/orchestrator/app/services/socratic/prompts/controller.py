@@ -283,6 +283,97 @@ class SocraticPromptController:
             logger.warning(f"LLM call failed in SocraticPromptController: {e}. Falling back to Curricular Engine.")
         return None
 
+
+    def plan_exercise_socratic_widget(
+        self,
+        problem_text: str,
+        grade_level: str = "grade_1_3",
+        session_id: str = "default_session"
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Plans and decomposes a homework problem into sequential Socratic step cards
+        with zero answer leakage, isomorphic parallel examples, and 3 progressive hints.
+        Returns the parsed and sanitized `step_widget` dictionary.
+        """
+        template = self.templates.get("exercise_planning")
+        if not template:
+            return None
+        group, _ = self._get_grade_info(grade_level)
+        try:
+            system_prompt = template["system"].format(
+                grade_level_group=group,
+                session_id=session_id
+            )
+            user_prompt = template["user"].format(problem_text=problem_text)
+            prompt = f"{system_prompt}\n\n{user_prompt}"
+
+            raw_resp = self._call_gemini_llm(prompt)
+            if not raw_resp:
+                return None
+
+            data = self._extract_json(raw_resp)
+            if not data or not isinstance(data, dict):
+                return None
+
+            widget_dict = data.get("step_widget") or data
+            steps = widget_dict.get("steps")
+            if not isinstance(steps, list) or len(steps) < 2:
+                return None
+
+            def _clean_str(val: Any) -> str:
+                if isinstance(val, dict):
+                    text = " ".join(f"{v}" for v in val.values() if v)
+                elif isinstance(val, list):
+                    text = " ".join(str(item) for item in val)
+                else:
+                    text = str(val) if val is not None else ""
+                # Strip markdown syntax
+                text = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', text)
+                text = re.sub(r'^\s*>\s*', '', text, flags=re.MULTILINE)
+                text = re.sub(r'^\s*#+\s*', '', text, flags=re.MULTILINE)
+                text = text.replace('`', '')
+                return text.strip()
+
+            sanitized_steps = []
+            for i, st in enumerate(steps):
+                step_num = st.get("step_number", i + 1)
+                hints = st.get("hints") or []
+                if not isinstance(hints, list) or len(hints) != 3:
+                    hints = [
+                        _clean_str(hints[0]) if len(hints) > 0 else "💡 Focus on the main clue and what the question is asking.",
+                        _clean_str(hints[1]) if len(hints) > 1 else "🍎 Picture the helpful example and apply the same operation step-by-step!",
+                        _clean_str(hints[2]) if len(hints) > 2 else "📐 Break the calculation into two smaller sub-steps."
+                    ]
+                else:
+                    hints = [_clean_str(h) for h in hints]
+
+                status = "in_progress" if i == 0 else ("up_next" if i == 1 else "locked")
+                sanitized_steps.append({
+                    "step_number": step_num,
+                    "title": _clean_str(st.get("title", f"Step {step_num}")),
+                    "status": status,
+                    "mission": _clean_str(st.get("mission", "")),
+                    "clue": _clean_str(st.get("clue", "")),
+                    "helpful_example": _clean_str(st.get("helpful_example", "")),
+                    "your_turn": _clean_str(st.get("your_turn", "")),
+                    "student_answer": None,
+                    "hints": hints,
+                    "current_hint_level": 0,
+                    "concept": _clean_str(st.get("concept", "")),
+                    "expected_answer": _clean_str(st.get("expected_answer", ""))
+                })
+
+            return {
+                "total_steps": len(sanitized_steps),
+                "current_step_index": 0,
+                "completed_steps": [],
+                "steps": sanitized_steps
+            }
+        except Exception as e:
+            logger.warning(f"Error in plan_exercise_socratic_widget: {e}", exc_info=True)
+            return None
+
+
     def breakdown_problem_into_steps(
         self,
         problem_text: str,

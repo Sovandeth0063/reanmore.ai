@@ -120,9 +120,9 @@ try:
     from app.services.socratic.graph import socratic_graph
 
     @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
-    def test_case_execution(case):
+    async def test_case_execution(case):
         config = {"configurable": {"thread_id": f"pytest_{uuid.uuid4().hex[:6]}"}}
-        result = socratic_graph.invoke(
+        result = await socratic_graph.ainvoke(
             {
                 "raw_user_input": case["query"],
                 "grade_level": case["grade_level"],

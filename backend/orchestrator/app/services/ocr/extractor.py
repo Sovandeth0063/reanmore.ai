@@ -231,7 +231,7 @@ class OCRExtractor:
     def _generate_mock_extraction(self, filename: str = "practice_worksheet.png") -> Dict[str, Any]:
         """Deterministic zero-model simulated fallback for fast development and testing."""
         lower_name = (filename or "practice_worksheet.png").lower()
-        is_single_specific = any(k in lower_name for k in ["single", "cookie", "fraction", "sunlight", "melt_ice"])
+        is_single_specific = any(k in lower_name for k in ["single", "cookie", "fraction", "sunlight", "melt_ice", "math", "science"])
         if not is_single_specific:
             # Simulate a multi-exercise worksheet (Q5 Adjusting Tens, Q6 Counting Money, Q7 Multiplication)
             exercises = [

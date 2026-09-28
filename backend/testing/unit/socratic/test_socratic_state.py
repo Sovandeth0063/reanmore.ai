@@ -103,7 +103,7 @@ def test_clarifier_preserves_context(sample_step):
     assert "Step 1" in res["clarification_question"]
 
 
-def test_graph_initial_problem():
+async def test_graph_initial_problem():
     graph = build_socratic_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": "test_session_1"}}
 
@@ -114,14 +114,14 @@ def test_graph_initial_problem():
         "grade_level": "grade_1_3"
     }
 
-    result = graph.invoke(state_input, config=config)
+    result = await graph.ainvoke(state_input, config=config)
     assert "step_widget" in result
     assert result["current_step_index"] == 0
     assert result["total_steps_count"] >= 2
     assert "🌟 **Our Mission:**" in result["formatted_markdown"]
 
 
-def test_graph_step_answer_and_advancement():
+async def test_graph_step_answer_and_advancement():
     graph = build_socratic_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": "test_session_2"}}
 
@@ -131,7 +131,7 @@ def test_graph_step_answer_and_advancement():
         "raw_user_input": "Leo had 12 apples and ate 4. How many apples are left?",
         "detected_intent": StudentIntent.INITIAL_QUESTION.value
     }
-    r1 = graph.invoke(start_state, config=config)
+    r1 = await graph.ainvoke(start_state, config=config)
 
     # 2. Submit wrong answer
     wrong_state: TutorState = {
@@ -140,7 +140,7 @@ def test_graph_step_answer_and_advancement():
         "student_attempt": "5",
         "detected_intent": StudentIntent.STEP_ANSWER_ATTEMPT.value
     }
-    r2 = graph.invoke(wrong_state, config=config)
+    r2 = await graph.ainvoke(wrong_state, config=config)
     assert r2["current_hint_tier"] == 1
     assert r2["active_hint"] is not None
     assert r2["is_problem_complete"] is False
@@ -155,24 +155,24 @@ def test_graph_step_answer_and_advancement():
         "student_attempt": expected_ans,
         "detected_intent": StudentIntent.STEP_ANSWER_ATTEMPT.value
     }
-    r3 = graph.invoke(correct_state, config=config)
+    r3 = await graph.ainvoke(correct_state, config=config)
     assert "Spot on!" in r3["feedback_message"]
     assert r3["current_step_index"] == 1
 
 
-def test_graph_explicit_hint_request():
+async def test_graph_explicit_hint_request():
     graph = build_socratic_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": "test_session_3"}}
 
     # Start problem
-    r1 = graph.invoke({
+    r1 = await graph.ainvoke({
         "session_id": "test_session_3",
         "raw_user_input": "How many states of matter are there?",
         "detected_intent": StudentIntent.INITIAL_QUESTION.value
     }, config=config)
 
     # Ask for hint
-    r2 = graph.invoke({
+    r2 = await graph.ainvoke({
         **r1,
         "raw_user_input": "give me a hint",
         "detected_intent": StudentIntent.REQUEST_HINT.value
@@ -182,19 +182,19 @@ def test_graph_explicit_hint_request():
     assert r2["active_hint"] is not None
 
 
-def test_graph_navigation_jump():
+async def test_graph_navigation_jump():
     graph = build_socratic_graph(checkpointer=MemorySaver())
     config = {"configurable": {"thread_id": "test_session_4"}}
 
     # Start problem
-    r1 = graph.invoke({
+    r1 = await graph.ainvoke({
         "session_id": "test_session_4",
         "raw_user_input": "Leo had 12 apples and ate 4. How many apples are left?",
         "detected_intent": StudentIntent.INITIAL_QUESTION.value
     }, config=config)
 
     # Jump to Step index 1
-    r2 = graph.invoke({
+    r2 = await graph.ainvoke({
         **r1,
         "raw_user_input": "goto step 2",
         "detected_intent": "NAVIGATION_JUMP",
@@ -203,3 +203,62 @@ def test_graph_navigation_jump():
 
     assert r2["current_step_index"] == 1
     assert "Navigated to Step 2" in r2["feedback_message"]
+
+
+async def test_graph_new_problem_during_active_session():
+    """Verify that asking a new problem cleanly switches problems and resets step index."""
+    graph = build_socratic_graph(checkpointer=MemorySaver())
+    config = {"configurable": {"thread_id": "test_session_switch"}}
+
+    # 1. Start initial problem (e.g. Leo had 12 apples)
+    r1 = await graph.ainvoke({
+        "session_id": "test_session_switch",
+        "raw_user_input": "Leo had 12 apples and ate 4. How many apples are left?",
+        "detected_intent": StudentIntent.INITIAL_QUESTION.value
+    }, config=config)
+    assert r1["current_step_index"] == 0
+
+    # 2. Advance to step 2
+    r2 = await graph.ainvoke({
+        **r1,
+        "raw_user_input": "goto step 2",
+        "detected_intent": "NAVIGATION_JUMP",
+        "target_nav_index": 1
+    }, config=config)
+    assert r2["current_step_index"] == 1
+
+    # 3. User switches to a new problem: "What comes after 19?"
+    r3 = await graph.ainvoke({
+        **r2,
+        "raw_user_input": "What comes after 19?",
+        "problem_text": "What comes after 19?",
+        "detected_intent": StudentIntent.INITIAL_QUESTION.value,
+        "current_step_index": 0,
+        "step_widget": None
+    }, config=config)
+
+    assert r3["current_step_index"] == 0
+    assert r3["is_problem_complete"] is False
+    assert "step_widget" in r3
+    assert r3["step_widget"] is not None
+
+
+def test_route_by_intent_aliases():
+    """Verify route_by_intent handles both StudentIntent values and IntentType string aliases."""
+    # pyrefly: ignore [missing-import]
+    from app.services.socratic.graph import route_by_intent
+
+    # Step attempt aliases
+    assert route_by_intent({"detected_intent": "STEP_ANSWER_ATTEMPT"}) == "validate_attempt"
+    assert route_by_intent({"detected_intent": "STEP_ATTEMPT"}) == "validate_attempt"
+
+    # Initial problem aliases
+    assert route_by_intent({"detected_intent": "INITIAL_QUESTION"}) == "initial_problem"
+    assert route_by_intent({"detected_intent": "INITIAL_SOLVE"}) == "initial_problem"
+    assert route_by_intent({"detected_intent": "REQUEST_PRACTICE"}) == "initial_problem"
+
+    # Deflect & clarify aliases
+    assert route_by_intent({"detected_intent": "OFF_TOPIC"}) == "deflect"
+    assert route_by_intent({"detected_intent": "OFF_TOPIC_DEFLECTED"}) == "deflect"
+    assert route_by_intent({"detected_intent": "CLARIFY"}) == "clarify"
+    assert route_by_intent({"detected_intent": "REQUEST_CLARIFICATION"}) == "clarify"

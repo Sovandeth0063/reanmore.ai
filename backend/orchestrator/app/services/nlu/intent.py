@@ -152,6 +152,18 @@ _CLARIFY_RE = re.compile(
     flags=re.IGNORECASE
 )
 
+# Interrogative and question patterns (e.g. "What comes after 19?", "How many...", ending in ?)
+_QUESTION_STARTERS_RE = re.compile(
+    r'^(?:what|which|how|why|when|where|who|can|could|will|tell\s+me|calculate|solve|find)\b|\?$',
+    flags=re.IGNORECASE
+)
+
+# Math questions and numerical sequence inquiries (e.g. "What comes after 19?")
+_MATH_QUESTION_RE = re.compile(
+    r'\b(?:what\s+comes\s+after|what\s+comes\s+before|what\s+is\s+next|next\s+number|count\s+(?:up|down|backward|forward)|how\s+many|how\s+much)\b',
+    flags=re.IGNORECASE
+)
+
 # Practice request patterns
 _PRACTICE_RE = re.compile(
     r'\b(?:another\s+one|more\s+practice|practice\s+problem|give\s+me\s+another|next\s+question)\b',
@@ -259,7 +271,11 @@ def disambiguate_step_input(
     if _CLARIFY_RE.match(q) and not any(op in q for op in ['+', '-', '*', '/', '=']):
         return IntentResult(intent=IntentType.CLARIFY, confidence=0.90)
 
-    # 4.5. Off-topic distractions during active step
+    # 4.5. Math inquiry / sequence / new problem question (e.g. "What comes after 19?")
+    if _MATH_QUESTION_RE.search(q):
+        return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.95)
+
+    # 4.6. Off-topic distractions during active step
     if _OFF_TOPIC_RE.search(q) and not re.search(r'\d+\s*[+\-*/=]\s*\d+', q):
         return IntentResult(
             intent=IntentType.OFF_TOPIC,
@@ -268,18 +284,34 @@ def disambiguate_step_input(
             raw_response="step_off_topic"
         )
 
-    # 5. Short student answer attempt
+    # 5. Student answer attempt
     extracted = extract_core_answer(q)
-    word_count = len(q.split())
-    extracted_word_count = len(extracted.split()) if extracted else 0
-
-    is_short = word_count <= 4 or (extracted and extracted_word_count <= 4)
     is_numeric_math = bool(re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?(?:\s*[a-zA-Z%°/]+)?$', q))
+    is_hedged_numeric = bool(_ANSWER_PREFIXES.match(q) and extracted and re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?(?:\s*[a-zA-Z%°/]+)?$', extracted))
+    is_interrogative = bool(_QUESTION_STARTERS_RE.search(q) or q.endswith('?'))
 
-    if is_short or is_numeric_math:
+    if is_numeric_math or is_hedged_numeric:
         return IntentResult(
             intent=IntentType.STEP_ATTEMPT,
             confidence=0.95,
+            extracted_answer=extracted or q
+        )
+
+    # If the user is asking an interrogative question, do NOT treat it as answering the step!
+    if is_interrogative:
+        has_math_op = any(op in q for op in ['+', '-', '*', '/', '=', '×', '÷'])
+        if _CLARIFY_RE.search(q) and not has_math_op:
+            return IntentResult(intent=IntentType.CLARIFY, confidence=0.90)
+        return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.88)
+
+    word_count = len(q.split())
+    extracted_word_count = len(extracted.split()) if extracted else 0
+    is_short = word_count <= 4 or (extracted and extracted_word_count <= 4)
+
+    if is_short:
+        return IntentResult(
+            intent=IntentType.STEP_ATTEMPT,
+            confidence=0.90,
             extracted_answer=extracted
         )
 
@@ -389,9 +421,22 @@ def classify_intent_heuristic(
         return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.90)
 
     # 5. Short answer or pure number when history exists -> step attempt
-    is_short = len(q.split()) <= 4 and not _CLARIFY_RE.match(q)
+    extracted = extract_core_answer(q)
     is_numeric_math = bool(re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?(?:\s*[a-zA-Z]+)?$', q))
-    if is_short or is_numeric_math:
+    is_hedged_numeric = bool(_ANSWER_PREFIXES.match(q) and extracted and re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?(?:\s*[a-zA-Z]+)?$', extracted))
+    is_interrogative = bool(_QUESTION_STARTERS_RE.search(q) or q.endswith('?'))
+
+    if is_numeric_math or is_hedged_numeric:
+        return IntentResult(
+            intent=IntentType.STEP_ATTEMPT,
+            confidence=0.88,
+            extracted_answer=extracted or q
+        )
+
+    if _MATH_QUESTION_RE.search(q):
+        return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.90)
+
+    if not is_interrogative and len(q.split()) <= 4:
         return IntentResult(
             intent=IntentType.STEP_ATTEMPT,
             confidence=0.88,

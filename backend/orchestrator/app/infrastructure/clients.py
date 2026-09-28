@@ -193,6 +193,13 @@ class HttpxServiceClient(BaseServiceClient):
                 return result
             except (httpx.ConnectError, httpx.TimeoutException, asyncio.TimeoutError) as e:
                 last_exception = e
+                if isinstance(e, httpx.ConnectError):
+                    for docker_host in ["math-service", "science-service", "homework-scanner"]:
+                        if docker_host in self.base_url:
+                            new_base = self.base_url.replace(docker_host, "localhost")
+                            logger.info(f"[{self.name}] ConnectError with {docker_host}, falling back to {new_base}")
+                            self.base_url = new_base
+                            break
                 if attempt >= self.retry_config.max_retries:
                     break
                 await asyncio.sleep(self.retry_config.get_backoff_sec(attempt))
@@ -214,8 +221,8 @@ class HttpxServiceClient(BaseServiceClient):
         raise httpx.RequestError(f"Operation {operation_name} failed.")
 
     async def health(self) -> Dict[str, Any]:
-        url = f"{self.base_url}/health"
         async def _probe():
+            url = f"{self.base_url}/health"
             resp = await self.client.get(url, timeout=3.0)
             resp.raise_for_status()
             return resp.json()
@@ -228,18 +235,18 @@ class MathServiceClient(HttpxServiceClient):
         super().__init__(base_url=base_url, name="MATH", timeout=10.0)
 
     async def solve(self, query: str, grade_level: str) -> Dict[str, Any]:
-        url = f"{self.base_url}/solve"
         payload = {"query": query, "subject": "MATH", "context": {"grade_level": grade_level}}
         async def _call():
+            url = f"{self.base_url}/solve"
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             return resp.json()
         return await self._execute_with_retry("MATH_SOLVE", _call)
 
     async def validate(self, student_attempt: str, expected_step: str) -> bool:
-        url = f"{self.base_url}/validate"
         payload = {"student_attempt": student_attempt, "expected_step": expected_step, "subject": "MATH"}
         async def _call():
+            url = f"{self.base_url}/validate"
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             return resp.json().get("equivalent", False)
@@ -252,18 +259,18 @@ class ScienceServiceClient(HttpxServiceClient):
         super().__init__(base_url=base_url, name="SCIENCE", timeout=15.0)
 
     async def solve(self, query: str, grade_level: str, subject: str = "SCIENCE") -> Dict[str, Any]:
-        url = f"{self.base_url}/solve"
         payload = {"query": query, "subject": subject, "context": {"grade_level": grade_level}}
         async def _call():
+            url = f"{self.base_url}/solve"
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             return resp.json()
         return await self._execute_with_retry("SCIENCE_SOLVE", _call)
 
     async def validate(self, student_attempt: str, expected_step: str, subject: str = "SCIENCE") -> bool:
-        url = f"{self.base_url}/validate"
         payload = {"student_attempt": student_attempt, "expected_step": expected_step, "subject": subject}
         async def _call():
+            url = f"{self.base_url}/validate"
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             return resp.json().get("equivalent", False)
@@ -281,11 +288,11 @@ class HomeworkScannerClient(HttpxServiceClient):
         filename: str,
         debug_crops: bool = False,
     ) -> Dict[str, Any]:
-        url = f"{self.base_url}/process-homework"
         files = {"file": (filename, file_bytes)}
         params = {"debug_crops": debug_crops}
 
         async def _call():
+            url = f"{self.base_url}/process-homework"
             resp = await self.client.post(url, files=files, params=params)
             resp.raise_for_status()
             return resp.json()

@@ -289,6 +289,41 @@ class TestDisambiguateStepInputDirect:
         assert res.intent == IntentType.STEP_ATTEMPT
         assert res.extracted_answer == "4"
 
+    def test_question_not_hijacked_as_step_attempt(self, active_math_step):
+        # Asking a question during an active step must NOT be hijacked as a step attempt
+        res = disambiguate_step_input("What comes after 19?", current_step=active_math_step)
+        assert res is not None
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+
+class TestNewQuestionDuringActiveStep:
+    """Verifies that asking a new question during an active problem routes to INITIAL_SOLVE or CLARIFY."""
+
+    def test_what_comes_after_19(self, active_math_step):
+        res = classify_intent_sync("What comes after 19?", current_step=active_math_step)
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+    def test_math_equation_question(self, active_math_step):
+        res = classify_intent_sync("what is 5+5?", current_step=active_math_step)
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+    def test_new_science_problem(self, active_math_step):
+        res = classify_intent_sync("solve: photosynthesis needs sunlight and water", current_step=active_math_step)
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+    def test_khmer_question(self, active_math_step):
+        res = classify_intent_sync("តើលេខបន្ទាប់ពី 19 គឺជាអ្វី?", current_step=active_math_step)
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+    def test_short_valid_answers_remain_step_attempt(self, active_math_step, active_science_step):
+        res1 = classify_intent_sync("4", current_step=active_math_step)
+        assert res1.intent == IntentType.STEP_ATTEMPT
+        assert res1.extracted_answer == "4"
+
+        res2 = classify_intent_sync("chloroplast", current_step=active_science_step)
+        assert res2.intent == IntentType.STEP_ATTEMPT
+        assert res2.extracted_answer == "chloroplast"
+
 
 class TestChatHistoryWithActiveStep:
     """Verify format_chat_history incorporates active step information."""
