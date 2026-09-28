@@ -9,8 +9,14 @@ import logging
 import asyncio
 from typing import Optional, Dict, Any, List
 
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except ImportError:
+    genai = None
+    types = None
+    GENAI_AVAILABLE = False
 
 from app.services.llm.base import BaseLLMProvider, LLMResponse, ModelTier
 from app.core.config import settings
@@ -43,16 +49,16 @@ class GeminiProvider(BaseLLMProvider):
         self.reasoning_model_name = reasoning_model or default_model
         self.translation_model_name = translation_model or default_model
         self.max_retries = max_retries
-        self._client: Optional[genai.Client] = None
+        self._client: Optional[Any] = None
 
-        if self.api_key:
+        if GENAI_AVAILABLE and self.api_key:
             try:
                 self._client = genai.Client(api_key=self.api_key)
             except Exception as e:
                 logger.warning(f"Failed to initialize google.genai Client: {e}")
 
     def is_available(self) -> bool:
-        return bool(self._client is not None and self.api_key)
+        return bool(GENAI_AVAILABLE and self._client is not None and self.api_key)
 
     def _resolve_candidate_models(self, tier: ModelTier) -> List[str]:
         primary = self.fast_model_name

@@ -50,7 +50,13 @@ services:
     env_file:
       - .env
     environment:
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
+      - MATH_SERVICE_URL=http://math-service:${MATH_SERVICE_PORT:-9001}
+      - SCIENCE_SERVICE_URL=http://science-service:${SCIENCE_SERVICE_PORT:-9002}
+      - HOMEWORK_SCANNER_URL=http://homework-scanner:${HOMEWORK_SCANNER_PORT:-9003}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - QDRANT_HOST=qdrant
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-science_chatbot}
     depends_on:
       - redis
       - qdrant

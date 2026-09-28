@@ -9,6 +9,7 @@ Description: FastAPI endpoint router exposing /api/query, /api/step/navigate, an
 import re
 import time
 import uuid
+import asyncio
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
@@ -275,20 +276,15 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         is_explain_query = bool(re.search(r'\b(?:explain|help|tell\s+me|how\s+to|what\s+is\s+this|confused|dont\s+understand|don\'t\s+understand)\b', raw_query, re.I))
         if is_explain_query and (ctx_statement or ctx_step_q):
             try:
-                explain_prompt = (
-                    f"You are ReanMore, an expert Socratic tutor for elementary students ({group_name}).\n"
-                    f"Pedagogy Guidelines: {grade_guide}\n\n"
-                    f"The student is looking at the following homework exercise on their worksheet:\n"
-                    f"Exercise: {ctx_statement or p_ctx.get('titleEng', 'Science & Math')}\n"
-                    f"Current Step Question: {ctx_step_q}\n"
-                    f"Student asks: '{raw_query}'\n\n"
-                    f"Give a gentle, child-friendly explanation of the core concept following the pedagogy rules. "
-                    f"Use a relatable everyday analogy or visual observation. "
-                    f"IMPORTANT: NEVER give the final direct answer, but guide their thinking so they can solve it!"
+                sys_inst, explain_prompt = prompt_controller.get_contextual_explanation_prompt(
+                    query=raw_query,
+                    exercise_context=ctx_statement or p_ctx.get("titleEng", "Science & Math"),
+                    current_step_question=ctx_step_q,
+                    grade_level=detected_grade_str
                 )
                 explain_resp = await llm_service.generate_text_async(
                     prompt=explain_prompt,
-                    system_instruction=f"You are ReanMore, a supportive Socratic primary school tutor ({group_name}). {grade_guide}",
+                    system_instruction=sys_inst,
                     temperature=0.3,
                     max_tokens=300,
                     model_tier=ModelTier.FAST
@@ -358,20 +354,28 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 logger.info("Endpoints: Translating final Socratic response back to Khmer...")
                 solution_text = await translate_to_khmer(solution_text)
             if widget_dict and "steps" in widget_dict:
-                logger.info("Endpoints: Translating step widget cards to Khmer...")
+                logger.info("Endpoints: Translating step widget cards to Khmer in parallel...")
+                tasks = []
+                targets = []
                 for s in widget_dict["steps"]:
-                    if s.get("title"):
-                        s["title"] = await translate_to_khmer(s["title"])
-                    if s.get("mission"):
-                        s["mission"] = await translate_to_khmer(s["mission"])
-                    if s.get("clue"):
-                        s["clue"] = await translate_to_khmer(s["clue"])
-                    if s.get("helpful_example"):
-                        s["helpful_example"] = await translate_to_khmer(s["helpful_example"])
-                    if s.get("your_turn"):
-                        s["your_turn"] = await translate_to_khmer(s["your_turn"])
+                    for field in ["title", "mission", "clue", "helpful_example", "your_turn"]:
+                        val = s.get(field)
+                        if val:
+                            tasks.append(translate_to_khmer(val))
+                            targets.append((s, field, None))
                     if s.get("hints") and isinstance(s["hints"], list):
-                        s["hints"] = [await translate_to_khmer(h) if h else h for h in s["hints"]]
+                        for h_idx, h in enumerate(s["hints"]):
+                            if h:
+                                tasks.append(translate_to_khmer(h))
+                                targets.append((s, "hints", h_idx))
+                if tasks:
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for (step_obj, field, h_idx), res_text in zip(targets, results):
+                        if isinstance(res_text, str) and res_text:
+                            if field == "hints" and h_idx is not None:
+                                step_obj["hints"][h_idx] = res_text
+                            else:
+                                step_obj[field] = res_text
 
         # Build legacy step representations for backwards compatibility
         steps_list: List[Dict[str, Any]] = []
@@ -469,10 +473,10 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 "is_deflected": is_deflected,
                 "pipeline_trace": pipeline_trace.to_dict()
             },
-            worksheet_data=session.worksheet_data,
-            image_uri=session.image_uri,
-            session_title=session.session_title,
-            session_title_khmer=session.session_title_khmer
+            worksheet_data=getattr(session, "worksheet_data", None),
+            image_uri=getattr(session, "image_uri", None),
+            session_title=getattr(session, "session_title", None),
+            session_title_khmer=getattr(session, "session_title_khmer", None)
         )
 
         return QueryResponse(
@@ -942,20 +946,16 @@ async def translate_text(req: TranslateRequest):
             cached=True
         )
 
-    is_to_khmer = req.target_lang.lower() in ("km", "khmer")
-
-    prompt = (
-        f"You are an expert Cambodian primary school educational translator. "
-        f"Translate the following text into natural, child-friendly {'Khmer' if is_to_khmer else 'English'}.\n"
-        f"Preserve all mathematical formulas, numbers, equations, and variable names exactly as they are.\n"
-        f"Text to translate:\n{req.text.strip()}\n\n"
-        f"Return ONLY the direct translation without any explanation or extra text."
+    sys_inst, prompt = prompt_controller.get_translation_prompt(
+        text=req.text.strip(),
+        target_lang=req.target_lang,
+        source_lang=req.source_lang
     )
 
     try:
         response = await llm_service.generate_text_async(
             prompt=prompt,
-            system_instruction="You are a precise educational translator between English and Khmer.",
+            system_instruction=sys_inst,
             temperature=0.1,
             max_tokens=500,
             model_tier=ModelTier.FAST
@@ -977,4 +977,14 @@ async def translate_text(req: TranslateRequest):
         target_lang=req.target_lang,
         source_lang=req.source_lang
     )
+
+
+@router.get("/system-prompt")
+def get_system_prompt_endpoint(grade: int = 4, language: str = "km"):
+    """
+    Returns dynamic, age-adapted Socratic system prompt compiled from central prompt controller.
+    """
+    prompt = prompt_controller.get_grade_adapted_system_prompt(grade=grade, language=language)
+    return {"grade": grade, "language": language, "system_prompt": prompt}
+
 

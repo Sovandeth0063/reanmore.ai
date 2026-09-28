@@ -356,6 +356,65 @@ class TestSocraticPromptController:
         assert "🍪" in step.helpful_example
         assert "5 cookies" in step.your_turn
 
+    def test_dynamic_translation_prompts(self):
+        controller = socratic_prompt_controller
+        to_km = controller.get_translation_to_khmer_prompt("What is 5 + 3?")
+        assert "Cambodian primary school educational translator" in to_km
+        assert "What is 5 + 3?" in to_km
+
+        sys_p, usr_p = controller.get_translation_prompt("Photosynthesis is green", target_lang="km")
+        assert "Cambodian primary school educational translator" in sys_p
+        assert "Photosynthesis is green" in usr_p
+
+    def test_dynamic_contextual_explanation_prompt(self):
+        controller = socratic_prompt_controller
+        sys_p, usr_p = controller.get_contextual_explanation_prompt(
+            query="why is the sun hot?",
+            exercise_context="Solar system unit",
+            current_step_question="What is the center of the solar system?",
+            grade_level="grade_1_3"
+        )
+        assert "ReanMore" in sys_p
+        assert "Solar system unit" in usr_p
+        assert "why is the sun hot?" in usr_p
+
+    def test_dynamic_answer_evaluation_prompt(self):
+        controller = socratic_prompt_controller
+        sys_p, usr_p = controller.get_answer_evaluation_prompt(
+            step_question="What is 4 + 4?",
+            expected_answer="8",
+            student_attempt="eight",
+            grade_level="grade_1_3"
+        )
+        assert "ReanMore" in sys_p
+        assert "What is 4 + 4?" in usr_p
+        assert "eight" in usr_p
+
+    def test_dynamic_rolling_summary_prompt(self):
+        controller = socratic_prompt_controller
+        res = controller.get_rolling_summary_prompt("Previous summary", "Student: Hi | Tutor: Hello")
+        assert "summarization assistant" in res
+        assert "Previous summary" in res
+
+    def test_dynamic_grade_adapted_system_prompt(self):
+        controller = socratic_prompt_controller
+        prompt_km = controller.get_grade_adapted_system_prompt(grade=2, language="km")
+        assert "ReanMore" in prompt_km
+        assert "កុមារថ្នាក់ទី ១–២" in prompt_km
+
+        prompt_en = controller.get_grade_adapted_system_prompt(grade=4, language="en")
+        assert "ReanMore" in prompt_en
+        assert "Grade 3-4" in prompt_en
+
+    def test_dynamic_coreference_rewrite_prompt(self):
+        controller = socratic_prompt_controller
+        res = controller.get_coreference_rewrite_prompt(
+            context_str="Step 1: 5 + 3 = 8",
+            norm="what is it?"
+        )
+        assert "coreference rewriter" in res
+        assert "what is it?" in res
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 from app.services.nlu.normalizer import normalize_text_sync
 from app.services.nlu.router import route_subject_heuristic, SubjectArea
 from app.core.config import settings
+from app.services.socratic.prompts.controller import socratic_prompt_controller
+
 
 
 class PipelineTrace(BaseModel):
@@ -117,15 +119,8 @@ def resolve_query_rewrite(
             context_parts.append(f"Previous student query: {previous_query}")
 
         context_str = "\n".join(context_parts) if context_parts else "No previous history."
-        prompt = (
-            "You are an elementary STEM question coreference rewriter.\n"
-            "Examine the conversation history and active step context. Rewrite the student's latest query "
-            "to resolve all pronouns ('it', 'this', 'that', 'they') and elliptical references into a clear, standalone question.\n"
-            "- If the query is already self-contained or does not need rewriting, return it exactly as-is.\n"
-            "Return ONLY the rewritten query text without quotes, formatting, or preamble.\n\n"
-            f"Context:\n{context_str}\n\n"
-            f"Latest Query: '{norm}'"
-        )
+        prompt = socratic_prompt_controller.get_coreference_rewrite_prompt(context_str, norm)
+
         resp = llm_service.generate_text(prompt=prompt, model_tier=ModelTier.FAST)
         if resp.provider != "mock" or resp.text != "Mock LLM generated response.":
             candidate = resp.text.strip().strip('"\'')

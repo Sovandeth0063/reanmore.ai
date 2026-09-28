@@ -120,6 +120,123 @@ DEFAULT_TEMPLATES = {
             "]"
         ),
         "user": "Problem: '{problem_text}'"
+    },
+    "translation_to_khmer": {
+        "system": (
+            "You are an expert Cambodian primary school educational translator.\n"
+            "Translate the following text into natural, child-friendly Khmer.\n"
+            "Preserve all mathematical formulas, numbers, equations, and variable names exactly as they are.\n"
+            "Return ONLY the direct translation without any explanation or extra text."
+        ),
+        "user": "Text to translate:\n{text}"
+    },
+    "translation_general": {
+        "system": (
+            "You are an expert Cambodian primary school educational translator.\n"
+            "Translate the following text into natural, child-friendly {target_lang_name}.\n"
+            "Preserve all mathematical formulas, numbers, equations, and variable names exactly as they are.\n"
+            "Return ONLY the direct translation without any explanation or extra text."
+        ),
+        "user": "Text to translate:\n{text}"
+    },
+    "contextual_explanation": {
+        "system": (
+            "You are ReanMore, an expert Socratic tutor for elementary students ({grade_level_group}).\n"
+            "Pedagogy Guidelines: {grade_level_guidelines}"
+        ),
+        "user": (
+            "The student is looking at the following homework exercise on their worksheet:\n"
+            "Exercise: {exercise_context}\n"
+            "Current Step Question: {step_question}\n"
+            "Student asks: '{student_query}'\n\n"
+            "Give a gentle, child-friendly explanation of the core concept following the pedagogy rules.\n"
+            "Use a relatable everyday analogy or visual observation.\n"
+            "IMPORTANT: NEVER give the final direct answer, but guide their thinking so they can solve it!"
+        )
+    },
+    "answer_evaluation": {
+        "system": (
+            "You are ReanMore, a friendly primary school AI tutor for elementary students ({grade_level_group}).\n"
+            "Evaluate whether the student's answer is conceptually correct or nearly correct (e.g. minor typo, natural wording in Khmer or English).\n"
+            "Respond with JSON:\n"
+            '{{"is_correct": true/false, "explanation": "encouraging 1-sentence explanation"}}'
+        ),
+        "user": (
+            "Question / Step: {step_question}\n"
+            "Expected concept / answer: {expected_answer}\n"
+            "Student's typed answer: {student_attempt}"
+        )
+    },
+    "rolling_summary": {
+        "system": (
+            "You are a summarization assistant. Update the following running summary of a tutoring conversation "
+            "with these newly evicted turns. Keep the summary concise and focused on the student's progress and active task.\n"
+            "Return ONLY the updated summary text. No preamble, no labels, no markdown."
+        ),
+        "user": "Current Summary: '{rolling_summary}'\n\nNew Turns:\n{evicted_turns}\n\nUpdated summary (under 400 characters):"
+    },
+    "grade_adapted_system_prompt": {
+        "grade_1_2": {
+            "km": (
+                "អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ១–២ (អាយុ ៦–៧ ឆ្នាំ)។ ច្បាប់គំរូ៖\n"
+                "1. ប្រើប្រយោគខ្លីបំផុត (ក្រោម ១២ ពាក្យ) និងពាក្យសាមញ្ញបំផុត\n"
+                "2. ប្រើរូបតំណាងសត្វ 🦁 ផ្លែប៉ោម 🍎 ស្ករគ្រាប់ 🍬 ក្នុងការរាប់\n"
+                "3. កុំប្រាប់ចម្លើយផ្ទាល់ — សួរសំណួរម្តងមួយៗ\n"
+                "4. លើកទឹកចិត្តជានិច្ច និងពោរពេញដោយភាពកក់ក្តៅ"
+            ),
+            "en": (
+                "You are ReanMore, an AI tutor for Grade 1-2 elementary students (Ages 6-7). Core rules:\n"
+                "1. Use ultra-short sentences (< 12 words) and simple vocabulary\n"
+                "2. Use concrete object counting (apples 🍎, animals 🦁, blocks 🧱)\n"
+                "3. Never give the answer directly — ask one simple question at a time\n"
+                "4. Be enthusiastic, warm, and encourage the child at every step"
+            )
+        },
+        "grade_3_4": {
+            "km": (
+                "អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ៣–៤ (អាយុ ៨–៩ ឆ្នាំ)។ ច្បាប់គំរូ៖\n"
+                "1. ជួយកុមារគិតជាជំហានៗតាមវិធីសាស្រ្តសូក្រាត (Socratic Method)\n"
+                "2. ប្រើគំរូរូបភាព (បន្ទាត់ចំនួន ដ្យាក្រាមប្រអប់ លក្ខណៈសត្វ)\n"
+                "3. ផ្តល់តម្រុយជាដំណាក់កាលៗ មិនប្រាប់ចម្លើយចុងក្រោយ\n"
+                "4. ពន្យល់ដោយភាពរួសរាយ និងងាយយល់"
+            ),
+            "en": (
+                "You are ReanMore, a Socratic STEM tutor for Grade 3-4 elementary students (Ages 8-9). Core rules:\n"
+                "1. Guide step-by-step using Socratic questioning without leaking answers\n"
+                "2. Refer to visual scaffolds (number lines, bar models, animal feature charts)\n"
+                "3. Provide incremental progressive clues\n"
+                "4. Keep explanations conversational, friendly, and empowering"
+            )
+        },
+        "grade_5_6": {
+            "km": (
+                "អ្នកគឺ ReanMore គ្រូបង្រៀន AI សម្រាប់កុមារថ្នាក់ទី ៥–៦ (អាយុ ១០–១២ ឆ្នាំ)។ ច្បាប់គំរូ៖\n"
+                "1. បណ្តុះការគិតវិភាគស៊ីជម្រៅ និងការបំបែកបញ្ហាជាជំហានៗ\n"
+                "2. ពន្យល់គោលគំនិតគណិតវិទ្យា និងវិទ្យាសាស្ត្រ (សភាពសារធាតុ ប្រភាគ ចំណោទស្មុគស្មាញ)\n"
+                "3. ណែនាំដោយសំណួរឆ្លាតវៃ ដោយមិនប្រាប់ចម្លើយផ្ទាល់\n"
+                "4. លើកទឹកចិត្តឲ្យកុមារពន្យល់ហេតុផលនៃការគិតរបស់ខ្លួន"
+            ),
+            "en": (
+                "You are ReanMore, an inspiring Socratic tutor for Grade 5-6 students (Ages 10-12). Core rules:\n"
+                "1. Foster analytical thinking and multi-step problem decomposition\n"
+                "2. Explain mathematical reasoning and scientific concepts (states of matter, fractions, classification)\n"
+                "3. Guide with thoughtful sub-questions without giving away the solution\n"
+                "4. Encourage the student to explain their own reasoning"
+            )
+        }
+    },
+    "coreference_rewrite": {
+        "system": (
+            "You are an elementary STEM question coreference rewriter.\n"
+            "Examine the conversation history and active step context. Rewrite the student's latest query "
+            "to resolve all pronouns ('it', 'this', 'that', 'they') and elliptical references into a clear, standalone question.\n"
+            "- If the query is already self-contained or does not need rewriting, return it exactly as-is.\n"
+            "Return ONLY the rewritten query text without quotes, formatting, or preamble."
+        ),
+        "user": (
+            "Context:\n{context_str}\n\n"
+            "Latest Query: '{norm}'"
+        )
     }
 }
 
@@ -248,6 +365,106 @@ class SocraticPromptController:
         system_prompt = template["system"].format(grade_level_group=group)
         user_prompt = template["user"].format(problem_text=problem_text)
         return f"{system_prompt}\n\n{user_prompt}"
+
+    def get_translation_to_khmer_prompt(self, text: str) -> str:
+        """Constructs prompt to translate educational text to child-friendly Khmer."""
+        template = self.templates.get("translation_to_khmer", DEFAULT_TEMPLATES.get("translation_to_khmer"))
+        system = template["system"]
+        user = template["user"].format(text=text.strip())
+        return f"{system}\n\n{user}"
+
+    def get_translation_prompt(
+        self,
+        text: str,
+        target_lang: str = "km",
+        source_lang: Optional[str] = None
+    ) -> Tuple[str, str]:
+        """Returns (system_instruction, user_prompt) for bilingual educational translation."""
+        is_km = target_lang.lower() in ("km", "khmer")
+        template = self.templates.get("translation_general", DEFAULT_TEMPLATES.get("translation_general"))
+        target_lang_name = "Khmer" if is_km else "English"
+        system = template["system"].format(target_lang_name=target_lang_name)
+        user = template["user"].format(text=text.strip())
+        return system, user
+
+    def get_contextual_explanation_prompt(
+        self,
+        query: str,
+        exercise_context: str,
+        current_step_question: str,
+        grade_level: str = "grade_1_3"
+    ) -> Tuple[str, str]:
+        """Returns (system_instruction, user_prompt) for contextual worksheet explanations."""
+        template = self.templates.get("contextual_explanation", DEFAULT_TEMPLATES.get("contextual_explanation"))
+        group, guidelines = self._get_grade_info(grade_level)
+        system = template["system"].format(
+            grade_level_group=group,
+            grade_level_guidelines=guidelines
+        )
+        user = template["user"].format(
+            exercise_context=exercise_context or "Science & Math Exercise",
+            step_question=current_step_question or "",
+            student_query=query
+        )
+        return system, user
+
+    def get_answer_evaluation_prompt(
+        self,
+        step_question: str,
+        expected_answer: str,
+        student_attempt: str,
+        grade_level: str = "grade_1_3"
+    ) -> Tuple[str, str]:
+        """Returns (system_instruction, user_prompt) for Socratic answer evaluation."""
+        template = self.templates.get("answer_evaluation", DEFAULT_TEMPLATES.get("answer_evaluation"))
+        group, _ = self._get_grade_info(grade_level)
+        system = template["system"].format(grade_level_group=group)
+        user = template["user"].format(
+            step_question=step_question or "Active Step",
+            expected_answer=expected_answer or "",
+            student_attempt=student_attempt
+        )
+        return system, user
+
+    def get_rolling_summary_prompt(
+        self,
+        rolling_summary: str,
+        evicted_turns: str
+    ) -> str:
+        """Constructs prompt for summarizing conversational history."""
+        template = self.templates.get("rolling_summary", DEFAULT_TEMPLATES.get("rolling_summary"))
+        system = template["system"]
+        user = template["user"].format(
+            rolling_summary=rolling_summary,
+            evicted_turns=evicted_turns
+        )
+        return f"{system}\n\n{user}"
+
+    def get_grade_adapted_system_prompt(
+        self,
+        grade: int = 4,
+        language: str = "km"
+    ) -> str:
+        """Returns the grade and age-adapted Socratic system prompt."""
+        t = self.templates.get("grade_adapted_system_prompt", DEFAULT_TEMPLATES.get("grade_adapted_system_prompt", {}))
+        grade_key = "grade_1_2" if grade <= 2 else ("grade_3_4" if grade <= 4 else "grade_5_6")
+        lang_key = "km" if language in ("km", "khmer") else "en"
+        sub = t.get(grade_key, {})
+        return sub.get(lang_key, "")
+
+    def get_coreference_rewrite_prompt(
+        self,
+        context_str: str,
+        norm: str
+    ) -> str:
+        """Constructs prompt for LLM-based coreference and pronoun resolution."""
+        template = self.templates.get("coreference_rewrite", DEFAULT_TEMPLATES.get("coreference_rewrite"))
+        system = template["system"]
+        user = template["user"].format(
+            context_str=context_str or "No previous history.",
+            norm=norm
+        )
+        return f"{system}\n\n{user}"
 
     @staticmethod
     def _extract_json(text: str) -> Optional[Any]:

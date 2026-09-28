@@ -14,7 +14,7 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any, Callable, Union
 import redis
-from app.services.prompts import prompt_controller
+from app.services.socratic.prompts.controller import socratic_prompt_controller as prompt_controller
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,12 @@ class SessionContext:
     # Conversational Memory & Rolling Summary
     turns: List[Dict[str, Any]] = field(default_factory=list)
     rolling_summary: str = ""  # Evicted turns summarized via Gemini to save context tokens
+
+    # Worksheet, Image & Title Metadata
+    worksheet_data: Optional[Dict[str, Any]] = None
+    image_uri: Optional[str] = None
+    session_title: Optional[str] = None
+    session_title_khmer: Optional[str] = None
 
     # Private callbacks (not serialized)
     _on_change: Optional[Callable[[], None]] = field(default=None, repr=False, compare=False)
@@ -190,7 +196,11 @@ class SessionContext:
             "formatted_markdown": self.formatted_markdown,
             "is_problem_complete": self.is_problem_complete,
             "turns": self.turns,
-            "rolling_summary": self.rolling_summary
+            "rolling_summary": self.rolling_summary,
+            "worksheet_data": self.worksheet_data,
+            "image_uri": self.image_uri,
+            "session_title": self.session_title,
+            "session_title_khmer": self.session_title_khmer
         }
 
     @classmethod
@@ -217,7 +227,11 @@ class SessionContext:
             formatted_markdown=data.get("formatted_markdown"),
             is_problem_complete=data.get("is_problem_complete", False),
             turns=data.get("turns", []),
-            rolling_summary=data.get("rolling_summary", "")
+            rolling_summary=data.get("rolling_summary", ""),
+            worksheet_data=data.get("worksheet_data"),
+            image_uri=data.get("image_uri"),
+            session_title=data.get("session_title"),
+            session_title_khmer=data.get("session_title_khmer")
         )
 
 

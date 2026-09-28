@@ -484,17 +484,15 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
     if not is_correct and expected and attempt:
         try:
             from app.services.llm import llm_service, ModelTier
-            eval_prompt = (
-                f"You are ReanMore, a friendly primary school AI tutor.\n"
-                f"Question / Step: {active_step.question_en or active_step.mission or ''}\n"
-                f"Expected concept / answer: {expected}\n"
-                f"Student's typed answer: {attempt}\n\n"
-                f"Is the student's answer conceptually correct or nearly correct (e.g. minor typo, natural wording in Khmer or English)?\n"
-                f"Respond with JSON:\n"
-                f'{{"is_correct": true/false, "explanation": "encouraging 1-sentence explanation"}}'
+            sys_inst, eval_prompt = controller.get_answer_evaluation_prompt(
+                step_question=active_step.question_en or active_step.mission or "",
+                expected_answer=expected,
+                student_attempt=attempt,
+                grade_level=state.get("grade_level", "grade_1_3")
             )
             eval_res = llm_service.generate_text(
                 prompt=eval_prompt,
+                system_instruction=sys_inst,
                 temperature=0.1,
                 max_tokens=150,
                 model_tier=ModelTier.FAST
@@ -801,19 +799,19 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
 def route_by_intent(state: TutorState) -> str:
     intent = state.get("detected_intent", StudentIntent.INITIAL_QUESTION.value)
 
-    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED"):
+    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED", "OFF_TOPIC"):
         return "deflect"
     elif intent in ("CHITCHAT", "GREETING"):
         return "chitchat"
-    elif intent == StudentIntent.REQUEST_HINT.value:
+    elif intent in (StudentIntent.REQUEST_HINT.value, "HINT", "REQUEST_HINT"):
         return "request_hint"
     elif intent == "NAVIGATION_JUMP":
         return "navigate_step"
-    elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "AMBIGUOUS"):
+    elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "AMBIGUOUS", "CLARIFY", "REQUEST_CLARIFICATION"):
         return "clarify"
-    elif intent == StudentIntent.STEP_ANSWER_ATTEMPT.value:
+    elif intent in (StudentIntent.STEP_ANSWER_ATTEMPT.value, "STEP_ATTEMPT", "STEP_ANSWER_ATTEMPT"):
         return "validate_attempt"
-    elif intent == StudentIntent.INITIAL_QUESTION.value:
+    elif intent in (StudentIntent.INITIAL_QUESTION.value, "INITIAL_QUESTION", "INITIAL_SOLVE", "REQUEST_PRACTICE"):
         return "initial_problem"
     return "clarify"
 

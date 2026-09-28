@@ -17,11 +17,11 @@ class SocraticStep(BaseModel):
     3. 🍎 Helpful Picture / Example (Isomorphic Parallel Example)
     4. 👉 Your Turn (One single question on the student's problem)
     """
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     step_number: int = Field(..., description="1-indexed step number (e.g. 1, 2, 3)")
     title: str = Field(..., description="Short friendly title for the step")
-    status: Literal["completed", "in_progress", "pending", "locked"] = Field(
+    status: Literal["completed", "in_progress", "pending", "locked", "up_next"] = Field(
         default="pending",
         description="Status of this step in the student's workflow"
     )
@@ -56,6 +56,10 @@ class SocraticStep(BaseModel):
     concept: Optional[str] = Field(
         default=None,
         description="Underlying mathematical or scientific concept tag"
+    )
+    visual_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional visual scaffolding data for the step"
     )
 
     def to_markdown(self, active_hint: Optional[str] = None) -> str:
@@ -93,7 +97,7 @@ class StepWidgetPayload(BaseModel):
     Complete state payload powering the interactive Stepper Widget on the web UI.
     Contains total steps, active step index, completed history, and all step cards.
     """
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     total_steps: int = Field(..., ge=1, description="Total number of steps in the problem")
     current_step_index: int = Field(
@@ -108,6 +112,10 @@ class StepWidgetPayload(BaseModel):
     steps: List[SocraticStep] = Field(
         ...,
         description="List of all SocraticStep objects in sequence"
+    )
+    visual_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional visual scaffolding data for the active exercise"
     )
 
     def get_active_step(self) -> Optional[SocraticStep]:
