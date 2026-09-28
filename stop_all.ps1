@@ -1,5 +1,5 @@
-# PowerShell script to stop microservices listening on 9000-9003
-$ports = @(9000, 9001, 9002, 9003)
+# PowerShell script to stop microservices listening on 9000-9003 and frontend on 5173
+$ports = @(9000, 9001, 9002, 9003, 5173)
 
 foreach ($port in $ports) {
     $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue

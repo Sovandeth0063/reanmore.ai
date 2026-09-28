@@ -55,9 +55,15 @@ Science_chatbot/
 
 ## 🚀 Quick Start Guide
 
-### Option 1: Full Docker Stack
+> 📖 **For complete step-by-step setup instructions, environment config, and troubleshooting, see the [Fullstack Setup Guide](SETUP_GUIDE.md).**
+
+### Option 1: Docker Stack (Backend & Databases)
 ```bash
 docker compose up --build
+```
+Then in a separate terminal:
+```bash
+cd frontend && npm install && npm run dev
 ```
 This launches:
 - **Orchestrator Gateway**: `http://localhost:9000`
