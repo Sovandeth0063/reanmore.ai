@@ -14,6 +14,7 @@ from app.services.nlu.normalizer import normalize_text_sync
 from app.services.nlu.router import route_subject_heuristic, SubjectArea
 from app.core.config import settings
 from app.services.socratic.prompts.controller import socratic_prompt_controller
+from app.services.guardrails.pii_scrubber import scrub_student_pii
 
 
 
@@ -24,6 +25,7 @@ class PipelineTrace(BaseModel):
     session_id: str = Field(default="")
     grade_level: str = Field(default="grade_1_3")
     raw_query: str = Field(description="Original student query input")
+    redacted_query: str = Field(default="", description="PII-scrubbed student query for safe operational logging")
     normalized_query: str = Field(description="Cleaned, standardized text (math, typos, units)")
     rewrite_needed: bool = Field(default=False, description="True if coreference/contextual rewriting was applied")
     rewritten_query: str = Field(description="Query after contextual rewrite (or normalized if not rewritten)")
@@ -40,8 +42,18 @@ class PipelineTrace(BaseModel):
     latency_ms: float = Field(default=0.0, description="Execution time in milliseconds")
     status: str = Field(default="SUCCESS", description="SUCCESS | DEFLECTED | BLOCKED | ERROR")
 
+    def model_post_init(self, __context: Any) -> None:
+        if not self.redacted_query and self.raw_query:
+            self.redacted_query = scrub_student_pii(self.raw_query)
+
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
+
+    def to_safe_dict(self) -> Dict[str, Any]:
+        """Returns telemetry record safe for logging (PII scrubbed)."""
+        d = self.model_dump()
+        d["raw_query"] = self.redacted_query or scrub_student_pii(self.raw_query)
+        return d
 
 
 def normalize_query(raw_query: str) -> str:
@@ -311,7 +323,7 @@ def format_tidy_pipeline_log(trace: PipelineTrace, box_width: int = 88) -> str:
     lines = [
         header_line,
         pad_line("Session ID", trace.session_id or "N/A"),
-        pad_line("1. Raw Query", trace.raw_query),
+        pad_line("1. Raw Query", trace.redacted_query or scrub_student_pii(trace.raw_query)),
         pad_line("2. Normalize", trace.normalized_query),
         pad_line("3. Rewrite", rewrite_display),
         pad_line("4. Routing", routing_display),

@@ -1,13 +1,15 @@
 """
 File: orchestrator/app/services/llm/providers/ollama_provider.py
-Description: Local Ollama Provider adapter implementing BaseLLMProvider.
-             Enables zero-cost, private, offline LLM inference via local Ollama models (e.g. llama3.2:3b).
+Description: Local and Cloud Ollama Provider adapter implementing BaseLLMProvider.
+             Enables zero-cost, private, offline LLM inference via local Ollama models (e.g. qwen3.5:4b, gemma4:e4b, llama3.2:3b),
+             or remote/cloud Ollama endpoints.
 """
 
 import os
+import re
 import time
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 import httpx
 
 from app.services.llm.base import BaseLLMProvider, LLMResponse, ModelTier
@@ -16,19 +18,40 @@ from app.core.config import settings
 logger = logging.getLogger("orchestrator.llm.ollama")
 
 
+def _clean_thinking_tokens(text: str) -> Tuple[str, Optional[str]]:
+    """
+    Strips internal thinking/reasoning blocks (e.g. Qwen 3.5 or DeepSeek thinking tags)
+    from LLM outputs to preserve clean pedagogical dialog for elementary students.
+    Returns (cleaned_text, extracted_thinking).
+    """
+    thinking = None
+    if "<think>" in text and "</think>" in text:
+        parts = text.split("</think>", 1)
+        thinking = parts[0].replace("<think>", "").strip()
+        text = parts[1].strip()
+    elif "Thinking Process:" in text:
+        match = re.search(r"Thinking Process:.*?\n\n(.*)", text, re.DOTALL)
+        if match:
+            thinking = text[:match.start(1)].strip()
+            text = match.group(1).strip()
+    return text, thinking
+
+
 class OllamaProvider(BaseLLMProvider):
     """
-    Adapter for local Ollama instances running on http://localhost:11434.
+    Adapter for local and remote Ollama instances.
+    Supports dynamic model switching, automatic model discovery via /api/tags,
+    and fallback resolution to installed models.
     """
     def __init__(
         self,
         base_url: Optional[str] = None,
-        default_model: str = "llama3.2:3b",
-        fast_model: str = "llama3.2:3b",
-        reasoning_model: str = "llama3.2:3b",
-        translation_model: str = "llama3.2:3b",
+        default_model: str = "qwen3.5:4b",
+        fast_model: str = "qwen3.5:4b",
+        reasoning_model: str = "gemma4:e4b",
+        translation_model: str = "qwen3.5:4b",
         temperature: Optional[float] = None,
-        timeout: float = 45.0
+        timeout: float = 60.0
     ):
         configured_temp = temperature if temperature is not None else getattr(settings, "OLLAMA_TEMPERATURE", 0.2)
         super().__init__(name="ollama", default_temperature=configured_temp)
@@ -44,6 +67,8 @@ class OllamaProvider(BaseLLMProvider):
         self.reasoning_model_name = getattr(settings, "OLLAMA_REASONING_MODEL", "") or reasoning_model or self.default_model
         self.translation_model_name = getattr(settings, "OLLAMA_TRANSLATION_MODEL", "") or translation_model or self.default_model
         self.timeout = timeout
+        self._cached_models: List[Dict[str, Any]] = []
+        self._last_models_check: float = 0.0
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -51,10 +76,22 @@ class OllamaProvider(BaseLLMProvider):
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
+    def set_base_url(self, base_url: str, api_key: Optional[str] = None) -> None:
+        """Dynamically updates the Ollama base URL (e.g. toggling local localhost:11434 vs remote)."""
+        self.base_url = base_url.rstrip("/")
+        if api_key is not None:
+            self.api_key = api_key.strip()
+        # Invalidate availability and model cache
+        if hasattr(self, "_is_avail_cached"):
+            delattr(self, "_is_avail_cached")
+        self._cached_models = []
+        self._last_models_check = 0.0
+        logger.info(f"Ollama base URL switched to [{self.base_url}]")
+
     def is_available(self) -> bool:
-        """Checks if local or remote Ollama daemon is reachable with 60-second caching."""
+        """Checks if Ollama daemon is reachable with 30-second caching."""
         now = time.time()
-        if hasattr(self, "_last_avail_check") and (now - self._last_avail_check < 60.0):
+        if hasattr(self, "_last_avail_check") and (now - self._last_avail_check < 30.0):
             return getattr(self, "_is_avail_cached", False)
         try:
             with httpx.Client(timeout=3.0) as client:
@@ -67,14 +104,90 @@ class OllamaProvider(BaseLLMProvider):
             self._last_avail_check = now
             return False
 
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        """
+        Queries Ollama /api/tags to list installed models with parameters, size, and capabilities.
+        """
+        now = time.time()
+        if self._cached_models and (now - self._last_models_check < 15.0):
+            return self._cached_models
+
+        try:
+            with httpx.Client(timeout=4.0) as client:
+                res = client.get(f"{self.base_url}/api/tags", headers=self._get_headers())
+                if res.status_code == 200:
+                    data = res.json()
+                    raw_models = data.get("models", [])
+                    parsed = []
+                    for m in raw_models:
+                        name = m.get("name") or m.get("model", "")
+                        details = m.get("details", {})
+                        size_mb = round(m.get("size", 0) / (1024 * 1024), 1)
+                        param_size = details.get("parameter_size", "")
+                        quant = details.get("quantization_level", "")
+                        parsed.append({
+                            "name": name,
+                            "provider": "ollama",
+                            "size_mb": size_mb,
+                            "parameter_size": param_size,
+                            "quantization_level": quant,
+                            "family": details.get("family", ""),
+                            "capabilities": m.get("capabilities", []),
+                            "description": f"Ollama {name} ({param_size}, {quant})"
+                        })
+                    self._cached_models = parsed
+                    self._last_models_check = now
+                    return parsed
+        except Exception as e:
+            logger.debug(f"Could not fetch Ollama models from {self.base_url}: {e}")
+
+        return self._cached_models
+
     def _resolve_model_name(self, tier: ModelTier) -> str:
         if tier == ModelTier.FAST:
-            return self.fast_model_name
+            candidate = self.fast_model_name
         elif tier == ModelTier.REASONING:
-            return self.reasoning_model_name
+            candidate = self.reasoning_model_name
         elif tier == ModelTier.TRANSLATION:
-            return self.translation_model_name
-        return self.default_model
+            candidate = self.translation_model_name
+        else:
+            candidate = self.default_model
+
+        # If candidate is the default unconfigured placeholder ('llama3.2:3b'), auto-select first installed model
+        try:
+            if candidate in ("llama3.2:3b", ""):
+                installed = self.list_available_models()
+                if installed:
+                    installed_names = [m["name"] for m in installed]
+                    if candidate not in installed_names:
+                        logger.info(
+                            f"Ollama default model '{candidate}' not found in installed models {installed_names}. "
+                            f"Auto-falling back to '{installed_names[0]}'."
+                        )
+                        return installed_names[0]
+        except Exception as e:
+            logger.debug(f"Model resolution auto-fallback check failed: {e}")
+
+        return candidate
+
+    def get_active_model(self, tier: ModelTier = ModelTier.DEFAULT) -> str:
+        """Returns the active model resolved for the given tier."""
+        return self._resolve_model_name(tier)
+
+    def set_active_model(self, model_name: str, tier: Optional[ModelTier] = None) -> None:
+        """Dynamically updates the active model for a specific tier or globally."""
+        if tier == ModelTier.FAST:
+            self.fast_model_name = model_name
+        elif tier == ModelTier.REASONING:
+            self.reasoning_model_name = model_name
+        elif tier == ModelTier.TRANSLATION:
+            self.translation_model_name = model_name
+        else:
+            self.default_model = model_name
+            self.fast_model_name = model_name
+            self.reasoning_model_name = model_name
+            self.translation_model_name = model_name
+        logger.info(f"Ollama active model updated: tier={tier} -> {model_name}")
 
     def _build_messages(self, prompt: str, system_instruction: Optional[str]) -> list:
         messages = []
@@ -117,19 +230,29 @@ class OllamaProvider(BaseLLMProvider):
                 data = response.json()
 
             latency_ms = (time.time() - start_time) * 1000.0
-            generated_text = data.get("message", {}).get("content", "")
+            raw_text = data.get("message", {}).get("content", "")
+            thinking_field = data.get("message", {}).get("thinking", "")
+            clean_text, thinking = _clean_thinking_tokens(raw_text)
+            if not clean_text and thinking_field:
+                clean_text = thinking_field.strip()
+                thinking = thinking_field
+
             prompt_tokens = data.get("prompt_eval_count", 0)
             completion_tokens = data.get("eval_count", 0)
 
+            raw_meta = {"temperature": eff_temp, **data}
+            if thinking:
+                raw_meta["thinking"] = thinking
+
             return LLMResponse(
-                text=generated_text,
+                text=clean_text,
                 provider="ollama",
                 model_name=model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 latency_ms=round(latency_ms, 2),
-                raw_metadata={"temperature": eff_temp, **data}
+                raw_metadata=raw_meta
             )
         except Exception as e:
             logger.error(f"Ollama text generation failed on {model}: {e}")
@@ -169,20 +292,47 @@ class OllamaProvider(BaseLLMProvider):
                 data = response.json()
 
             latency_ms = (time.time() - start_time) * 1000.0
-            generated_text = data.get("message", {}).get("content", "")
+            raw_text = data.get("message", {}).get("content", "")
+            thinking_field = data.get("message", {}).get("thinking", "")
+            clean_text, thinking = _clean_thinking_tokens(raw_text)
+            if not clean_text and thinking_field:
+                clean_text = thinking_field.strip()
+                thinking = thinking_field
+
             prompt_tokens = data.get("prompt_eval_count", 0)
             completion_tokens = data.get("eval_count", 0)
 
+            raw_meta = {"temperature": eff_temp, **data}
+            if thinking:
+                raw_meta["thinking"] = thinking
+
             return LLMResponse(
-                text=generated_text,
+                text=clean_text,
                 provider="ollama",
                 model_name=model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 latency_ms=round(latency_ms, 2),
-                raw_metadata=data
+                raw_metadata=raw_meta
             )
         except Exception as e:
             logger.error(f"Ollama async text generation failed on {model}: {e}")
             raise RuntimeError(f"Ollama async generation error: {e}") from e
+
+    def get_info(self) -> Dict[str, Any]:
+        """Returns runtime diagnostic information about Ollama provider."""
+        return {
+            "name": self.name,
+            "available": self.is_available(),
+            "base_url": self.base_url,
+            "default_temperature": self.default_temperature,
+            "active_model": self.get_active_model(),
+            "models_by_tier": {
+                "FAST": self.get_active_model(ModelTier.FAST),
+                "REASONING": self.get_active_model(ModelTier.REASONING),
+                "TRANSLATION": self.get_active_model(ModelTier.TRANSLATION),
+                "DEFAULT": self.get_active_model(ModelTier.DEFAULT),
+            },
+            "installed_models": self.list_available_models(),
+        }

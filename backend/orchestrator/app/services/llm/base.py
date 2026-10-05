@@ -85,3 +85,35 @@ class BaseLLMProvider(ABC):
     def is_available(self) -> bool:
         """Returns True if provider credentials/client are configured and operational."""
         pass
+
+    def get_active_model(self, tier: ModelTier = ModelTier.DEFAULT) -> str:
+        """
+        Returns the active model name configured for this provider and tier.
+        Defaults to provider name or default_model attribute if present.
+        """
+        return getattr(self, "default_model", self.name)
+
+    def set_active_model(self, model_name: str, tier: Optional[ModelTier] = None) -> None:
+        """
+        Dynamically updates the active model name for this provider.
+        Subclasses override to support tier-specific model assignment.
+        """
+        if hasattr(self, "default_model"):
+            self.default_model = model_name
+
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        """
+        Returns a catalog or list of available models for this provider.
+        """
+        return [{"name": self.get_active_model(), "provider": self.name}]
+
+    def get_info(self) -> Dict[str, Any]:
+        """
+        Returns runtime diagnostic information about this provider adapter.
+        """
+        return {
+            "name": self.name,
+            "available": self.is_available(),
+            "default_temperature": self.default_temperature,
+            "active_model": self.get_active_model(),
+        }

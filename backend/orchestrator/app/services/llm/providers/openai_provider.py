@@ -7,7 +7,7 @@ Description: Provider adapter for OpenAI API and OpenAI-compatible endpoints
 import os
 import time
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import httpx
 
 from app.services.llm.base import BaseLLMProvider, LLMResponse, ModelTier
@@ -163,3 +163,25 @@ class OpenAIProvider(BaseLLMProvider):
             latency_ms=round(latency_ms, 2),
             raw_metadata={"tier": model_tier.value}
         )
+
+    def get_active_model(self, tier: ModelTier = ModelTier.DEFAULT) -> str:
+        return self._resolve_model_name(tier)
+
+    def set_active_model(self, model_name: str, tier: Optional[ModelTier] = None) -> None:
+        if tier == ModelTier.FAST:
+            self.fast_model_name = model_name
+        elif tier == ModelTier.REASONING:
+            self.reasoning_model_name = model_name
+        elif tier == ModelTier.TRANSLATION:
+            self.translation_model_name = model_name
+        else:
+            self.fast_model_name = model_name
+            self.reasoning_model_name = model_name
+            self.translation_model_name = model_name
+
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        return [
+            {"name": "gpt-4o-mini", "provider": "openai", "tier": "fast", "description": "High-efficiency, low latency reasoning"},
+            {"name": "gpt-4o", "provider": "openai", "tier": "reasoning", "description": "Flagship multimodal intelligence"},
+            {"name": "gpt-3.5-turbo", "provider": "openai", "tier": "legacy", "description": "Standard fast text model"},
+        ]

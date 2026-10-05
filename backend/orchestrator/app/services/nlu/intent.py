@@ -481,7 +481,9 @@ async def classify_intent(
         rolling_summary=rolling_summary,
         current_step=current_step,
     )
-    prompt = prompt_controller.get_intent_prompt(query=query, chat_history=formatted_history)
+    from app.services.guardrails.pii_scrubber import sanitize_for_prompt
+    safe_query = sanitize_for_prompt(query)
+    prompt = prompt_controller.get_intent_prompt(query=safe_query, chat_history=formatted_history)
 
     try:
         from google import genai

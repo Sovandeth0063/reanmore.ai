@@ -1,0 +1,250 @@
+{"id": "grader_khnum_001", "student_input": "ខ្ញុំគិតថាគឺ ១៥", "expected_target": "15", "expected_numeric_val": 15.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_002", "student_input": "ខ្ញុំគិតថាគឺ ២៤", "expected_target": "24", "expected_numeric_val": 24.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_003", "student_input": "ខ្ញុំគិតថាគឺ ១០០", "expected_target": "100", "expected_numeric_val": 100.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_004", "student_input": "ខ្ញុំគិតថាគឺ ០", "expected_target": "0", "expected_numeric_val": 0.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_005", "student_input": "ខ្ញុំគិតថាគឺ ៧", "expected_target": "7", "expected_numeric_val": 7.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_006", "student_input": "ខ្ញុំគិតថាគឺ ៩", "expected_target": "9", "expected_numeric_val": 9.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_007", "student_input": "ខ្ញុំគិតថាគឺ ៣៥", "expected_target": "35", "expected_numeric_val": 35.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_008", "student_input": "ខ្ញុំគិតថាគឺ ៤៨", "expected_target": "48", "expected_numeric_val": 48.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_009", "student_input": "ខ្ញុំគិតថាគឺ ៥០", "expected_target": "50", "expected_numeric_val": 50.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_010", "student_input": "ខ្ញុំគិតថាគឺ ៦៣", "expected_target": "63", "expected_numeric_val": 63.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_011", "student_input": "ខ្ញុំគិតថាគឺ ៧២", "expected_target": "72", "expected_numeric_val": 72.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_012", "student_input": "ខ្ញុំគិតថាគឺ ៨១", "expected_target": "81", "expected_numeric_val": 81.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_013", "student_input": "ខ្ញុំគិតថាគឺ ៩០", "expected_target": "90", "expected_numeric_val": 90.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_014", "student_input": "ខ្ញុំគិតថាគឺ ៩៩", "expected_target": "99", "expected_numeric_val": 99.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_015", "student_input": "ខ្ញុំគិតថាគឺ ១២៥", "expected_target": "125", "expected_numeric_val": 125.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_016", "student_input": "ខ្ញុំគិតថាគឺ ២៥០", "expected_target": "250", "expected_numeric_val": 250.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_017", "student_input": "ខ្ញុំគិតថាគឺ ៥០០", "expected_target": "500", "expected_numeric_val": 500.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_018", "student_input": "ខ្ញុំគិតថាគឺ ៧៥០", "expected_target": "750", "expected_numeric_val": 750.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_019", "student_input": "ខ្ញុំគិតថាគឺ ១០០០", "expected_target": "1000", "expected_numeric_val": 1000.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_020", "student_input": "ខ្ញុំគិតថាគឺ ២០២៤", "expected_target": "2024", "expected_numeric_val": 2024.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_021", "student_input": "ខ្ញុំគិតថាគឺ ៣", "expected_target": "3", "expected_numeric_val": 3.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_022", "student_input": "ខ្ញុំគិតថាគឺ ១២", "expected_target": "12", "expected_numeric_val": 12.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_023", "student_input": "ខ្ញុំគិតថាគឺ ១៤", "expected_target": "14", "expected_numeric_val": 14.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_024", "student_input": "ខ្ញុំគិតថាគឺ ១៦", "expected_target": "16", "expected_numeric_val": 16.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_025", "student_input": "ខ្ញុំគិតថាគឺ ១៨", "expected_target": "18", "expected_numeric_val": 18.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_026", "student_input": "ខ្ញុំគិតថាគឺ ២០", "expected_target": "20", "expected_numeric_val": 20.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_027", "student_input": "ខ្ញុំគិតថាគឺ ២២", "expected_target": "22", "expected_numeric_val": 22.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_028", "student_input": "ខ្ញុំគិតថាគឺ ២៥", "expected_target": "25", "expected_numeric_val": 25.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_029", "student_input": "ខ្ញុំគិតថាគឺ ៣០", "expected_target": "30", "expected_numeric_val": 30.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_030", "student_input": "ខ្ញុំគិតថាគឺ ៣២", "expected_target": "32", "expected_numeric_val": 32.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_031", "student_input": "ខ្ញុំគិតថាគឺ ៣៦", "expected_target": "36", "expected_numeric_val": 36.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_032", "student_input": "ខ្ញុំគិតថាគឺ ៤០", "expected_target": "40", "expected_numeric_val": 40.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_033", "student_input": "ខ្ញុំគិតថាគឺ ៤៥", "expected_target": "45", "expected_numeric_val": 45.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_034", "student_input": "ខ្ញុំគិតថាគឺ ៥៤", "expected_target": "54", "expected_numeric_val": 54.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_035", "student_input": "ខ្ញុំគិតថាគឺ ៥៥", "expected_target": "55", "expected_numeric_val": 55.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_036", "student_input": "ខ្ញុំគិតថាគឺ ៦០", "expected_target": "60", "expected_numeric_val": 60.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_037", "student_input": "ខ្ញុំគិតថាគឺ ៦៤", "expected_target": "64", "expected_numeric_val": 64.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_038", "student_input": "ខ្ញុំគិតថាគឺ ៧០", "expected_target": "70", "expected_numeric_val": 70.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_039", "student_input": "ខ្ញុំគិតថាគឺ ៧៥", "expected_target": "75", "expected_numeric_val": 75.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_040", "student_input": "ខ្ញុំគិតថាគឺ ៨០", "expected_target": "80", "expected_numeric_val": 80.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_041", "student_input": "ខ្ញុំគិតថាគឺ ៨៥", "expected_target": "85", "expected_numeric_val": 85.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_042", "student_input": "ខ្ញុំគិតថាគឺ ៨៨", "expected_target": "88", "expected_numeric_val": 88.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_043", "student_input": "ខ្ញុំគិតថាគឺ ៩៥", "expected_target": "95", "expected_numeric_val": 95.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_044", "student_input": "ខ្ញុំគិតថាគឺ ១០៥", "expected_target": "105", "expected_numeric_val": 105.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_045", "student_input": "ខ្ញុំគិតថាគឺ ១៥០", "expected_target": "150", "expected_numeric_val": 150.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_046", "student_input": "ខ្ញុំគិតថាគឺ ៣០០", "expected_target": "300", "expected_numeric_val": 300.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_047", "student_input": "ខ្ញុំគិតថាគឺ ៤០០", "expected_target": "400", "expected_numeric_val": 400.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_048", "student_input": "ខ្ញុំគិតថាគឺ ៦០០", "expected_target": "600", "expected_numeric_val": 600.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_049", "student_input": "ខ្ញុំគិតថាគឺ ៨០០", "expected_target": "800", "expected_numeric_val": 800.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khnum_050", "student_input": "ខ្ញុំគិតថាគឺ ៩០០", "expected_target": "900", "expected_numeric_val": 900.0, "type": "integer", "should_be_correct": true}
+{"id": "grader_khword_001", "student_input": "សូន្យ", "expected_target": "0", "expected_numeric_val": 0.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_002", "student_input": "មួយ", "expected_target": "1", "expected_numeric_val": 1.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_003", "student_input": "ពីរ", "expected_target": "2", "expected_numeric_val": 2.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_004", "student_input": "បី", "expected_target": "3", "expected_numeric_val": 3.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_005", "student_input": "បួន", "expected_target": "4", "expected_numeric_val": 4.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_006", "student_input": "ប្រាំ", "expected_target": "5", "expected_numeric_val": 5.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_007", "student_input": "ប្រាំមួយ", "expected_target": "6", "expected_numeric_val": 6.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_008", "student_input": "ប្រាំពីរ", "expected_target": "7", "expected_numeric_val": 7.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_009", "student_input": "ប្រាំបី", "expected_target": "8", "expected_numeric_val": 8.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_010", "student_input": "ប្រាំបួន", "expected_target": "9", "expected_numeric_val": 9.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_011", "student_input": "ដប់", "expected_target": "10", "expected_numeric_val": 10.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_012", "student_input": "ដប់មួយ", "expected_target": "11", "expected_numeric_val": 11.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_013", "student_input": "ដប់ពីរ", "expected_target": "12", "expected_numeric_val": 12.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_014", "student_input": "ដប់បី", "expected_target": "13", "expected_numeric_val": 13.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_015", "student_input": "ដប់បួន", "expected_target": "14", "expected_numeric_val": 14.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_016", "student_input": "ដប់ប្រាំ", "expected_target": "15", "expected_numeric_val": 15.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_017", "student_input": "ដប់ប្រាំមួយ", "expected_target": "16", "expected_numeric_val": 16.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_018", "student_input": "ដប់ប្រាំពីរ", "expected_target": "17", "expected_numeric_val": 17.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_019", "student_input": "ដប់ប្រាំបី", "expected_target": "18", "expected_numeric_val": 18.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_020", "student_input": "ដប់ប្រាំបួន", "expected_target": "19", "expected_numeric_val": 19.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_021", "student_input": "ម្ភៃ", "expected_target": "20", "expected_numeric_val": 20.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_022", "student_input": "ម្ភៃមួយ", "expected_target": "21", "expected_numeric_val": 21.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_023", "student_input": "ម្ភៃពីរ", "expected_target": "22", "expected_numeric_val": 22.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_024", "student_input": "ម្ភៃប្រាំ", "expected_target": "25", "expected_numeric_val": 25.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_025", "student_input": "សាមសិប", "expected_target": "30", "expected_numeric_val": 30.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_026", "student_input": "សាមសិបប្រាំ", "expected_target": "35", "expected_numeric_val": 35.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_027", "student_input": "សែសិប", "expected_target": "40", "expected_numeric_val": 40.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_028", "student_input": "សែសិបប្រាំ", "expected_target": "45", "expected_numeric_val": 45.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_029", "student_input": "ហាសិប", "expected_target": "50", "expected_numeric_val": 50.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_030", "student_input": "ហាសិបប្រាំ", "expected_target": "55", "expected_numeric_val": 55.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_031", "student_input": "ហុកសិប", "expected_target": "60", "expected_numeric_val": 60.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_032", "student_input": "ចិតសិប", "expected_target": "70", "expected_numeric_val": 70.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_033", "student_input": "ប៉ែតសិប", "expected_target": "80", "expected_numeric_val": 80.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_034", "student_input": "កៅសិប", "expected_target": "90", "expected_numeric_val": 90.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_035", "student_input": "មួយរយ", "expected_target": "100", "expected_numeric_val": 100.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_036", "student_input": "ពីររយ", "expected_target": "200", "expected_numeric_val": 200.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_037", "student_input": "បីរយ", "expected_target": "300", "expected_numeric_val": 300.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_038", "student_input": "បួនរយ", "expected_target": "400", "expected_numeric_val": 400.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_039", "student_input": "ប្រាំរយ", "expected_target": "500", "expected_numeric_val": 500.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_040", "student_input": "មួយពាន់", "expected_target": "1000", "expected_numeric_val": 1000.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_041", "student_input": "កន្លះ", "expected_target": "0.5", "expected_numeric_val": 0.5, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_042", "student_input": "មួយកន្លះ", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_043", "student_input": "ពីរកន្លះ", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_044", "student_input": "បីកន្លះ", "expected_target": "3.5", "expected_numeric_val": 3.5, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_045", "student_input": "ដប់កន្លះ", "expected_target": "10.5", "expected_numeric_val": 10.5, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_046", "student_input": "ដប់ប្រាំ ផ្លែប៉ោម", "expected_target": "15", "expected_numeric_val": 15.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_047", "student_input": "ម្ភៃ ម៉ែត្រ", "expected_target": "20", "expected_numeric_val": 20.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_048", "student_input": "សាមសិប គីឡូ", "expected_target": "30", "expected_numeric_val": 30.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_049", "student_input": "ដប់ពីរ នាក់", "expected_target": "12", "expected_numeric_val": 12.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_khword_050", "student_input": "ប្រាំមួយ គ្រាប់", "expected_target": "6", "expected_numeric_val": 6.0, "type": "number_word", "should_be_correct": true}
+{"id": "grader_frac_001", "student_input": "answer is 1/2", "expected_target": "1/2", "expected_numeric_val": 0.5, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_002", "student_input": "answer is 2/4", "expected_target": "2/4", "expected_numeric_val": 0.5, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_003", "student_input": "answer is 3/4", "expected_target": "3/4", "expected_numeric_val": 0.75, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_004", "student_input": "answer is 6/8", "expected_target": "6/8", "expected_numeric_val": 0.75, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_005", "student_input": "answer is 1/4", "expected_target": "1/4", "expected_numeric_val": 0.25, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_006", "student_input": "answer is 2/8", "expected_target": "2/8", "expected_numeric_val": 0.25, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_007", "student_input": "answer is 1/3", "expected_target": "1/3", "expected_numeric_val": 0.3333333333333333, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_008", "student_input": "answer is 2/6", "expected_target": "2/6", "expected_numeric_val": 0.3333333333333333, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_009", "student_input": "answer is 2/3", "expected_target": "2/3", "expected_numeric_val": 0.6666666666666666, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_010", "student_input": "answer is 4/6", "expected_target": "4/6", "expected_numeric_val": 0.6666666666666666, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_011", "student_input": "answer is 3/5", "expected_target": "3/5", "expected_numeric_val": 0.6, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_012", "student_input": "answer is 4/5", "expected_target": "4/5", "expected_numeric_val": 0.8, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_013", "student_input": "answer is 1/5", "expected_target": "1/5", "expected_numeric_val": 0.2, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_014", "student_input": "answer is 5/10", "expected_target": "5/10", "expected_numeric_val": 0.5, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_015", "student_input": "answer is 7/10", "expected_target": "7/10", "expected_numeric_val": 0.7, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_016", "student_input": "answer is 0.5", "expected_target": "0.5", "expected_numeric_val": 0.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_017", "student_input": "answer is 0.25", "expected_target": "0.25", "expected_numeric_val": 0.25, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_018", "student_input": "answer is 0.75", "expected_target": "0.75", "expected_numeric_val": 0.75, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_019", "student_input": "answer is 1.5", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_020", "student_input": "answer is 2.5", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_021", "student_input": "answer is 0.1", "expected_target": "0.1", "expected_numeric_val": 0.1, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_022", "student_input": "answer is 0.2", "expected_target": "0.2", "expected_numeric_val": 0.2, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_023", "student_input": "answer is 0.8", "expected_target": "0.8", "expected_numeric_val": 0.8, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_024", "student_input": "answer is 1.25", "expected_target": "1.25", "expected_numeric_val": 1.25, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_025", "student_input": "answer is 3.75", "expected_target": "3.75", "expected_numeric_val": 3.75, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_026", "student_input": "answer is 0.05", "expected_target": "0.05", "expected_numeric_val": 0.05, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_027", "student_input": "answer is 10.5", "expected_target": "10.5", "expected_numeric_val": 10.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_028", "student_input": "answer is 20.25", "expected_target": "20.25", "expected_numeric_val": 20.25, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_029", "student_input": "answer is 1/10", "expected_target": "1/10", "expected_numeric_val": 0.1, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_030", "student_input": "answer is 9/10", "expected_target": "9/10", "expected_numeric_val": 0.9, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_031", "student_input": "answer is ១/២", "expected_target": "១/២", "expected_numeric_val": 0.5, "type": "khmer_fraction", "should_be_correct": true}
+{"id": "grader_frac_032", "student_input": "answer is ៣/៤", "expected_target": "៣/៤", "expected_numeric_val": 0.75, "type": "khmer_fraction", "should_be_correct": true}
+{"id": "grader_frac_033", "student_input": "answer is ១/៤", "expected_target": "១/៤", "expected_numeric_val": 0.25, "type": "khmer_fraction", "should_be_correct": true}
+{"id": "grader_frac_034", "student_input": "answer is ២/៥", "expected_target": "២/៥", "expected_numeric_val": 0.4, "type": "khmer_fraction", "should_be_correct": true}
+{"id": "grader_frac_035", "student_input": "answer is ៤/៥", "expected_target": "៤/៥", "expected_numeric_val": 0.8, "type": "khmer_fraction", "should_be_correct": true}
+{"id": "grader_frac_036", "student_input": "answer is ០.៥", "expected_target": "០.៥", "expected_numeric_val": 0.5, "type": "khmer_decimal", "should_be_correct": true}
+{"id": "grader_frac_037", "student_input": "answer is ១.៥", "expected_target": "១.៥", "expected_numeric_val": 1.5, "type": "khmer_decimal", "should_be_correct": true}
+{"id": "grader_frac_038", "student_input": "answer is ២.៥", "expected_target": "២.៥", "expected_numeric_val": 2.5, "type": "khmer_decimal", "should_be_correct": true}
+{"id": "grader_frac_039", "student_input": "answer is ០.២៥", "expected_target": "០.២៥", "expected_numeric_val": 0.25, "type": "khmer_decimal", "should_be_correct": true}
+{"id": "grader_frac_040", "student_input": "answer is ០.៧៥", "expected_target": "០.៧៥", "expected_numeric_val": 0.75, "type": "khmer_decimal", "should_be_correct": true}
+{"id": "grader_frac_041", "student_input": "answer is 1/8", "expected_target": "1/8", "expected_numeric_val": 0.125, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_042", "student_input": "answer is 3/8", "expected_target": "3/8", "expected_numeric_val": 0.375, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_043", "student_input": "answer is 5/8", "expected_target": "5/8", "expected_numeric_val": 0.625, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_044", "student_input": "answer is 7/8", "expected_target": "7/8", "expected_numeric_val": 0.875, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_045", "student_input": "answer is 4/10", "expected_target": "4/10", "expected_numeric_val": 0.4, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_046", "student_input": "answer is 6/10", "expected_target": "6/10", "expected_numeric_val": 0.6, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_047", "student_input": "answer is 8/10", "expected_target": "8/10", "expected_numeric_val": 0.8, "type": "fraction", "should_be_correct": true}
+{"id": "grader_frac_048", "student_input": "answer is 2.2", "expected_target": "2.2", "expected_numeric_val": 2.2, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_049", "student_input": "answer is 4.5", "expected_target": "4.5", "expected_numeric_val": 4.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_frac_050", "student_input": "answer is 100.5", "expected_target": "100.5", "expected_numeric_val": 100.5, "type": "decimal", "should_be_correct": true}
+{"id": "grader_comma_001", "student_input": "1,000", "expected_target": "1000", "expected_numeric_val": 1000.0, "type": "thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_002", "student_input": "2,500", "expected_target": "2500", "expected_numeric_val": 2500.0, "type": "thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_003", "student_input": "10,000", "expected_target": "10000", "expected_numeric_val": 10000.0, "type": "thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_004", "student_input": "50,000", "expected_target": "50000", "expected_numeric_val": 50000.0, "type": "thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_005", "student_input": "100,000", "expected_target": "100000", "expected_numeric_val": 100000.0, "type": "thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_006", "student_input": "១,០០០", "expected_target": "1000", "expected_numeric_val": 1000.0, "type": "khmer_thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_007", "student_input": "៥,០០០", "expected_target": "5000", "expected_numeric_val": 5000.0, "type": "khmer_thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_008", "student_input": "១០,០០០", "expected_target": "10000", "expected_numeric_val": 10000.0, "type": "khmer_thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_009", "student_input": "២៥,០០០", "expected_target": "25000", "expected_numeric_val": 25000.0, "type": "khmer_thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_010", "student_input": "៥០,០០០", "expected_target": "50000", "expected_numeric_val": 50000.0, "type": "khmer_thousands_comma", "should_be_correct": true}
+{"id": "grader_comma_011", "student_input": "1,5", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_012", "student_input": "2,5", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_013", "student_input": "0,5", "expected_target": "0.5", "expected_numeric_val": 0.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_014", "student_input": "0,25", "expected_target": "0.25", "expected_numeric_val": 0.25, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_015", "student_input": "0,75", "expected_target": "0.75", "expected_numeric_val": 0.75, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_016", "student_input": "3,4", "expected_target": "3.4", "expected_numeric_val": 3.4, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_017", "student_input": "4,8", "expected_target": "4.8", "expected_numeric_val": 4.8, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_018", "student_input": "10,5", "expected_target": "10.5", "expected_numeric_val": 10.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_019", "student_input": "12,75", "expected_target": "12.75", "expected_numeric_val": 12.75, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_020", "student_input": "99,9", "expected_target": "99.9", "expected_numeric_val": 99.9, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_021", "student_input": "១,៥", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_022", "student_input": "២,៥", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_023", "student_input": "០,៥", "expected_target": "0.5", "expected_numeric_val": 0.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_024", "student_input": "០,២៥", "expected_target": "0.25", "expected_numeric_val": 0.25, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_025", "student_input": "០,៧៥", "expected_target": "0.75", "expected_numeric_val": 0.75, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_026", "student_input": "៣,៥", "expected_target": "3.5", "expected_numeric_val": 3.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_027", "student_input": "៥,៥", "expected_target": "5.5", "expected_numeric_val": 5.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_028", "student_input": "១០,៥", "expected_target": "10.5", "expected_numeric_val": 10.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_029", "student_input": "២០,៥", "expected_target": "20.5", "expected_numeric_val": 20.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_030", "student_input": "១០០,៥", "expected_target": "100.5", "expected_numeric_val": 100.5, "type": "khmer_decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_031", "student_input": "1,500 m", "expected_target": "1500", "expected_numeric_val": 1500.0, "type": "thousands_with_unit", "should_be_correct": true}
+{"id": "grader_comma_032", "student_input": "2,000 kg", "expected_target": "2000", "expected_numeric_val": 2000.0, "type": "thousands_with_unit", "should_be_correct": true}
+{"id": "grader_comma_033", "student_input": "5,000 riels", "expected_target": "5000", "expected_numeric_val": 5000.0, "type": "thousands_with_unit", "should_be_correct": true}
+{"id": "grader_comma_034", "student_input": "1,5 cm", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "decimal_with_unit", "should_be_correct": true}
+{"id": "grader_comma_035", "student_input": "2,5 km", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "decimal_with_unit", "should_be_correct": true}
+{"id": "grader_comma_036", "student_input": "0,5 m", "expected_target": "0.5", "expected_numeric_val": 0.5, "type": "decimal_with_unit", "should_be_correct": true}
+{"id": "grader_comma_037", "student_input": "១,៥ ស.ម", "expected_target": "1.5", "expected_numeric_val": 1.5, "type": "khmer_decimal_unit", "should_be_correct": true}
+{"id": "grader_comma_038", "student_input": "២,៥ គីឡូ", "expected_target": "2.5", "expected_numeric_val": 2.5, "type": "khmer_decimal_unit", "should_be_correct": true}
+{"id": "grader_comma_039", "student_input": "១,០០០ រៀល", "expected_target": "1000", "expected_numeric_val": 1000.0, "type": "khmer_thousands_unit", "should_be_correct": true}
+{"id": "grader_comma_040", "student_input": "៥,០០០ រៀល", "expected_target": "5000", "expected_numeric_val": 5000.0, "type": "khmer_thousands_unit", "should_be_correct": true}
+{"id": "grader_comma_041", "student_input": "1,2", "expected_target": "1.2", "expected_numeric_val": 1.2, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_042", "student_input": "2,4", "expected_target": "2.4", "expected_numeric_val": 2.4, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_043", "student_input": "3,6", "expected_target": "3.6", "expected_numeric_val": 3.6, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_044", "student_input": "4,2", "expected_target": "4.2", "expected_numeric_val": 4.2, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_045", "student_input": "5,8", "expected_target": "5.8", "expected_numeric_val": 5.8, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_046", "student_input": "6,5", "expected_target": "6.5", "expected_numeric_val": 6.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_047", "student_input": "7,5", "expected_target": "7.5", "expected_numeric_val": 7.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_048", "student_input": "8,5", "expected_target": "8.5", "expected_numeric_val": 8.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_049", "student_input": "9,5", "expected_target": "9.5", "expected_numeric_val": 9.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_comma_050", "student_input": "15,5", "expected_target": "15.5", "expected_numeric_val": 15.5, "type": "decimal_comma", "should_be_correct": true}
+{"id": "grader_unitsci_001", "student_input": "15 cm", "expected_target": "15 cm", "expected_numeric_val": 15.0, "type": "unit_exact", "should_be_correct": true}
+{"id": "grader_unitsci_002", "student_input": "15cm", "expected_target": "15 cm", "expected_numeric_val": 15.0, "type": "unit_no_space", "should_be_correct": true}
+{"id": "grader_unitsci_003", "student_input": "១៥ សង់ទីម៉ែត្រ", "expected_target": "15 cm", "expected_numeric_val": 15.0, "type": "khmer_unit", "should_be_correct": true}
+{"id": "grader_unitsci_004", "student_input": "20 kg", "expected_target": "20 kg", "expected_numeric_val": 20.0, "type": "unit_exact", "should_be_correct": true}
+{"id": "grader_unitsci_005", "student_input": "២០ គីឡូក្រាម", "expected_target": "20 kg", "expected_numeric_val": 20.0, "type": "khmer_unit", "should_be_correct": true}
+{"id": "grader_unitsci_006", "student_input": "5 m", "expected_target": "5 m", "expected_numeric_val": 5.0, "type": "unit_exact", "should_be_correct": true}
+{"id": "grader_unitsci_007", "student_input": "៥ ម៉ែត្រ", "expected_target": "5 m", "expected_numeric_val": 5.0, "type": "khmer_unit", "should_be_correct": true}
+{"id": "grader_unitsci_008", "student_input": "100 riels", "expected_target": "100 riels", "expected_numeric_val": 100.0, "type": "unit_exact", "should_be_correct": true}
+{"id": "grader_unitsci_009", "student_input": "១០០ រៀល", "expected_target": "100 riels", "expected_numeric_val": 100.0, "type": "khmer_unit", "should_be_correct": true}
+{"id": "grader_unitsci_010", "student_input": "10 apples", "expected_target": "10 apples", "expected_numeric_val": 10.0, "type": "unit_exact", "should_be_correct": true}
+{"id": "grader_unitsci_011", "student_input": "១០ ផ្លែប៉ោម", "expected_target": "10 apples", "expected_numeric_val": 10.0, "type": "khmer_unit", "should_be_correct": true}
+{"id": "grader_unitsci_012", "student_input": "evaporation", "expected_target": "evaporation", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_013", "student_input": "រំហួត", "expected_target": "evaporation", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_014", "student_input": "photosynthesis", "expected_target": "photosynthesis", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_015", "student_input": "រស្មីសំយោគ", "expected_target": "photosynthesis", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_016", "student_input": "condensation", "expected_target": "condensation", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_017", "student_input": "កំណក", "expected_target": "condensation", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_018", "student_input": "vertebrates", "expected_target": "vertebrates", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_019", "student_input": "ឆ្អឹងកង", "expected_target": "vertebrates", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_020", "student_input": "producers", "expected_target": "producers", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_021", "student_input": "អ្នកផលិត", "expected_target": "producers", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_022", "student_input": "consumers", "expected_target": "consumers", "expected_numeric_val": null, "type": "science_exact", "should_be_correct": true}
+{"id": "grader_unitsci_023", "student_input": "អ្នកប្រើប្រាស់", "expected_target": "consumers", "expected_numeric_val": null, "type": "science_khmer", "should_be_correct": true}
+{"id": "grader_unitsci_024", "student_input": "liquid to gas", "expected_target": "evaporation", "expected_numeric_val": null, "type": "science_synonym", "should_be_correct": true}
+{"id": "grader_unitsci_025", "student_input": "ចំហាយទឹក", "expected_target": "evaporation", "expected_numeric_val": null, "type": "science_partial", "should_be_correct": true}
+{"id": "grader_unitsci_026", "student_input": "has backbone", "expected_target": "vertebrates", "expected_numeric_val": null, "type": "science_synonym", "should_be_correct": true}
+{"id": "grader_unitsci_027", "student_input": "សត្វមានឆ្អឹងខ្នង", "expected_target": "vertebrates", "expected_numeric_val": null, "type": "science_khmer_synonym", "should_be_correct": true}
+{"id": "grader_unitsci_028", "student_input": "makes own food", "expected_target": "producers", "expected_numeric_val": null, "type": "science_synonym", "should_be_correct": true}
+{"id": "grader_unitsci_029", "student_input": "sunlight and water", "expected_target": "photosynthesis", "expected_numeric_val": null, "type": "science_partial", "should_be_correct": true}
+{"id": "grader_unitsci_030", "student_input": "droplets on glass", "expected_target": "condensation", "expected_numeric_val": null, "type": "science_partial", "should_be_correct": true}
+{"id": "grader_unitsci_031", "student_input": "50%", "expected_target": "50%", "expected_numeric_val": 0.5, "type": "percent", "should_be_correct": true}
+{"id": "grader_unitsci_032", "student_input": "៥០%", "expected_target": "50%", "expected_numeric_val": 0.5, "type": "khmer_percent", "should_be_correct": true}
+{"id": "grader_unitsci_033", "student_input": "25%", "expected_target": "25%", "expected_numeric_val": 0.25, "type": "percent", "should_be_correct": true}
+{"id": "grader_unitsci_034", "student_input": "២៥%", "expected_target": "25%", "expected_numeric_val": 0.25, "type": "khmer_percent", "should_be_correct": true}
+{"id": "grader_unitsci_035", "student_input": "75%", "expected_target": "75%", "expected_numeric_val": 0.75, "type": "percent", "should_be_correct": true}
+{"id": "grader_unitsci_036", "student_input": "៧៥%", "expected_target": "75%", "expected_numeric_val": 0.75, "type": "khmer_percent", "should_be_correct": true}
+{"id": "grader_unitsci_037", "student_input": "100%", "expected_target": "100%", "expected_numeric_val": 1.0, "type": "percent", "should_be_correct": true}
+{"id": "grader_unitsci_038", "student_input": "១០០%", "expected_target": "100%", "expected_numeric_val": 1.0, "type": "khmer_percent", "should_be_correct": true}
+{"id": "grader_unitsci_039", "student_input": "10%", "expected_target": "10%", "expected_numeric_val": 0.1, "type": "percent", "should_be_correct": true}
+{"id": "grader_unitsci_040", "student_input": "១០%", "expected_target": "10%", "expected_numeric_val": 0.1, "type": "khmer_percent", "should_be_correct": true}
+{"id": "grader_unitsci_041", "student_input": "-5", "expected_target": "-5", "expected_numeric_val": -5.0, "type": "negative_number", "should_be_correct": true}
+{"id": "grader_unitsci_042", "student_input": "-10", "expected_target": "-10", "expected_numeric_val": -10.0, "type": "negative_number", "should_be_correct": true}
+{"id": "grader_unitsci_043", "student_input": "-15", "expected_target": "-15", "expected_numeric_val": -15.0, "type": "negative_number", "should_be_correct": true}
+{"id": "grader_unitsci_044", "student_input": "-20", "expected_target": "-20", "expected_numeric_val": -20.0, "type": "negative_number", "should_be_correct": true}
+{"id": "grader_unitsci_045", "student_input": "ដក ៥", "expected_target": "-5", "expected_numeric_val": -5.0, "type": "khmer_negative", "should_be_correct": true}
+{"id": "grader_unitsci_046", "student_input": "ដក ១០", "expected_target": "-10", "expected_numeric_val": -10.0, "type": "khmer_negative", "should_be_correct": true}
+{"id": "grader_unitsci_047", "student_input": "negative five", "expected_target": "-5", "expected_numeric_val": -5.0, "type": "en_negative_word", "should_be_correct": true}
+{"id": "grader_unitsci_048", "student_input": "negative ten", "expected_target": "-10", "expected_numeric_val": -10.0, "type": "en_negative_word", "should_be_correct": true}
+{"id": "grader_unitsci_049", "student_input": "12 hours", "expected_target": "12 hours", "expected_numeric_val": 12.0, "type": "time_unit", "should_be_correct": true}
+{"id": "grader_unitsci_050", "student_input": "១២ ម៉ោង", "expected_target": "12 hours", "expected_numeric_val": 12.0, "type": "khmer_time_unit", "should_be_correct": true}

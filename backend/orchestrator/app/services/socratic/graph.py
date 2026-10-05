@@ -2,7 +2,8 @@
 File: orchestrator/app/services/socratic/graph.py
 Description: LangGraph StateGraph orchestration pipeline for the Socratic elementary tutoring workflow.
              Handles intent routing, problem decomposition, step validation, 3-tier progressive hints,
-             and dual-payload (JSON widget + Markdown) response compilation.
+             dual-payload (JSON widget + Markdown) response compilation, intent classification,
+             and hint-level-3 exit via the reveal_and_continue node.
 """
 
 import logging
@@ -20,6 +21,18 @@ from app.services.socratic.prompts.controller import SocraticPromptController
 from app.services.guardrails.safety_filter import SafetyFilter
 from app.services.guardrails.educational_scope import EducationalScopeDeflector
 from app.services.nlu.schema import StudentIntent
+from app.services.socratic.intent_classifier import classify_intent_node
+from app.services.socratic.reveal_and_continue import (
+    reveal_and_continue_node,
+    compute_frustration_score,
+)
+from app.services.socratic.verify_steps import verify_steps_node
+from app.services.socratic.validate_answer import (
+    validate_student_answer,
+    VALIDATION_CORRECT,
+    VALIDATION_PARTIAL,
+    VALIDATION_INCORRECT,
+)
 
 logger = logging.getLogger("orchestrator.socratic.graph")
 
@@ -477,11 +490,17 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
     grade_level = state.get("grade_level", "grade_1_3")
     history = list(state.get("attempt_history", []))
 
-    # 1. Fast path: in-memory rule-based equivalence
-    is_correct = _is_answer_equivalent(attempt, expected)
+    # 1. Fast path: rich answer validation (equivalence, near-miss, unit check, science concepts)
+    val_res = validate_student_answer(
+        student_attempt=attempt,
+        expected_answer=expected,
+        subject=state.get("subject", "math"),
+    )
+    is_correct = val_res.is_correct
+    is_partial = val_res.is_partial
 
-    # 2. Downstream path: query microservice validator or LLM evaluator if heuristic is not yet matched
-    if not is_correct and expected and attempt:
+    # 2. Downstream path: query microservice validator or LLM evaluator if not matched
+    if not is_correct and not is_partial and expected and attempt:
         try:
             from app.services.llm import llm_service, ModelTier
             sys_inst, eval_prompt = controller.get_answer_evaluation_prompt(
@@ -508,7 +527,7 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
 
     if is_correct:
         # Praise feedback
-        feedback = f"🌟 Spot on! That's correct! ({attempt})"
+        feedback = val_res.feedback_eng if val_res.feedback_eng else f"🌟 Spot on! That's correct! ({attempt})"
         active_step.student_answer = attempt
         has_more = widget.advance_step(recorded_answer=attempt)
 
@@ -527,6 +546,7 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
                 "is_problem_complete": True,
                 "is_problem_solved": True,
                 "feedback_message": "🎉 Amazing work! You have completed all the steps for this problem! ⭐",
+                "validation_outcome": VALIDATION_CORRECT,
                 "active_hint": None,
                 "current_hint_tier": 0,
                 "attempt_history": history
@@ -539,9 +559,33 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
             "is_problem_complete": False,
             "is_problem_solved": False,
             "feedback_message": f"{feedback} Ready for Step {next_step.step_number if next_step else 2}!",
+            "validation_outcome": VALIDATION_CORRECT,
             "active_hint": None,
             "current_hint_tier": 0,
             "attempt_history": history
+        }
+    elif is_partial:
+        # Near-miss or unit mismatch: give targeted feedback WITHOUT escalating hint tier
+        feedback = val_res.feedback_eng
+        history.append({
+            "step_number": active_step.step_number,
+            "student_attempt": attempt,
+            "is_correct": False,
+            "is_partial": True,
+            "feedback": feedback,
+            "hints_used": active_step.current_hint_level
+        })
+        return {
+            "step_widget": widget.model_dump(),
+            "current_step_index": widget.current_step_index,
+            "is_problem_complete": False,
+            "is_problem_solved": False,
+            "feedback_message": feedback,
+            "validation_outcome": VALIDATION_PARTIAL,
+            "active_hint": state.get("active_hint"),
+            "current_hint_tier": active_step.current_hint_level,
+            "attempt_history": history,
+            "frustration_score": state.get("frustration_score", 0.0),
         }
     else:
         # Incorrect attempt -> escalate hint
@@ -560,15 +604,24 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
             "hints_used": new_tier
         })
 
+        # Compute frustration score after recording attempt
+        frustration = compute_frustration_score(
+            attempt_history=history,
+            response_time_ms=state.get("response_time_ms"),
+            idle_seconds=state.get("idle_seconds"),
+        )
+
         return {
             "step_widget": widget.model_dump(),
             "current_step_index": widget.current_step_index,
             "is_problem_complete": False,
             "is_problem_solved": False,
             "feedback_message": feedback,
+            "validation_outcome": VALIDATION_INCORRECT,
             "active_hint": hint_text,
             "current_hint_tier": new_tier,
-            "attempt_history": history
+            "attempt_history": history,
+            "frustration_score": frustration,
         }
 
 
@@ -810,10 +863,42 @@ def route_by_intent(state: TutorState) -> str:
     elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "AMBIGUOUS", "CLARIFY", "REQUEST_CLARIFICATION"):
         return "clarify"
     elif intent in (StudentIntent.STEP_ANSWER_ATTEMPT.value, "STEP_ATTEMPT", "STEP_ANSWER_ATTEMPT"):
-        return "validate_attempt"
+        return "classify_intent"
     elif intent in (StudentIntent.INITIAL_QUESTION.value, "INITIAL_QUESTION", "INITIAL_SOLVE", "REQUEST_PRACTICE"):
         return "initial_problem"
     return "clarify"
+
+
+def route_after_classify_intent(state: TutorState) -> str:
+    """
+    After intent classification, route to the appropriate handler.
+    Deflected intents (safety, answer demand, off-topic, unclear) go straight to deflect.
+    Clarification goes to request_hint.
+    Answer attempts go to validate_attempt.
+    """
+    intent = state.get("detected_intent", StudentIntent.STEP_ANSWER_ATTEMPT.value)
+    if intent in ("GUARDRAIL_BLOCKED", "OFF_TOPIC_DEFLECTED", "UNCLEAR"):
+        return "deflect"
+    elif intent in ("REQUEST_HINT", StudentIntent.REQUEST_HINT.value):
+        return "request_hint"
+    return "validate_attempt"
+
+
+def route_after_validate(state: TutorState) -> str:
+    """
+    After validation, check if hint level 3 was reached on an incorrect answer.
+    If so, route to reveal_and_continue instead of compile_response.
+    Also route to reveal if frustration score >= 0.8 (take_a_break path).
+    """
+    hint_tier = state.get("current_hint_tier", 0)
+    is_complete = state.get("is_problem_complete", False) or state.get("is_problem_solved", False)
+    frustration = state.get("frustration_score", 0.0)
+
+    if is_complete:
+        return "compile_response"
+    if hint_tier >= 3 or frustration >= 0.8:
+        return "reveal_and_continue"
+    return "compile_response"
 
 
 # -------------------------------------------------------------------------
@@ -823,6 +908,11 @@ def route_by_intent(state: TutorState) -> str:
 def build_socratic_graph(checkpointer=None):
     """
     Constructs and compiles the Socratic Tutor StateGraph.
+
+    Node execution order for answer attempts:
+        process_nlu → guardrails → classify_intent → validate_attempt
+            → (hint tier < 3) → compile_response
+            → (hint tier >= 3 or frustration >= 0.8) → reveal_and_continue → compile_response
     """
     builder = StateGraph(TutorState)
 
@@ -832,7 +922,10 @@ def build_socratic_graph(checkpointer=None):
     builder.add_node("deflect", deflect_node)
     builder.add_node("chitchat", chitchat_node)
     builder.add_node("initial_problem", initial_problem_node)
+    builder.add_node("verify_steps", verify_steps_node)                # NEW: Sprint 2.1
+    builder.add_node("classify_intent", classify_intent_node)          # NEW: Sprint 1.4
     builder.add_node("validate_attempt", validate_attempt_node)
+    builder.add_node("reveal_and_continue", reveal_and_continue_node)   # NEW: Sprint 1.3
     builder.add_node("request_hint", request_hint_node)
     builder.add_node("navigate_step", navigate_step_node)
     builder.add_node("clarify", clarify_node)
@@ -842,6 +935,7 @@ def build_socratic_graph(checkpointer=None):
     builder.add_edge(START, "process_nlu")
     builder.add_edge("process_nlu", "guardrails")
 
+    # Main intent routing (from guardrails)
     builder.add_conditional_edges(
         "guardrails",
         route_by_intent,
@@ -849,17 +943,39 @@ def build_socratic_graph(checkpointer=None):
             "deflect": "deflect",
             "chitchat": "chitchat",
             "initial_problem": "initial_problem",
-            "validate_attempt": "validate_attempt",
+            "classify_intent": "classify_intent",   # answer attempts go here first
             "request_hint": "request_hint",
             "navigate_step": "navigate_step",
             "clarify": "clarify"
         }
     )
 
+    # Intent classifier → deflect / request_hint / validate_attempt
+    builder.add_conditional_edges(
+        "classify_intent",
+        route_after_classify_intent,
+        {
+            "deflect": "deflect",
+            "request_hint": "request_hint",
+            "validate_attempt": "validate_attempt",
+        }
+    )
+
+    # validate_attempt → reveal_and_continue (tier 3 exit) OR compile_response
+    builder.add_conditional_edges(
+        "validate_attempt",
+        route_after_validate,
+        {
+            "compile_response": "compile_response",
+            "reveal_and_continue": "reveal_and_continue",
+        }
+    )
+
     builder.add_edge("deflect", "compile_response")
     builder.add_edge("chitchat", "compile_response")
-    builder.add_edge("initial_problem", "compile_response")
-    builder.add_edge("validate_attempt", "compile_response")
+    builder.add_edge("initial_problem", "verify_steps")                 # NEW: Sprint 2.1 verify
+    builder.add_edge("verify_steps", "compile_response")                # NEW: Sprint 2.1 verify
+    builder.add_edge("reveal_and_continue", "compile_response")         # NEW
     builder.add_edge("request_hint", "compile_response")
     builder.add_edge("navigate_step", "compile_response")
     builder.add_edge("clarify", "compile_response")

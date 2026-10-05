@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from app.api.endpoints import router as api_router
 from app.api.health_routes import health_router
 from app.api.upload import upload_router
+from app.api.llm_routes import llm_router
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import init_db
@@ -83,11 +84,22 @@ async def lifespan(app: FastAPI):
         await registry.close_all()
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Science Chatbot - Orchestrator Gateway",
     description="Orchestrator Gateway with Socratic Tutoring, Microservice Monitoring, and Resilient Circuit Breaking.",
     version="2.0.0",
     lifespan=lifespan,
+)
+
+# Cross-Origin Resource Sharing (CORS) for Frontend SPA
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Request duration middleware
@@ -106,3 +118,4 @@ async def log_requests(request: Request, call_next):
 app.include_router(health_router)
 app.include_router(api_router, prefix="/api")
 app.include_router(upload_router, prefix="/api")
+app.include_router(llm_router, prefix="/api")

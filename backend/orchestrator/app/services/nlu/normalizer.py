@@ -377,7 +377,11 @@ class NormalizerEngine:
         if not api_key:
             return None
 
-        prompt = prompt_controller.get_normalizer_prompt(text=text, lang=lang)
+        # Hotfix 0.1: Sanitize untrusted input for prompt copy (PII scrub + tag encode + length cap)
+        from app.services.guardrails.pii_scrubber import sanitize_for_prompt
+        safe_prompt_text = sanitize_for_prompt(text)
+
+        prompt = prompt_controller.get_normalizer_prompt(text=safe_prompt_text, lang=lang)
 
         try:
             # We attempt to import and call google.genai or return None if not installed

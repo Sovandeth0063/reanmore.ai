@@ -12,8 +12,9 @@ import uuid
 import asyncio
 from collections import OrderedDict
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field
+from app.core.config import settings
 from app.services.llm import llm_service, ModelTier
 from app.core.logging import logger
 from app.infrastructure.database import (
@@ -72,6 +73,8 @@ class QueryResponse(BaseModel):
     is_deflected: bool = False
     # Pipeline trace for question projection observability
     pipeline_trace: Optional[Dict[str, Any]] = None
+    suggested_chips: Optional[List[str]] = None
+    degrade_to_tap_first: Optional[bool] = None
 
 
 class NavigateRequest(BaseModel):
@@ -150,26 +153,68 @@ async def translate_to_khmer(text: str) -> str:
         return text
 
 
+_TRANSLATE_CACHE: Dict[str, str] = {}
+
+
 @router.post("/translate", response_model=TranslateResponse)
 async def handle_translate(request: TranslateRequest):
     """
     Direct endpoint for translating arbitrary UI, problem, or step strings to Khmer or English.
+    Supports single text or batch texts with caching and prompt-controller LLM integration.
     """
     target = request.get_target_lang()
-    if target == "km":
-        if request.text:
-            translated = await translate_to_khmer(request.text)
-            return TranslateResponse(translated_text=translated, target_language="km", target_lang="km")
-        elif request.texts:
-            results = []
-            for t in request.texts:
-                results.append(await translate_to_khmer(t))
-            return TranslateResponse(translated_texts=results, target_language="km", target_lang="km")
+    source = request.source_lang or ("km" if target == "en" else "en")
+
+    async def _do_translate(text: str) -> str:
+        if not text or not text.strip():
+            return ""
+        cache_key = f"{target}:{text.strip()}"
+        if cache_key in _TRANSLATE_CACHE:
+            return _TRANSLATE_CACHE[cache_key]
+
+        sys_inst, prompt = prompt_controller.get_translation_prompt(
+            text=text.strip(),
+            target_lang=target,
+            source_lang=source
+        )
+        try:
+            response = await llm_service.generate_text_async(
+                prompt=prompt,
+                system_instruction=sys_inst,
+                temperature=0.1,
+                max_tokens=500,
+                model_tier=ModelTier.FAST
+            )
+            translated = response.text.strip()
+            if (
+                translated
+                and getattr(response, "provider", "") != "mock"
+                and "mock llm" not in translated.lower()
+                and translated != "Mock LLM generated response."
+            ):
+                _TRANSLATE_CACHE[cache_key] = translated
+                return translated
+        except Exception as e:
+            logger.warning(f"Translation LLM call failed: {e}")
+
+        # Fallback to translate_to_khmer if target is km, else return original text
+        if target == "km":
+            return await translate_to_khmer(text)
+        return text
+
+    if request.text:
+        translated = await _do_translate(request.text)
+        return TranslateResponse(translated_text=translated, target_language=target, target_lang=target, source_lang=source)
+    elif request.texts:
+        results = [await _do_translate(t) for t in request.texts]
+        return TranslateResponse(translated_texts=results, target_language=target, target_lang=target, source_lang=source)
+
     return TranslateResponse(
         translated_text=request.text,
         translated_texts=request.texts,
         target_language=target,
-        target_lang=target
+        target_lang=target,
+        source_lang=source
     )
 
 
@@ -223,6 +268,21 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
 
         ctx_statement = p_ctx.get("statementEng") or p_ctx.get("statementKhmer") or p_ctx.get("titleEng") or ""
         ctx_step_q = (active_step_dict or {}).get("questionEng") or (active_step_dict or {}).get("questionKhmer") or p_ctx.get("currentStepQuestion") or ""
+
+        # Detect if this is an English language / literacy exercise:
+        p_subj = str(p_ctx.get("subject", "")).lower()
+        p_title = str(p_ctx.get("titleEng", "")).lower()
+        is_english_exercise = (
+            p_subj == "english"
+            or (active_step_dict and str(active_step_dict.get("subject", "")).lower() == "english")
+            or bool(re.search(r'\b(?:english|vocabulary|spelling|grammar|phonics|reading)\b', f"{ctx_statement} {p_title}", re.I))
+        )
+        if is_english_exercise:
+            language = "en"
+
+        # If frontend sent active step or problem context, recognize active problem state
+        if not has_active_state and (active_step_dict or (ctx_statement and p_ctx.get("activeStepIndex", 0) > 0)):
+            has_active_state = True
 
         # 2. Pipeline Stage 1 & 2: Normalize
         normalized_query = normalize_query(raw_query)
@@ -330,7 +390,7 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 logger.warning(f"Contextual explanation generation failed: {e}")
 
         # Route according to classified intent
-        is_new_problem_intent = intent_res.intent in (IntentType.INITIAL_SOLVE, IntentType.REQUEST_PRACTICE)
+        is_new_problem_intent = (intent_res.intent in (IntentType.INITIAL_SOLVE, IntentType.REQUEST_PRACTICE)) and (not has_active_state or not active_step_dict)
         if not has_active_state or is_new_problem_intent:
             if intent_res.intent == IntentType.CHITCHAT:
                 state_input["detected_intent"] = "CHITCHAT"
@@ -345,9 +405,13 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 state_input["current_step_index"] = 0
                 state_input["step_widget"] = None
         else:
-            state_input["detected_intent"] = _map_intent(intent_res.intent).value
-            if intent_res.extracted_answer:
-                state_input["student_attempt"] = intent_res.extracted_answer
+            if intent_res.intent == IntentType.INITIAL_SOLVE and has_active_state:
+                state_input["detected_intent"] = StudentIntent.STEP_ANSWER_ATTEMPT.value
+                state_input["student_attempt"] = intent_res.extracted_answer or raw_query
+            else:
+                state_input["detected_intent"] = _map_intent(intent_res.intent).value
+                if intent_res.extracted_answer:
+                    state_input["student_attempt"] = intent_res.extracted_answer
 
         # 5. Invoke Socratic Graph asynchronously
         res = await socratic_graph.ainvoke(state_input, config=config)
@@ -516,7 +580,9 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
             formatted_markdown=solution_text,
             is_problem_complete=is_complete,
             is_deflected=is_deflected,
-            pipeline_trace=pipeline_trace.to_dict()
+            pipeline_trace=pipeline_trace.to_dict(),
+            suggested_chips=res.get("suggested_chips"),
+            degrade_to_tap_first=res.get("degrade_to_tap_first", False)
         )
 
     except Exception as e:
@@ -657,7 +723,15 @@ async def submit_step_answer(request: StepAnswerRequest):
         widget_dict = session.step_widget
 
     if not widget_dict or "steps" not in widget_dict or not widget_dict["steps"]:
-        raise HTTPException(status_code=400, detail="No active problem session found.")
+        logger.info(f"submit_step_answer: session {request.session_id} has no widget steps; returning answer ack.")
+        return {
+            "session_id": request.session_id,
+            "step_number": request.step_number,
+            "student_answer": request.student_answer,
+            "is_correct": request.is_correct if request.is_correct is not None else False,
+            "is_problem_complete": False,
+            "step_widget": None
+        }
 
     step_idx = request.step_number - 1
     total_steps = len(widget_dict["steps"])
@@ -665,11 +739,14 @@ async def submit_step_answer(request: StepAnswerRequest):
     if 0 <= step_idx < len(widget_dict["steps"]):
         target_step = widget_dict["steps"][step_idx]
         expected_ans = target_step.get("expected_answer")
-        is_correct = bool(
-            expected_ans is not None
-            and str(expected_ans).strip()
-            and _is_answer_equivalent(request.student_answer, str(expected_ans))
-        )
+        if request.is_correct is not None:
+            is_correct = request.is_correct
+        else:
+            is_correct = bool(
+                expected_ans is not None
+                and str(expected_ans).strip()
+                and _is_answer_equivalent(request.student_answer, str(expected_ans))
+            )
 
         target_step["student_answer"] = request.student_answer
         target_step["status"] = "completed" if is_correct else "in_progress"
@@ -994,64 +1071,17 @@ class TranslateResponse(BaseModel):
     cached: bool = False
 
 
-_TRANSLATE_CACHE: Dict[str, str] = {}
-
-
-@router.post("/translate", response_model=TranslateResponse)
-async def translate_text(req: TranslateRequest):
-    """
-    Translates text between English and Khmer (or vice versa) using LLM / curriculum translations.
-    """
-    if not req.text or not req.text.strip():
-        return TranslateResponse(translated_text="", target_lang=req.target_lang, source_lang=req.source_lang)
-
-    cache_key = f"{req.target_lang}:{req.text.strip()}"
-    if cache_key in _TRANSLATE_CACHE:
-        return TranslateResponse(
-            translated_text=_TRANSLATE_CACHE[cache_key],
-            target_lang=req.target_lang,
-            source_lang=req.source_lang,
-            cached=True
-        )
-
-    sys_inst, prompt = prompt_controller.get_translation_prompt(
-        text=req.text.strip(),
-        target_lang=req.target_lang,
-        source_lang=req.source_lang
-    )
-
-    try:
-        response = await llm_service.generate_text_async(
-            prompt=prompt,
-            system_instruction=sys_inst,
-            temperature=0.1,
-            max_tokens=500,
-            model_tier=ModelTier.FAST
-        )
-        translated = response.text.strip()
-        if translated:
-            _TRANSLATE_CACHE[cache_key] = translated
-            return TranslateResponse(
-                translated_text=translated,
-                target_lang=req.target_lang,
-                source_lang=req.source_lang
-            )
-    except Exception as e:
-        logger.warning(f"Translation LLM call failed: {e}")
-
-    # Fallback to original text if translation fails
-    return TranslateResponse(
-        translated_text=req.text,
-        target_lang=req.target_lang,
-        source_lang=req.source_lang
-    )
-
-
 @router.get("/system-prompt")
-def get_system_prompt_endpoint(grade: int = 4, language: str = "km"):
+def get_system_prompt_endpoint(request: Request, grade: int = 4, language: str = "km"):
     """
     Returns dynamic, age-adapted Socratic system prompt compiled from central prompt controller.
+    Restricted in non-debug mode to protect tutor instructions from prompt injection and answer leakage.
     """
+    admin_key = request.headers.get("X-Admin-Key")
+    configured_key = getattr(settings, "ADMIN_SECRET_KEY", "dev_secret")
+    if not getattr(settings, "DEBUG", True) and admin_key != configured_key:
+        raise HTTPException(status_code=403, detail="Forbidden: System prompt inspection is restricted")
+
     prompt = prompt_controller.get_grade_adapted_system_prompt(grade=grade, language=language)
     return {"grade": grade, "language": language, "system_prompt": prompt}
 

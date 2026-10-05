@@ -23,8 +23,8 @@ from app.core.config import settings
 
 logger = logging.getLogger("orchestrator.llm.gemini")
 
-# Order: gemini-3.6-flash first for high reliability and quota headroom, followed by gemini-3.5-flash
-CANDIDATE_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash"]
+# Order: gemini-3.5-flash first as primary, followed by 3.6-flash, 2.0-flash, and 1.5-flash
+CANDIDATE_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -44,7 +44,7 @@ class GeminiProvider(BaseLLMProvider):
         super().__init__(name="gemini", default_temperature=configured_temp)
         self.api_key = api_key or getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
 
-        default_model = getattr(settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+        default_model = getattr(settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         self.fast_model_name = fast_model or default_model
         self.reasoning_model_name = reasoning_model or default_model
         self.translation_model_name = translation_model or default_model
@@ -158,3 +158,146 @@ class GeminiProvider(BaseLLMProvider):
                 model_tier=model_tier,
             )
         )
+
+    def get_active_model(self, tier: ModelTier = ModelTier.DEFAULT) -> str:
+        """Returns active Gemini model name for the specified tier."""
+        if tier == ModelTier.REASONING:
+            return self.reasoning_model_name
+        elif tier == ModelTier.TRANSLATION:
+            return self.translation_model_name
+        return self.fast_model_name
+
+    def set_active_model(self, model_name: str, tier: Optional[ModelTier] = None) -> None:
+        """Dynamically updates active Gemini model for a tier or globally."""
+        if tier == ModelTier.FAST:
+            self.fast_model_name = model_name
+        elif tier == ModelTier.REASONING:
+            self.reasoning_model_name = model_name
+        elif tier == ModelTier.TRANSLATION:
+            self.translation_model_name = model_name
+        else:
+            self.fast_model_name = model_name
+            self.reasoning_model_name = model_name
+            self.translation_model_name = model_name
+
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        """
+        Queries Google GenAI API or returns structured catalog of Gemini models
+        matching the exact metadata schema of local LLM models (name, provider, size_mb,
+        parameter_size, quantization_level, family, capabilities, context_length, description).
+        """
+        now = time.time()
+        if hasattr(self, "_cached_models") and (now - getattr(self, "_last_models_check", 0.0) < 60.0):
+            return self._cached_models
+
+        discovered: List[Dict[str, Any]] = []
+
+        # 1. Dynamic API Discovery via google.genai SDK if online
+        if self.is_available() and self._client:
+            try:
+                models_pager = self._client.models.list()
+                for m in models_pager:
+                    m_name = getattr(m, "name", "")
+                    clean_name = m_name.replace("models/", "")
+                    if "gemini" not in clean_name.lower():
+                        continue
+                    display_name = getattr(m, "display_name", clean_name)
+                    input_limit = getattr(m, "input_token_limit", 1048576)
+                    discovered.append({
+                        "name": clean_name,
+                        "provider": "gemini",
+                        "size_mb": 0.0,
+                        "parameter_size": "Cloud",
+                        "quantization_level": "Server-side",
+                        "family": "gemini",
+                        "context_length": input_limit,
+                        "capabilities": ["completion", "vision", "chat", "multimodal"],
+                        "tier": "reasoning" if "pro" in clean_name else "fast",
+                        "description": getattr(m, "description", f"Google Cloud: {display_name}") or f"Google Cloud: {display_name}",
+                    })
+            except Exception as e:
+                logger.debug(f"Dynamic Gemini model discovery via API failed: {e}")
+
+        if discovered:
+            self._cached_models = discovered
+            self._last_models_check = now
+            return discovered
+
+        # 2. Curated standard catalog formatted matching local LLM schema
+        catalog = [
+            {
+                "name": "gemini-3.6-flash",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Flash (High Quota)",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 1048576,
+                "capabilities": ["completion", "vision", "chat", "multimodal", "thinking"],
+                "tier": "fast_and_reasoning",
+                "description": "High quota, ultra-low latency multimodal flash tier (Default Production)",
+            },
+            {
+                "name": "gemini-3.5-flash",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Flash",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 1048576,
+                "capabilities": ["completion", "vision", "chat", "multimodal"],
+                "tier": "fast",
+                "description": "Stable production multimodal flash model",
+            },
+            {
+                "name": "gemini-2.0-flash",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Next-Gen Flash",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 1048576,
+                "capabilities": ["completion", "vision", "chat", "multimodal", "thinking"],
+                "tier": "fast",
+                "description": "Next-generation fast multimodal reasoning model",
+            },
+            {
+                "name": "gemini-1.5-flash",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Flash",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 1048576,
+                "capabilities": ["completion", "vision", "chat", "multimodal"],
+                "tier": "fast",
+                "description": "High-efficiency, lightweight multimodal model",
+            },
+            {
+                "name": "gemini-flash-lite-latest",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Lite",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 1048576,
+                "capabilities": ["completion", "vision", "chat"],
+                "tier": "fast",
+                "description": "Lightweight, fastest token generation",
+            },
+            {
+                "name": "gemini-1.5-pro",
+                "provider": "gemini",
+                "size_mb": 0.0,
+                "parameter_size": "Pro",
+                "quantization_level": "Cloud FP16",
+                "family": "gemini",
+                "context_length": 2097152,
+                "capabilities": ["completion", "vision", "chat", "multimodal", "reasoning"],
+                "tier": "reasoning",
+                "description": "Deep reasoning & extended 2M token mathematical context",
+            },
+        ]
+        self._cached_models = catalog
+        self._last_models_check = now
+        return catalog

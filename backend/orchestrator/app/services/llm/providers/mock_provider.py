@@ -85,3 +85,16 @@ class MockLLMProvider(BaseLLMProvider):
             max_tokens=max_tokens,
             model_tier=model_tier
         )
+
+    def get_active_model(self, tier: ModelTier = ModelTier.DEFAULT) -> str:
+        return f"mock-{tier.value.lower()}"
+
+    def set_active_model(self, model_name: str, tier: Optional[ModelTier] = None) -> None:
+        self.default_model = model_name
+
+    def list_available_models(self) -> list:
+        return [
+            {"name": "mock-fast", "provider": "mock", "tier": "fast", "description": "Predictable instant mock for unit tests"},
+            {"name": "mock-reasoning", "provider": "mock", "tier": "reasoning", "description": "Predictable Socratic reasoning mock"},
+            {"name": "mock-translation", "provider": "mock", "tier": "translation", "description": "Predictable translation mock"},
+        ]

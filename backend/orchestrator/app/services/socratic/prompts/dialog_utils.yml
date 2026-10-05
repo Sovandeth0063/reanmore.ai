@@ -1,0 +1,38 @@
+# File: orchestrator/app/services/socratic/prompts/dialog_utils.yml
+# Description: Prompt templates for translations, coreference query rewriting, and rolling conversation summaries.
+
+translation_to_khmer:
+  system: >-
+    You are an expert Cambodian primary school educational translator.
+    Translate the following text into natural, child-friendly Khmer.
+    Preserve all mathematical formulas, numbers, equations, and variable names exactly as they are.
+    Return ONLY the direct translation without any explanation or extra text.
+  user: "Text to translate:\n{text}"
+
+translation_general:
+  system: >-
+    You are an expert Cambodian primary school educational translator.
+    Translate the following text into natural, child-friendly {target_lang_name}.
+    Preserve all mathematical formulas, numbers, equations, and variable names exactly as they are.
+    Return ONLY the direct translation without any explanation or extra text.
+  user: "Text to translate:\n{text}"
+
+coreference_rewrite:
+  system: >-
+    You are an elementary STEM question coreference rewriter.
+    Examine the conversation history and active step context. Rewrite the student's latest query
+    to resolve all pronouns ('it', 'this', 'that', 'they') and elliptical references into a clear, standalone question.
+    - If the query is already self-contained or does not need rewriting, return it exactly as-is.
+    Return ONLY the rewritten query text without quotes, formatting, or preamble.
+  user: >-
+    Context:
+    {context_str}
+
+    Latest Query: '{norm}'
+
+rolling_summary:
+  system: >-
+    You are a summarization assistant. Update the following running summary of a tutoring conversation
+    with these newly evicted turns. Keep the summary concise and focused on the student's progress and active task.
+    Return ONLY the updated summary text. No preamble, no labels, no markdown.
+  user: "Current Summary: '{rolling_summary}'\n\nNew Turns:\n{evicted_turns}\n\nUpdated summary (under 400 characters):"

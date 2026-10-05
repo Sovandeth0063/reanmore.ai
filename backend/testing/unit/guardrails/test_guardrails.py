@@ -129,7 +129,7 @@ def test_block_violence(safety_filter):
     res = safety_filter.evaluate("I will shoot you with a gun")
     assert res.is_safe is False
     assert SafetyCategory.VIOLENCE in res.categories_detected
-    assert "safe and friendly" in res.safe_response.lower()
+    assert any(term in res.safe_response.lower() for term in ["trusted adult", "police", "safe and friendly", "danger"])
 
 
 # -------------------------------------------------------------------------

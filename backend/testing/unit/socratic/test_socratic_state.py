@@ -248,9 +248,9 @@ def test_route_by_intent_aliases():
     # pyrefly: ignore [missing-import]
     from app.services.socratic.graph import route_by_intent
 
-    # Step attempt aliases
-    assert route_by_intent({"detected_intent": "STEP_ANSWER_ATTEMPT"}) == "validate_attempt"
-    assert route_by_intent({"detected_intent": "STEP_ATTEMPT"}) == "validate_attempt"
+    # Step attempt aliases now route through classify_intent (Sprint 1.4)
+    assert route_by_intent({"detected_intent": "STEP_ANSWER_ATTEMPT"}) == "classify_intent"
+    assert route_by_intent({"detected_intent": "STEP_ATTEMPT"}) == "classify_intent"
 
     # Initial problem aliases
     assert route_by_intent({"detected_intent": "INITIAL_QUESTION"}) == "initial_problem"

@@ -48,6 +48,17 @@ from app.services.nlu.pipeline import (
     process_nlu,
     process_nlu_sync,
 )
+from app.services.nlu.context_cache import (
+    ContextCache,
+    generate_context_cache_key,
+    is_cacheable_intent,
+)
+from app.services.nlu.interpretation_schema import (
+    StudentInterpretation,
+    resolve_answer_candidates,
+    is_disjunctive_inquiry,
+    has_correction_marker,
+)
 from app.services.nlu.node import (
     nlu_node,
     nlu_node_sync,
@@ -89,4 +100,11 @@ __all__ = [
     "process_nlu_sync",
     "nlu_node",
     "nlu_node_sync",
+    "ContextCache",
+    "generate_context_cache_key",
+    "is_cacheable_intent",
+    "StudentInterpretation",
+    "resolve_answer_candidates",
+    "is_disjunctive_inquiry",
+    "has_correction_marker",
 ]

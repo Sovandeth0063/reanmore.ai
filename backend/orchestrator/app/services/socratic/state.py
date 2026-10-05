@@ -18,6 +18,13 @@ class StepAttempt(TypedDict, total=False):
     hints_used: int
 
 
+# Skill mastery record (Sprint 1 — persisted per concept)
+class SkillRecord(TypedDict, total=False):
+    correct_first_try: int
+    needed_hints: int
+    needed_reveal: int
+
+
 # Tutor state - Persistent state of the Socratic session
 class TutorState(TypedDict, total=False):
     # --- Session and Identity Context ---
@@ -34,10 +41,19 @@ class TutorState(TypedDict, total=False):
     redacted_input: Optional[str]
     is_deflected: bool
     deflection_message: Optional[str]
+    flag_for_review: bool          # Sprint 1.4: flagged for teacher/parent review
+
+    # --- OCR Quality Gate (Sprint 1.1) ---
+    ocr_confidence: Optional[float]  # 0.0-1.0 confidence from OCR service
+    ocr_confirmed: bool              # True after student confirms OCR text
 
     # --- Problem Context ---
     problem_text: str              # Problem statement as student sees it
     total_steps_count: int         # 2 to 4 decomposition steps
+    steps_verified: bool           # Sprint 2.1: True when steps pass schema & math verification
+    verification_issues: List[str] # List of verification warnings/errors
+    decompose_retry_count: int     # Retries on decomposition failure
+    validation_outcome: Optional[str] # Sprint 2.1: "correct" | "partial" | "incorrect"
 
     # --- Stepper Widget & Step Cards ---
     step_widget: Optional[Dict[str, Any]]  # Serialized StepWidgetPayload dictionary
@@ -54,6 +70,15 @@ class TutorState(TypedDict, total=False):
     current_hint_tier: int                 # 0=none, 1=nudge, 2=visual, 3=micro-breakdown
     attempt_history: List[Dict[str, Any]]
 
+    # --- Frustration & Pacing (Sprint 1.3) ---
+    frustration_score: float               # 0.0-1.0 cumulative frustration signal
+    take_a_break: bool                     # True when break is recommended
+    response_time_ms: Optional[float]      # Time taken for last answer (ms)
+    idle_seconds: Optional[float]          # Idle time before last answer (s)
+
+    # --- Mastery Tracking (Sprint 2.4 prep) ---
+    mastery: Dict[str, Any]                # per-concept SkillRecord dicts
+
     # --- Output Payloads ---
     feedback_message: Optional[str]        # Feedback on current attempt
     formatted_markdown: Optional[str]
@@ -64,3 +89,8 @@ class TutorState(TypedDict, total=False):
 
     # --- Chat History ---
     messages: List[Dict[str, str]]
+
+    # --- Ingress & Degradation (Sprint 0.3) ---
+    unclear_streak: int                    # Consecutive UNCLEAR turns count
+    degrade_to_tap_first: bool             # True when >= 3 consecutive UNCLEAR turns
+    suggested_chips: Optional[List[str]]   # Tap-first choice chips (hints, pad, reread)
