@@ -461,43 +461,22 @@ export function parseOCRResponse(data: any): OCRProcessResult {
   };
 }
 
+import { ocrApi } from '../api';
+
 /**
- * Directly fetches the hardcoded multi-exercise worksheet mock (Q5, Q6, Q7)
- * from the Backend Orchestrator (/api/upload/mock or /api/upload/ocr?force_mock=true).
- * Seamlessly falls back to client-side definition if backend is offline.
+ * Fetches the deterministic multi-exercise worksheet mock (Q5, Q6, Q7)
+ * via ocrApi. Seamlessly falls back to client-side definition if backend is offline.
  */
 export async function fetchBackendMockExercises(): Promise<OCRProcessResult> {
-  // 1. Try GET /api/upload/mock
   try {
-    const response = await fetch('/api/upload/mock');
-    if (response.ok) {
-      const data = await response.json();
-      const parsed = parseOCRResponse(data);
-      if (parsed.problems.length > 0) return parsed;
-    }
+    const data = await ocrApi.getMockWorksheet();
+    const parsed = parseOCRResponse(data);
+    if (parsed.problems.length > 0) return parsed;
   } catch (err) {
-    console.warn('GET /api/upload/mock unreachable, trying fallback:', err);
+    console.warn('ocrApi.getMockWorksheet unreachable, using offline mock:', err);
   }
 
-  // 2. Try POST /api/upload/ocr?force_mock=true
-  try {
-    const formData = new FormData();
-    const fakeBlob = new Blob(['mock-worksheet-content'], { type: 'image/png' });
-    formData.append('file', fakeBlob, 'practice_worksheet.png');
-    const response = await fetch('/api/upload/ocr?force_mock=true', {
-      method: 'POST',
-      body: formData,
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const parsed = parseOCRResponse(data);
-      if (parsed.problems.length > 0) return parsed;
-    }
-  } catch (err) {
-    console.warn('POST /api/upload/ocr?force_mock=true unreachable:', err);
-  }
-
-  // 3. Fallback to client-side BACKEND_MOCK_WORKSHEET_PROBLEMS (guaranteed 100% uptime)
+  // Fallback to client-side BACKEND_MOCK_WORKSHEET_PROBLEMS (guaranteed 100% uptime)
   return {
     success: true,
     problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
@@ -505,74 +484,31 @@ export async function fetchBackendMockExercises(): Promise<OCRProcessResult> {
 }
 
 export async function processHomeworkImage(file: File): Promise<OCRProcessResult> {
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
-    let data: any = null;
-
-    // 1. Send directly to /process-homework (Port 9003 via Vite proxy)
-    try {
-      const response = await fetch('/process-homework', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        data = await response.json();
-      } else {
-        const errorText = await response.text();
-        console.warn(`Direct /process-homework responded with ${response.status}: ${errorText}`);
-      }
-    } catch (directErr) {
-      console.warn('Direct /process-homework unreachable, trying gateway fallback:', directErr);
-    }
-
-    // 2. If direct call failed, fallback to /api/upload/ocr on Orchestrator
-    if (!data) {
-      try {
-        const gatewayRes = await fetch('/api/upload/ocr', {
-          method: 'POST',
-          body: formData,
-        });
-        if (gatewayRes.ok) {
-          data = await gatewayRes.json();
-        }
-      } catch (gatewayErr) {
-        console.warn('Gateway fallback unreachable:', gatewayErr);
-      }
-    }
-
-    // 3. If both failed, trigger force_mock on Orchestrator
-    if (!data) {
-      try {
-        const mockRes = await fetch('/api/upload/ocr?force_mock=true', {
-          method: 'POST',
-          body: formData,
-        });
-        if (mockRes.ok) {
-          data = await mockRes.json();
-        }
-      } catch (mockErr) {
-        console.warn('Force mock gateway unreachable:', mockErr);
-      }
-    }
-
-    if (!data) {
+    const data = await ocrApi.uploadAndExtract(file);
+    if (
+      !data ||
+      (!data.problems?.length &&
+        !data.raw_text &&
+        !data.extracted_text &&
+        !data.exercises?.length &&
+        !data.clean_question_text &&
+        !data.pages?.length)
+    ) {
       // Offline fallback: return standard backend mock problems
       return {
         success: true,
         problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
       };
     }
-
     return parseOCRResponse(data);
   } catch (error: any) {
     console.error('OCR Processing failed:', error);
     return {
       success: false,
-      problems: [],
+      problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
       error: error?.message || 'Failed to connect to OCR service',
     };
   }
 }
+

@@ -13,7 +13,7 @@ export const DEFAULT_ACCOUNTS: UserAccount[] = [
       name: 'សុជា (Sochea)',
       grade: 4,
       subject: 'math',
-      language: 'km',
+      language: 'en',
       role: 'student',
     },
   },

@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, Upload, RefreshCw, CheckCircle, ArrowLeft, Sparkles, BookOpen, AlertCircle } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
 import { HomeworkProblem, Language, Grade } from '../types';
 import { MOCK_PROBLEMS } from '../data/mockProblems';
 import { processHomeworkImage } from '../services/ocrService';
 import { getHardcodedProblemsBySubject } from '../services/hardcodedTutorProvider';
+import { OcrConfirmModal } from './OcrConfirmModal';
 
 interface HomeworkScannerProps {
   language?: Language;
@@ -29,6 +30,12 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
+
+  // ── Sprint 1.1: OCR Quality Gate state ───────────────────────────────────
+  const [ocrConfirmVisible, setOcrConfirmVisible] = useState(false);
+  const [ocrExtractedText, setOcrExtractedText] = useState('');
+  const [ocrConfidence, setOcrConfidence] = useState(1.0);
+  const [ocrSegments, setOcrSegments] = useState<string[]>([]);
 
   useEffect(() => {
     return () => {
@@ -92,9 +99,34 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
       try {
         const result = await processHomeworkImage(uploadedFile);
         if (result.success && result.problems && result.problems.length > 0) {
+          // ── Sprint 1.1: Extract confidence and raw text for quality gate ──
+          const rawResp = result.rawResponse;
+          const confidence: number =
+            rawResp?.confidence ??
+            rawResp?.ocr_confidence ??
+            rawResp?.pages?.[0]?.confidence ??
+            1.0;
+
+          // Collect segment texts (one per detected problem)
+          const segments: string[] = result.problems.map(
+            (p: HomeworkProblem) => p.problemStatementEng || p.titleEng || ''
+          ).filter(Boolean);
+
+          const rawText =
+            rawResp?.raw_text ??
+            rawResp?.extracted_text ??
+            segments.join('\n\n') ??
+            result.problems[0]?.problemStatementEng ?? '';
+
           setDetectedProblems(result.problems);
           setSelectedProblem(result.problems[0]);
-          setStage('confirm');
+
+          // Always show OCR confirm modal so student can verify the text
+          setOcrExtractedText(rawText);
+          setOcrConfidence(confidence);
+          setOcrSegments(segments.length > 1 ? segments : []);
+          setOcrConfirmVisible(true);
+          // Stay in analyzing stage; modal will advance to confirm on OK
           return;
         } else if (result.error) {
           setAnalysisError(result.error);
@@ -109,13 +141,64 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
     setStage('confirm');
   };
 
+  // ── Sprint 1.1: Handlers for OcrConfirmModal ──────────────────────────────
+  const handleOcrConfirmed = useCallback((finalText: string, selectedSegs: string[]) => {
+    setOcrConfirmVisible(false);
+    // If user edited text in confirmation modal, update problem text
+    if (finalText && finalText.trim()) {
+      const trimmedText = finalText.trim();
+      setSelectedProblem(prev => prev ? { ...prev, problemStatementEng: trimmedText } : prev);
+      setDetectedProblems(prev => prev.map((p, idx) => idx === 0 ? { ...p, problemStatementEng: trimmedText } : p));
+    }
+    // If multi-problem and user selected a subset, filter detected problems
+    if (selectedSegs.length > 0 && detectedProblems.length > 1) {
+      const filtered = detectedProblems.filter(p =>
+        selectedSegs.some(s =>
+          p.problemStatementEng?.includes(s.slice(0, 20)) ||
+          p.titleEng?.includes(s.slice(0, 20))
+        )
+      );
+      if (filtered.length > 0) {
+        setDetectedProblems(filtered);
+        setSelectedProblem(filtered[0]);
+      }
+    }
+    setStage('confirm');
+  }, [detectedProblems]);
+
+  const handleOcrRetake = useCallback(() => {
+    setOcrConfirmVisible(false);
+    setAnalysisError(null);
+    setStage('capture');
+    setImageUri('');
+    setUploadedFile(null);
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }, []);
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={isKhmer ? 'ស្កែនលំហាត់' : 'Homework Scanner'}
-      className="w-full max-w-xl sm:max-w-2xl mx-auto bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden animate-fadeIn text-[#1B4332] max-h-[90dvh] flex flex-col"
-    >
+    <>
+      {/* Sprint 1.1: OCR Quality Gate confirmation modal */}
+      {ocrConfirmVisible && (
+        <OcrConfirmModal
+          extractedText={ocrExtractedText}
+          confidence={ocrConfidence}
+          segments={ocrSegments}
+          language={language}
+          onConfirm={handleOcrConfirmed}
+          onRetake={handleOcrRetake}
+          onClose={() => setOcrConfirmVisible(false)}
+        />
+      )}
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={isKhmer ? 'ស្កេនលំហាត់' : 'Homework Scanner'}
+        className="w-full max-w-xl sm:max-w-2xl mx-auto bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden animate-fadeIn text-[#1B4332] max-h-[90dvh] flex flex-col"
+      >
       {/* Header */}
       <div className="p-3 sm:p-4 bg-[#1B4332] border-b-2 sm:border-b-3 border-[#1B4332] flex items-center justify-between text-white shrink-0">
         <button
@@ -126,7 +209,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
           <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" /> {isKhmer ? 'ត្រឡប់' : 'Back'}
         </button>
         <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm text-white">
-          <Camera className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ស្កែនលំហាត់' : 'Homework Scanner'}
+          <Camera className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? 'ស្កេនលំហាត់' : 'Homework Scanner'}
         </div>
       </div>
 
@@ -149,7 +232,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
               </p>
               <p className="text-xs font-bold text-[#1B4332]/80 mt-0.5 max-w-xs">
                 {isKhmer 
-                  ? 'ដាក់ក្រដាសលំហាត់របស់អ្នកឲ្យចំកណ្តាលស៊ុម' 
+                  ? 'ដាក់ក្រដាសលំហាត់របស់អ្នកឱ្យចំកណ្តាលស៊ុម' 
                   : 'Fit your homework page inside the frame'}
               </p>
 
@@ -451,5 +534,6 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };

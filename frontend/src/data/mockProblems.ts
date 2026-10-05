@@ -335,8 +335,12 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         questionKhmer: 'តើប្រវែងបណ្តោយ (Length) និងទទឹង (Width) នៃសួនច្បារមានប៉ុន្មានម៉ែត្រ?',
         questionEng: 'What are the length and width of the garden?',
         inputFormat: 'mcq',
-        options: ['បណ្តោយ ១០m, ទទឹង ៥m', 'បណ្តោយ ៥m, ទទឹង ១០m', 'បណ្តោយ ១៥m, ទទឹង ០m'],
-        correctAnswer: 'បណ្តោយ ១០m, ទទឹង ៥m',
+        options: [
+          'បណ្តោយ ១០m, ទទឹង ៥m (Length 10m, Width 5m)',
+          'បណ្តោយ ៥m, ទទឹង ១០m (Length 5m, Width 10m)',
+          'បណ្តោយ ១៥m, ទទឹង ០m (Length 15m, Width 0m)'
+        ],
+        correctAnswer: 'បណ្តោយ ១០m, ទទឹង ៥m (Length 10m, Width 5m)',
     socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`តើប្រវែងបណ្តោយ (Length) និងទទឹង...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
     socraticPromptEng: `What do you think we need to find first for \`What are the length and width of the ga...'?'`,
 
@@ -371,11 +375,11 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         questionEng: 'What is the correct formula for the perimeter of a rectangle?',
         inputFormat: 'mcq',
         options: [
-          'P = (បណ្តោយ + ទទឹង) × ២',
-          'P = បណ្តោយ × ទទឹង',
-          'P = បណ្តោយ - ទទឹង'
+          'P = (បណ្តោយ + ទទឹង) × ២ (P = (Length + Width) × 2)',
+          'P = បណ្តោយ × ទទឹង (P = Length × Width)',
+          'P = បណ្តោយ - ទទឹង (P = Length - Width)'
         ],
-        correctAnswer: 'P = (បណ្តោយ + ទទឹង) × ២',
+        correctAnswer: 'P = (បណ្តោយ + ទទឹង) × ២ (P = (Length + Width) × 2)',
     socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`តើរូបមន្តបរិមាត្រចតុគោណកែង (Pe...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
     socraticPromptEng: `What do you think we need to find first for \`What is the correct formula for the peri...'?'`,
 
@@ -655,11 +659,11 @@ export const MOCK_PROBLEMS: HomeworkProblem[] = [
         questionEng: 'Since denominators are equal (8), do we add only numerators (top numbers) or denominators too?',
         inputFormat: 'mcq',
         options: [
-          'បូកតែភាគយកខាងលើ (២ + ៣) ហើយរក្សាភាគបែង ៨ ដដែល',
-          'បូកទាំងភាគយក និងភាគបែង (២+៣)/(៨+៨)',
-          'ដកភាគយក'
+          'បូកតែភាគយកខាងលើ (២ + ៣) ហើយរក្សាភាគបែង ៨ ដដែល (Add only top numerators, keep denominator 8)',
+          'បូកទាំងភាគយក និងភាគបែង (Add both numerators and denominators)',
+          'ដកភាគយក (Subtract numerators)'
         ],
-        correctAnswer: 'បូកតែភាគយកខាងលើ (២ + ៣) ហើយរក្សាភាគបែង ៨ ដដែល',
+        correctAnswer: 'បូកតែភាគយកខាងលើ (២ + ៣) ហើយរក្សាភាគបែង ៨ ដដែល (Add only top numerators, keep denominator 8)',
     socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`ដោយសារភាគបែង (Denominator) ដូច...' ចាប់ផ្តើមដោយអ្វីជាដំបូង?'`,
     socraticPromptEng: `What do you think we need to find first for \`Since denominators are equal (8), do we ...'?'`,
 

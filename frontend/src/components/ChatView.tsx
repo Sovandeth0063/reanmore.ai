@@ -12,6 +12,7 @@ import { WorksheetProgressPanel } from './WorksheetProgressPanel';
 import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
 import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
+import { tutorApi } from '../api';
 import { enrichProblemFromCase } from '../services/hardcodedTutorProvider';
 import { fastValidateStepAnswer } from '../services/answerValidationService';
 import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, Trash2, MessageSquare, Sparkles, Layers, Menu, X, RotateCcw } from 'lucide-react';
@@ -219,6 +220,56 @@ function extractStepWidgetFromMessage(msg: ChatMessage): ExtractedStepWidget | n
   return null;
 }
 
+function mapWidgetToStepItems(widget: any): StepItem[] {
+  if (!widget || !Array.isArray(widget.steps)) return [];
+  const total = widget.total_steps || widget.steps.length;
+  return widget.steps.map((s: any, idx: number) => {
+    const stepNum = s.step_number || idx + 1;
+    const mission = s.mission || s.title || `Step ${stepNum}`;
+    const yourTurn = s.your_turn || mission;
+    const expectedAns = String(s.expected_answer || s.expectedAnswer || '').trim();
+    const isNum = /^-?\d+(\.\d+)?$/.test(expectedAns);
+    const options = s.options && Array.isArray(s.options) && s.options.length > 0 ? s.options : undefined;
+    const inputFormat = options ? 'mcq' : (isNum ? 'number' : 'text');
+    const hints = Array.isArray(s.hints) ? s.hints : [];
+    const clue = s.clue || hints[0] || 'សូមពិនិត្យមើលសំណួរ និងការណែនាំដោយប្រុងប្រយ័ត្ន។';
+    const example = s.helpful_example || hints[1] || 'ព្យាយាមគិតម្តងមួយជំហានៗ!';
+    return {
+      id: `step-${stepNum}`,
+      stepNumber: stepNum,
+      totalSteps: total,
+      questionKhmer: mission,
+      questionEng: mission,
+      socraticPromptKhmer: yourTurn,
+      socraticPromptEng: yourTurn,
+      inputFormat,
+      options,
+      correctAnswer: expectedAns,
+      expectedAnswer: expectedAns,
+      expected_answer: expectedAns,
+      mission,
+      title: s.title || `Step ${stepNum}`,
+      clue,
+      helpfulExample: example,
+      yourTurn,
+      hints: [hints[0] || clue, hints[1] || example, hints[2] || ''],
+      visualData: s.visual_data,
+      status: idx === 0 ? 'in_progress' : 'locked',
+      hint1: { khmer: clue, eng: clue },
+      hint2: { khmer: example, eng: example },
+      hint3: { titleKhmer: 'ជំនួយ', titleEng: 'Help', exampleKhmer: hints[2] || '', exampleEng: hints[2] || '' },
+      explainDifferently: {
+        simpleKhmer: mission,
+        simpleEng: mission,
+        analogyTitle: s.title || 'Guidance',
+        analogyKhmer: example,
+        analogyEng: example,
+        analogyType: 'apples',
+      },
+    };
+  });
+}
+
 interface ChatViewProps {
   profile: UserProfile;
   initialProblem?: HomeworkProblem | undefined;
@@ -345,6 +396,62 @@ export const ChatView: React.FC<ChatViewProps> = ({
       if (isNewSession) {
         setProblemStepProgress(activeSession?.problemStepProgress || {});
         celebrationShownRef.current.clear();
+      }
+
+      // Proactively decompose un-decomposed OCR or dynamic problems (Sprint 3.1: guard with has_steps)
+      if (
+        enriched &&
+        !enriched.has_steps &&
+        (enriched.problemStatementEng || enriched.problemStatementKhmer) &&
+        (!enriched.steps || enriched.steps.length === 0 || (enriched.steps.length === 1 && !enriched.steps[0].correctAnswer))
+      ) {
+        const queryText = enriched.problemStatementEng || enriched.problemStatementKhmer;
+        setIsSayoThinking(true);
+        askTunsayTutor(queryText, enriched, profile.language, activeSessionId).then((res) => {
+          if (!isMountedRef.current) return;
+          setIsSayoThinking(false);
+          if (res.stepWidget && Array.isArray(res.stepWidget.steps) && res.stepWidget.steps.length > 0) {
+            const dynSteps = mapWidgetToStepItems(res.stepWidget);
+            if (dynSteps.length > 0) {
+              setActiveProblem(prev => prev ? { ...prev, steps: dynSteps, has_steps: true } : prev);
+              // Sprint 3.1: Sync steps into worksheetQueue in-place so re-entry skips decomposition
+              if (worksheetQueue && Array.isArray(worksheetQueue.problems)) {
+                const targetIdx = worksheetQueue.problems.findIndex(p => p.id === enriched.id);
+                if (targetIdx !== -1) {
+                  worksheetQueue.problems[targetIdx] = {
+                    ...worksheetQueue.problems[targetIdx],
+                    steps: dynSteps,
+                    has_steps: true,
+                  };
+                }
+              }
+            }
+          }
+          if (res.textEng || res.textKhmer || res.stepWidget) {
+            const tutorMsg: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'sayo',
+              textKhmer: res.textKhmer,
+              textEng: res.textEng,
+              problemId: enriched.id,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              stepWidget: res.stepWidget,
+            };
+            onUpdateMessages([
+              {
+                id: 'init-msg',
+                sender: 'sayo',
+                textKhmer: `សួស្តី ${profile.name}! តោះដោះស្រាយលំហាត់នេះទាំងអស់គ្នាជាជំហានៗ!`,
+                textEng: `Hi ${profile.name}! Let's solve this problem step-by-step together!`,
+                problemId: enriched.id,
+                timestamp: 'Just now'
+              },
+              tutorMsg
+            ]);
+          }
+        }).catch(() => {
+          if (isMountedRef.current) setIsSayoThinking(false);
+        });
       }
     }
 
@@ -543,14 +650,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
     updateMessages(updated);
 
     try {
-      await fetch('/api/step/navigate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (activeSessionId) {
+        await tutorApi.navigateStep({
           session_id: activeSessionId,
           target_step_index: targetIdx,
-        }),
-      });
+        });
+      }
     } catch (err) {
       console.error('Failed to sync step navigation with backend:', err);
     }
@@ -641,16 +746,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     // Inform backend of step answer to keep session synchronized
     try {
-      await fetch('/api/step/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (activeSessionId) {
+        const idempKey = `ans_${activeSessionId}_${stepIndex + 1}_${Date.now()}`;
+        await tutorApi.submitStepAnswer({
           session_id: activeSessionId,
           step_number: stepIndex + 1,
           student_answer: studentAnswer,
           is_correct: isCorrect,
-        }),
-      });
+        }, idempKey);
+      }
     } catch (err) {
       // Graceful offline fallback
     }
@@ -823,15 +927,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     // Sync answer to backend in background
     if (activeSessionId) {
-      fetch('/api/step/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: activeSessionId,
-          step_number: stepNum,
-          student_answer: studentAnswer,
-        })
-      }).catch(() => {});
+      const idempKey = `ans_chat_${activeSessionId}_${stepNum}_${Date.now()}`;
+      tutorApi.submitStepAnswer({
+        session_id: activeSessionId,
+        step_number: stepNum,
+        student_answer: studentAnswer,
+      }, idempKey).catch(() => {});
     }
 
     const tutorMsg: ChatMessage = {
@@ -929,49 +1030,41 @@ export const ChatView: React.FC<ChatViewProps> = ({
     // Always try to match the typed text to a known exercise case.
     // If a DIFFERENT case is matched, reset progress and switch to the new problem.
     let currentProblem = activeProblem;
-    const matchedId = matchCaseId(userText);
-    if (matchedId && matchedId !== activeProblem?.id) {
-      // User typed a new problem — switch to it
-      const newProblem = enrichProblemFromCase(
-        {
-          id: matchedId,
-          titleKhmer: `លំហាត់ ${matchedId}`,
-          titleEng: `Exercise ${matchedId}`,
-          grade: profile.grade,
-          subject: profile.subject,
-          problemStatementKhmer: '',
-          problemStatementEng: userText,
-          steps: [],
-        },
-        profile.grade
-      );
-      if (newProblem) {
-        currentProblem = newProblem;
-        setActiveProblem(newProblem);
-        // Reset step progress for the new problem
-        setCurrentStepIndex(0);
-        setMaxUnlockedStepIndex(0);
-        setCompletedStepIndices([]);
-        setCelebratingProblemId(null);
+
+    // Check if the student is answering the current active step via chat input
+    if (currentProblem && currentStep && !completedStepIndices.includes(currentStepIndex)) {
+      const isQuestionOrHelp = /(?:help|hint|explain|why|how|what|confused|stuck|\?)/i.test(userText);
+      const isShortAnswer = userText.length <= 40;
+      if (!isQuestionOrHelp && isShortAnswer) {
+        // Attempt to answer the active step
+        const isAnswerHandled = await handleStepAnswer(userText);
+        if (isAnswerHandled) {
+          return;
+        }
       }
-    } else if (!currentProblem && matchedId) {
-      // No active problem yet — set one from the match
-      const newProblem = enrichProblemFromCase(
-        {
-          id: matchedId,
-          titleKhmer: `លំហាត់ ${matchedId}`,
-          titleEng: `Exercise ${matchedId}`,
-          grade: profile.grade,
-          subject: profile.subject,
-          problemStatementKhmer: '',
-          problemStatementEng: userText,
-          steps: [],
-        },
-        profile.grade
-      );
-      if (newProblem) {
-        currentProblem = newProblem;
-        setActiveProblem(newProblem);
+    }
+
+    // Only attempt matching to an existing case if there is NO active problem and the query is long enough to be an exercise
+    if (!currentProblem && userText.length >= 15) {
+      const matchedId = matchCaseId(userText);
+      if (matchedId) {
+        const newProblem = enrichProblemFromCase(
+          {
+            id: matchedId,
+            titleKhmer: `លំហាត់ ${matchedId}`,
+            titleEng: `Exercise ${matchedId}`,
+            grade: profile.grade,
+            subject: profile.subject,
+            problemStatementKhmer: '',
+            problemStatementEng: userText,
+            steps: [],
+          },
+          profile.grade
+        );
+        if (newProblem) {
+          currentProblem = newProblem;
+          setActiveProblem(newProblem);
+        }
       }
     }
 
@@ -993,6 +1086,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     setIsSayoThinking(false);
 
+    // If backend returned a structured step widget and current problem has no steps, upgrade problem dynamically
+    if (sayoRes.stepWidget && Array.isArray(sayoRes.stepWidget.steps) && sayoRes.stepWidget.steps.length > 0) {
+      if (!currentProblem || !currentProblem.steps || currentProblem.steps.length <= 1) {
+        const dynSteps = mapWidgetToStepItems(sayoRes.stepWidget);
+        if (dynSteps.length > 0) {
+          const updatedProblem: HomeworkProblem = currentProblem ? {
+            ...currentProblem,
+            steps: dynSteps,
+          } : {
+            id: `dyn-p-${Date.now()}`,
+            titleKhmer: sayoRes.stepWidget.steps[0]?.title || 'លំហាត់ថ្មី',
+            titleEng: sayoRes.stepWidget.steps[0]?.title || 'Homework Problem',
+            grade: profile.grade,
+            subject: profile.subject,
+            problemStatementKhmer: userText,
+            problemStatementEng: userText,
+            steps: dynSteps,
+          };
+          currentProblem = updatedProblem;
+          setActiveProblem(updatedProblem);
+        }
+      }
+    }
+
     const sayoMsg: ChatMessage = {
       id: (Date.now() + 1).toString(),
       sender: 'sayo',
@@ -1002,6 +1119,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
       stepWidget: sayoRes.stepWidget,
+      suggestedChips: sayoRes.suggestedChips,
+      degradeToTapFirst: sayoRes.degradeToTapFirst,
     };
 
     updateMessages([...updatedWithUser, sayoMsg]);
@@ -1610,6 +1729,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
         {/* Bottom Chat Input Bar */}
         <div className="px-2.5 sm:px-5 py-2 sm:py-3 bg-white border-t-2 sm:border-t-3 border-[#1B4332] shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {/* Tap-First Degraded Suggested Chips (Sprint 0.3) */}
+          {(() => {
+            const lastMsg = messages[messages.length - 1];
+            const chips = lastMsg?.suggestedChips;
+            if (!chips || chips.length === 0) return null;
+            return (
+              <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 animate-fadeIn no-scrollbar">
+                {chips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (chip.toLowerCase().includes('hint') || chip.toLowerCase().includes('clue') || chip.includes('តម្រុយ')) {
+                        setActiveModalStep(currentStep || null);
+                        setIsHintOpen(true);
+                      } else {
+                        setInputQuery(chip);
+                      }
+                    }}
+                    className="px-2.5 py-1 text-xs sm:text-sm font-bold bg-[#E8F5E9] hover:bg-[#D8F3DC] text-[#1B4332] rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer shrink-0"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();

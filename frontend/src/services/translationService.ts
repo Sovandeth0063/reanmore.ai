@@ -2144,42 +2144,14 @@ export const HARDCODED_KHMER_TRANSLATIONS: Record<string, CaseKhmerData> = {
   }
 };
 
-/** Translation Cache in memory */
-const memoryCache = new Map<string, string>();
-
 export function getKhmerCaseData(caseId: string): CaseKhmerData | null {
   return HARDCODED_KHMER_TRANSLATIONS[caseId] || null;
 }
 
+import { translateApi } from '../api';
+
 export async function translateTextToKhmer(text: string): Promise<string> {
   if (!text || !text.trim()) return text;
-  const trimmed = text.trim();
-
-  if (memoryCache.has(trimmed)) {
-    return memoryCache.get(trimmed)!;
-  }
-
-  try {
-    const response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: trimmed,
-        target_lang: 'km',
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const translated = data.translated_text || data.translated;
-      if (translated && typeof translated === 'string') {
-        memoryCache.set(trimmed, translated);
-        return translated;
-      }
-    }
-  } catch (err) {
-    console.warn('Translate API unavailable, using fallback:', err);
-  }
-
-  return trimmed;
+  return translateApi.translateText(text.trim(), 'km');
 }
+

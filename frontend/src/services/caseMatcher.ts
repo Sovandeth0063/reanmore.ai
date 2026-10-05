@@ -1,4 +1,4 @@
-﻿/**
+/**
  * caseMatcher.ts
  * Matches OCR-extracted exercise text to a hardcoded case ID.
  * Priority: exact case_id match > normalized question text > OCR pattern substring.
@@ -40,26 +40,54 @@ export function matchCaseId(ocrText: string): string | null {
   // Priority 1: Direct case_id match (e.g., if OCR somehow returns the id)
   if (ALL_HARDCODED_CASES[ocrText.trim()]) return ocrText.trim();
 
-  // Priority 2: Pattern substring matching
+  // If text is very short (< 6 chars), only allow exact match against caseId or full patterns
+  const isShort = norm.length < 6;
+
+  // Priority 2: Pattern matching
   for (const [caseId, patterns] of Object.entries(ALL_PATTERNS)) {
     for (const pattern of patterns) {
       const normPattern = normalize(pattern);
-      if (norm.includes(normPattern) || normPattern.includes(norm)) {
+      if (norm === normPattern) {
         return caseId;
+      }
+      if (!isShort) {
+        // OCR text contains the full known pattern
+        if (normPattern.length >= 10 && norm.includes(normPattern)) {
+          return caseId;
+        }
+        // Known pattern contains OCR text, but only if OCR text is long enough and covers a significant portion
+        if (norm.length >= 16 && normPattern.length >= 16 && normPattern.includes(norm) && norm.length >= normPattern.length * 0.7) {
+          return caseId;
+        }
       }
     }
   }
 
-  // Priority 3: Match against ocr_style_input.normalized_text in cases
-  for (const [caseId, c] of Object.entries(ALL_HARDCODED_CASES)) {
-    const caseNorm = normalize(c.ocr_style_input.normalized_text);
-    if (norm.includes(caseNorm) || caseNorm.includes(norm)) {
-      return caseId;
-    }
-    // Also try matching original_question
-    const qNorm = normalize(c.original_question);
-    if (norm.includes(qNorm) || qNorm.includes(norm)) {
-      return caseId;
+  // Priority 3: Match against ocr_style_input.normalized_text and original_question
+  if (!isShort) {
+    for (const [caseId, c] of Object.entries(ALL_HARDCODED_CASES)) {
+      const caseNorm = normalize(c.ocr_style_input.normalized_text);
+      if (norm === caseNorm) {
+        return caseId;
+      }
+      if (caseNorm.length >= 15 && norm.includes(caseNorm)) {
+        return caseId;
+      }
+      if (norm.length >= 20 && caseNorm.length >= 20 && caseNorm.includes(norm) && norm.length >= caseNorm.length * 0.75) {
+        return caseId;
+      }
+
+      // Also try matching original_question
+      const qNorm = normalize(c.original_question);
+      if (norm === qNorm) {
+        return caseId;
+      }
+      if (qNorm.length >= 15 && norm.includes(qNorm)) {
+        return caseId;
+      }
+      if (norm.length >= 20 && qNorm.length >= 20 && qNorm.includes(norm) && norm.length >= qNorm.length * 0.75) {
+        return caseId;
+      }
     }
   }
 

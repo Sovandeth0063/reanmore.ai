@@ -1,19 +1,5 @@
 import { HomeworkProblem, Language } from "../types";
-
-interface BackendResponse {
-  category: string;
-  solution: string;
-  steps?: any[];
-  step_widget?: any;
-  source?: string;
-  current_step_index?: number;
-  hint_count?: number;
-  practice_mode?: boolean;
-  completed?: boolean;
-  session_id: string;
-  grade_level: string;
-  language: string;
-}
+import { tutorApi } from "../api";
 
 // ──────────────────────────────────────────────
 // 1. Grade & Age Adapted Socratic System Prompts (Following promt.md)
@@ -133,7 +119,7 @@ function formatMathInline(text: string): string {
 // ──────────────────────────────────────────────
 // 2. Parse Numbered Steps from Backend Response
 // ──────────────────────────────────────────────
-function parseSteps(text: string): string[] {
+export function parseSteps(text: string): string[] {
   // Try to find "Step 1:", "Step 2:" etc. patterns
   const stepRegex = /(?:Step|ជំហាន)\s*(\d+)[:.\s]/gi;
   const steps: string[] = [];
@@ -221,17 +207,21 @@ function getSocraticFallback(
 // ──────────────────────────────────────────────
 // Main API Function
 // ──────────────────────────────────────────────
+export interface TutorResponse {
+  textKhmer: string;
+  textEng: string;
+  isSafetyRefusal?: boolean | undefined;
+  stepWidget?: any;
+  suggestedChips?: string[] | undefined;
+  degradeToTapFirst?: boolean | undefined;
+}
+
 export async function askReanMoreTutor(
   userPrompt: string,
   problemContext?: HomeworkProblem,
   language: Language = "km",
   sessionId?: string,
-): Promise<{
-  textKhmer: string;
-  textEng: string;
-  isSafetyRefusal?: boolean;
-  stepWidget?: any;
-}> {
+): Promise<TutorResponse> {
   // ── Safety Check FIRST ──
   if (isUnsafePrompt(userPrompt)) {
     return {
@@ -247,66 +237,49 @@ export async function askReanMoreTutor(
     const grade = problemContext?.grade ?? 4;
     const gradeLevel =
       grade <= 2 ? "grade_1_2" : grade <= 4 ? "grade_3_4" : "grade_5_6";
-    const response = await fetch("/api/query", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: userPrompt,
-        session_id: sessionId,
-        grade_level: problemContext?.grade ? gradeLevel : "grade_1_3",
-        language: language === "km" ? "km" : "en",
-        problem_context: problemContext
-          ? {
-              id: problemContext.id,
-              titleEng: problemContext.titleEng,
-              titleKhmer: problemContext.titleKhmer,
-              statementEng: problemContext.problemStatementEng,
-              statementKhmer: problemContext.problemStatementKhmer,
-              concept: problemContext.concept,
-              totalSteps: problemContext.steps?.length,
-              activeStepIndex: activeIdx,
-              currentStepQuestion: activeStepObj?.questionEng,
-              currentStepQuestionKhmer: activeStepObj?.questionKhmer,
-              visualData: problemContext.visualData,
-            }
-          : null,
-        active_step: activeStepObj || null,
-        exercise_id: problemContext?.id,
-      }),
+    const isEnglishExercise =
+      problemContext?.subject === "english" ||
+      Boolean(problemContext?.titleEng && /english/i.test(problemContext.titleEng));
+    const effectiveLanguage = isEnglishExercise ? "en" : (language === "km" ? "km" : "en");
+
+    const turn = await tutorApi.query({
+      query: userPrompt,
+      session_id: sessionId,
+      grade_level: problemContext?.grade ? gradeLevel : "grade_1_3",
+      language: effectiveLanguage,
+      problem_context: problemContext
+        ? {
+            id: problemContext.id,
+            subject: problemContext.subject,
+            titleEng: problemContext.titleEng,
+            titleKhmer: problemContext.titleKhmer,
+            statementEng: problemContext.problemStatementEng,
+            statementKhmer: problemContext.problemStatementKhmer,
+            concept: problemContext.concept,
+            totalSteps: problemContext.steps?.length,
+            activeStepIndex: activeIdx,
+            currentStepQuestion: activeStepObj?.questionEng,
+            currentStepQuestionKhmer: activeStepObj?.questionKhmer,
+            visualData: problemContext.visualData,
+          }
+        : null,
+      active_step: activeStepObj || null,
+      exercise_id: problemContext?.id,
     });
 
-    if (response.ok) {
-      const data: BackendResponse = await response.json();
-      let text = data.solution || "";
+    let textEng = formatMathInline(turn.textEng || turn.textKhmer || "");
+    let textKhmer = isEnglishExercise ? textEng : (turn.textKhmer || turn.textEng || "");
 
-      // Apply math formatting
-      text = formatMathInline(text);
-
-      // Parse and re-format numbered steps if found
-      const steps = parseSteps(text);
-      if (steps.length > 1) {
-        // Rejoin with clear visual separation
-        text = steps.map((step, i) => `${i + 1}. ${step.trim()}`).join("\n\n");
-      }
-
-      if (language === "km") {
-        return {
-          textKhmer: text,
-          textEng: "",
-          isSafetyRefusal: false,
-          stepWidget: data.step_widget,
-        };
-      } else {
-        return {
-          textKhmer: "",
-          textEng: text,
-          isSafetyRefusal: false,
-          stepWidget: data.step_widget,
-        };
-      }
-    }
+    return {
+      textKhmer,
+      textEng,
+      isSafetyRefusal: turn.outcome === 'safety_tier1_deflected' || turn.outcome === 'safety_tier2_escalated',
+      stepWidget: turn.stepWidget,
+      suggestedChips: turn.suggestedChips,
+      degradeToTapFirst: turn.degraded,
+    };
   } catch (err) {
-    console.error("Backend API error:", err);
+    console.error("tutorApi query error:", err);
   }
 
   // ── Fallback: Socratic redirect ──

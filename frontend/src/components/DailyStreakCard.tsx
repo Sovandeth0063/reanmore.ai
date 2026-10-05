@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Flame, Sparkles, Trophy, Zap, ShieldCheck, Award, Star, Gem, Crown, Check } from 'lucide-react';
 import { UserProfile, HomeworkProblem } from '../types';
 import { loadActivities } from '../utils/reportUtils';
+import { statsApi } from '../api';
 
 interface DailyStreakCardProps {
   profile: UserProfile;
@@ -85,10 +86,8 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
 
     async function fetchStats() {
       try {
-        const res = await fetch('/api/stats');
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && data && !data.error) {
+        const data: any = await statsApi.getStats();
+        if (isMounted && data && !data.error) {
             const updated = {
               currentStreak: Number(data.current_streak ?? 0),
               bestStreak: Number(data.best_streak ?? 0),
@@ -105,7 +104,6 @@ export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onSta
             } catch { /* ignore */ }
             return;
           }
-        }
       } catch (err) {
         console.debug('Using local activity streak calculation:', err);
       }

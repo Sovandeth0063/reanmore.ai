@@ -33,6 +33,7 @@ export interface StepItem {
   inputFormat: 'mcq' | 'number' | 'text';
   options?: string[];
   correctAnswer: string;
+  acceptableAnswers?: string[] | undefined;
   hint1: {
     khmer: string;
     eng: string;
@@ -96,6 +97,10 @@ export interface HomeworkProblem {
   concept?: string;
   activeStepIndex?: number;
   steps: StepItem[];
+  /** Sprint 1.1: OCR scan confidence (0.0-1.0). Undefined for non-scanned problems. */
+  ocr_confidence?: number;
+  /** Sprint 3.1: True when steps have already been decomposed — skip re-decomposition. */
+  has_steps?: boolean;
 }
 
 export interface ChatMessage {
@@ -110,6 +115,8 @@ export interface ChatMessage {
   activeStepIndex?: number | undefined;
   isSafetyRefusal?: boolean | undefined;
   stepWidget?: any;
+  suggestedChips?: string[] | undefined;
+  degradeToTapFirst?: boolean | undefined;
 }
 
 export interface ChatSession {

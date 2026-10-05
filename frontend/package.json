@@ -7,24 +7,26 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:hints": "tsx scripts/validate-hints.ts"
+    "test:hints": "tsx scripts/validate-hints.ts",
+    "test:english": "tsx scripts/validate-english-pedagogy.ts",
+    "test": "tsx scripts/validate-hints.ts && tsx scripts/validate-english-pedagogy.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
     "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "express": "^4.21.2",
-    "dotenv": "^17.2.3",
-    "motion": "^12.23.24"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/node": "^22.14.0",
-    "@types/express": "^4.17.21",
+    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",

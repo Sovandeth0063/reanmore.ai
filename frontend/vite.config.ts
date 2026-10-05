@@ -17,15 +17,6 @@ export default defineConfig(() => {
           target: "http://localhost:9000",
           changeOrigin: true,
         },
-        "/process-homework": {
-          target: "http://localhost:9003",
-          changeOrigin: true,
-        },
-        "/ocr": {
-          target: "http://localhost:9003",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/ocr/, ""),
-        },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
@@ -55,9 +46,6 @@ export default defineConfig(() => {
             }
             if (id.includes("motion")) {
               return "vendor-motion";
-            }
-            if (id.includes("@google/genai")) {
-              return "vendor-ai";
             }
             return "vendor-libs";
           },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserProfile, UserAccount, UserRole } from '../types';
-import { Home, BookOpen, User, Award, LogIn, LogOut, ChevronDown } from 'lucide-react';
+import { Home, BookOpen, User, Award, LogIn, LogOut, ChevronDown, Cpu } from 'lucide-react';
 import logoWhiteImg from '../assets/logo_white.png';
 
 export type TabType = 'home' | 'chat' | 'profile' | 'report';
@@ -12,6 +12,7 @@ interface HeaderProps {
   onSelectTab: (tab: TabType) => void;
   onOpenAuth?: (requiredRole?: UserRole) => void;
   onLogout?: () => void;
+  onOpenLLMController?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTab,
   onOpenAuth,
   onLogout,
+  onOpenLLMController,
 }) => {
   const isKhmer = profile.language === 'km';
   const role = currentUser?.role || profile.role || 'student';
@@ -89,6 +91,19 @@ export const Header: React.FC<HeaderProps> = ({
                 );
               })}
             </nav>
+
+            {/* AI Engine Controller Button */}
+            {onOpenLLMController && (
+              <button
+                type="button"
+                onClick={onOpenLLMController}
+                title={isKhmer ? 'ប្តូរម៉ូដែល AI (LLM Controller)' : 'AI Engine Switcher'}
+                className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#2D6A4F] hover:bg-[#40916C] text-[#D8F3DC] hover:text-white border-2 border-[#1B4332] font-black text-xs sm:text-sm transition-all cursor-pointer shadow-[1.5px_1.5px_0px_rgba(0,0,0,0.2)] active:scale-95"
+              >
+                <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#74C69D] shrink-0" />
+                <span className="hidden min-[560px]:inline text-xs font-bold tracking-tight">AI Engine</span>
+              </button>
+            )}
 
             {/* Auth Account / Switcher / Logout */}
             <div className="flex items-center gap-1 sm:gap-2 pl-1.5 sm:pl-2.5 ml-0.5 sm:ml-1 border-l-2 border-white/20">

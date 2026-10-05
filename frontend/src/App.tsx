@@ -6,10 +6,12 @@ import { ChatView } from './components/ChatView';
 import { ProfileView } from './components/ProfileView';
 import { HomeworkScanner } from './components/HomeworkScanner';
 import { LoginModal } from './components/LoginModal';
+import { LLMControllerModal } from './components/LLMControllerModal';
 import { ForestBackground } from './components/ForestBackground';
 import { markSessionAbandoned } from './utils/reportUtils';
 import { enrichProblemFromCase, getHardcodedProblemsBySubject } from './services/hardcodedTutorProvider';
 import { AuthService } from './services/authService';
+import { sessionApi } from './api';
 
 const STORAGE_KEY = 'reanmore_sessions_v2';
 
@@ -77,13 +79,14 @@ export default function App() {
       name: 'សុជា (Sochea)',
       grade: 2,
       subject: 'science',
-      language: 'km',
+      language: 'en',
       role: 'student',
     };
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authRequiredRole, setAuthRequiredRole] = useState<UserRole | undefined>(undefined);
+  const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = AuthService.subscribe((account) => {
@@ -277,22 +280,20 @@ export default function App() {
     }
 
     try {
-      fetch('/api/session/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: session.id,
-          subject: userProfile.subject,
-          grade_level: `grade_${userProfile.grade <= 3 ? '1_3' : '4_6'}`,
-          language: userProfile.language,
-          title: session.title,
-          title_khmer: session.titleKhmer,
-          image_uri: session.imageUri,
-          worksheet_queue: session.worksheetQueue,
-          problem_step_progress: session.problemStepProgress,
-          messages: session.messages,
-        }),
-      }).catch(err => console.debug('Backend session sync offline/fallback:', err));
+      const problemProgress = session.problem?.id && session.problemStepProgress ? session.problemStepProgress[session.problem.id] : undefined;
+      sessionApi.syncSession({
+        session_id: session.id,
+        user_id: userProfile.name,
+        student_name: userProfile.name,
+        subject: userProfile.subject,
+        grade: userProfile.grade,
+        language: userProfile.language,
+        messages: session.messages,
+        current_problem: session.problem,
+        active_step_index: problemProgress?.currentStepIndex,
+        completed_step_indices: problemProgress?.completedStepIndices,
+        timestamp: Date.now(),
+      }).catch(err => console.debug('sessionApi sync offline/fallback:', err));
     } catch { /* ignore network error in offline mode */ }
   }, []);
 
@@ -315,7 +316,7 @@ export default function App() {
       name: 'ភ្ញៀវ (Guest)',
       grade: 4,
       subject: 'math',
-      language: profile.language || 'km',
+      language: profile.language || 'en',
       role: 'student',
     });
     if (activeTab === 'report') {
@@ -410,7 +411,9 @@ export default function App() {
   }, [profile, syncSessionToBackend]);
 
   const handleStartChatWithProblem = (problem?: HomeworkProblem, initialQuery?: string) => {
-    if (problem && (problem.subject === 'math' || problem.subject === 'science')) {
+    // Only route to curriculum practice queue if problem is an empty subject placeholder
+    const isSubjectOnlyPlaceholder = problem && !problem.problemStatementEng && !problem.problemStatementKhmer && (!problem.steps || problem.steps.length === 0);
+    if (isSubjectOnlyPlaceholder && (problem.subject === 'math' || problem.subject === 'science')) {
       const { problems, imageUri } = getHardcodedProblemsBySubject(problem.subject, profile.grade);
       if (problems.length > 0) {
         handleHomeworkScanned(problems, 0, imageUri);
@@ -468,7 +471,9 @@ export default function App() {
       if (!prev) return prev;
       const rawProblem = prev.problems[index];
       if (!rawProblem) return prev;
-      const problem = enrichProblemFromCase(rawProblem, profile.grade);
+      const problem = (rawProblem.has_steps && rawProblem.steps && rawProblem.steps.length > 0)
+        ? rawProblem
+        : enrichProblemFromCase(rawProblem, profile.grade);
       setActiveProblem(problem);
       navigateTo('chat', activeSessionId, problem.id);
 
@@ -500,7 +505,10 @@ export default function App() {
       );
       const newIndex = nextIndex !== -1 ? nextIndex : prev.activeIndex;
       if (nextIndex !== -1) {
-        const nextProb = enrichProblemFromCase(prev.problems[nextIndex], profile.grade);
+        const rawNext = prev.problems[nextIndex];
+        const nextProb = (rawNext.has_steps && rawNext.steps && rawNext.steps.length > 0)
+          ? rawNext
+          : enrichProblemFromCase(rawNext, profile.grade);
         setActiveProblem(nextProb);
         navigateTo('chat', activeSessionId, nextProb.id);
       }
@@ -559,7 +567,7 @@ export default function App() {
 
     // Delete in background from backend
     try {
-      fetch(`/api/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
+      sessionApi.deleteSession(sessionId).catch(() => {});
     } catch { /* ignore */ }
   };
 
@@ -574,6 +582,7 @@ export default function App() {
         onSelectTab={(tab) => navigateTo(tab)}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
+        onOpenLLMController={() => setIsLLMModalOpen(true)}
       />
 
       <main className={`relative z-10 flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-1.5 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8'}`}>
@@ -653,6 +662,13 @@ export default function App() {
         }}
         language={profile.language}
         requiredRole={authRequiredRole}
+      />
+
+      {/* Dynamic LLM Controller Modal */}
+      <LLMControllerModal
+        isOpen={isLLMModalOpen}
+        onClose={() => setIsLLMModalOpen(false)}
+        language={profile.language}
       />
     </div>
   );

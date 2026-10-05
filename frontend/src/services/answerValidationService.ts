@@ -32,13 +32,20 @@ export function fastValidateStepAnswer(
   const nextStep = activeProblem?.steps?.[currentStepIndex + 1];
 
   const trimmed = studentAnswer.trim();
+  const rawStep = currentStep as any;
+  const targetExpected = currentStep.correctAnswer || rawStep.expectedAnswer || rawStep.expected_answer || '';
   const cleanedOption = cleanBilingualOption(trimmed, language);
-  const expectedClean = cleanBilingualOption(currentStep.correctAnswer || '', language);
+  const expectedClean = cleanBilingualOption(targetExpected, language);
 
-  // 1. Direct match check (answersMatch + bilingual option equality)
-  const isDirect = isAnswerCorrect(trimmed, currentStep.correctAnswer || '') ||
+  // 1. Direct match check (answersMatch + bilingual option equality + acceptableAnswers)
+  const isDirect = (targetExpected && (
+    isAnswerCorrect(trimmed, targetExpected, currentStep.acceptableAnswers) ||
     cleanedOption.toLowerCase() === expectedClean.toLowerCase() ||
-    answersMatch(cleanedOption, expectedClean);
+    answersMatch(cleanedOption, expectedClean, currentStep.acceptableAnswers) ||
+    (currentStep.acceptableAnswers && currentStep.acceptableAnswers.some(acc =>
+      answersMatch(trimmed, acc) || answersMatch(cleanedOption, acc)
+    ))
+  )) || (!targetExpected && trimmed.length > 0 && activeProblem?.steps?.length === 1);
 
   if (isDirect) {
     let replyKhmer = '';
@@ -63,7 +70,7 @@ export function fastValidateStepAnswer(
 
   // 2. Numeric / Arithmetic Check (Fast near-miss & off-by-one detection)
   const sNorm = normalizeWithKhmer(trimmed).trim();
-  const eNorm = normalizeWithKhmer(currentStep.correctAnswer || '').trim();
+  const eNorm = normalizeWithKhmer(targetExpected).trim();
   const numS = parseFloat(sNorm);
   const numE = parseFloat(eNorm);
 

@@ -21,6 +21,7 @@ function normalizeAnswer(raw: string): string {
   }
   return text
     .replace(/[,]/g, ' and ')
+    .replace(/\+/g, ' plus ')
     .replace(/\s+/g, ' ')
     .replace(/[^\w\s\u1780-\u17FF]/g, '')
     .trim();
@@ -69,11 +70,20 @@ export function normalizeWithKhmer(raw: string): string {
   return replaceNumberWords(normalizeAnswer(converted));
 }
 
-export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
+export function answersMatch(studentRaw: string, expectedRaw: string, acceptableAnswers?: string[]): boolean {
   const s = normalizeWithKhmer(studentRaw).toLowerCase().trim();
   const e = normalizeWithKhmer(expectedRaw).toLowerCase().trim();
   if (!s || !e) return false;
   if (s === e) return true;
+
+  // 0. Acceptable answers array check if provided
+  if (acceptableAnswers && acceptableAnswers.length > 0) {
+    for (const acc of acceptableAnswers) {
+      const a = normalizeWithKhmer(acc).toLowerCase().trim();
+      if (s === a) return true;
+      if (answersMatch(studentRaw, acc)) return true;
+    }
+  }
 
   // 1. Khmer & English Affirmative / Negative Cross-Language Matching
   const affirmative = new Set([
@@ -210,6 +220,17 @@ export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
     ['roots', 'root', 'ឫស', 'ឬស'],
     ['stem', 'stems', 'ដើម', 'ដើមឈើ'],
     ['herbivores', 'herbivore', 'plant eater', 'plant eaters', 'សត្វស៊ីរុក្ខជាតិ', 'ស៊ីរុក្ខជាតិ'],
+    ['tens', 'ten', 'the tens', 'tens digit', 'the tens digit', 'tens place', 'the tens place', 'increases by 1', 'tens increases by 1', 'the tens place increases by 1', 'ខ្ទង់ដប់', 'ដប់'],
+    ['ones', 'one', 'the ones', 'ones digit', 'the ones digit', 'ones place', 'the ones place', 'ខ្ទង់រាយ', 'រាយ'],
+    ['hundreds', 'hundred', 'the hundreds', 'hundreds digit', 'the hundreds digit', 'hundreds place', 'the hundreds place', 'ខ្ទង់រយ', 'រយ'],
+    ['february', 'february has an extra day', 'because february has an extra day', 'extra day in february', 'leap year', 'leap years', 'because of leap years', 'ខែកុម្ភៈ', 'ឆ្នាំបង្គ្រប់'],
+    ['31', '31 days', 'student selects 31', '៣១', '៣១ ថ្ងៃ'],
+    ['30', '30 days', 'student selects 30', '៣០', '៣០ ថ្ងៃ'],
+    ['28', '28 days', '២៨', '២៨ ថ្ងៃ'],
+    ['29', '29 days', '២៩', '២៩ ថ្ងៃ'],
+    ['row 2', 'second row', 'the second row', 'the row containing 9 to 15', 'row containing 9 to 15', '9 to 15', 'ជួរទី២', 'ជួរទី 2'],
+    ['add', 'plus', 'addition', 'បូក', 'បន្ថែម'],
+    ['subtract', 'minus', 'subtraction', 'ដក'],
   ];
 
   for (const group of synonymGroups) {
@@ -221,18 +242,38 @@ export function answersMatch(studentRaw: string, expectedRaw: string): boolean {
   }
 
   // 6. Action targets (e.g. "add 6" or "បូក ៦")
-  if (eTokens.length === 2 && (eTokens.includes('add') || eTokens.includes('subtract') || eTokens.includes('multiply') || eTokens.includes('divide') || eTokens.includes('បូក') || eTokens.includes('ដក'))) {
-    const actionTarget = eTokens.find(t => t !== 'add' && t !== 'subtract' && t !== 'multiply' && t !== 'divide' && t !== 'បូក' && t !== 'ដក');
+  if (eTokens.length === 2 && (eTokens.includes('add') || eTokens.includes('subtract') || eTokens.includes('multiply') || eTokens.includes('divide') || eTokens.includes('plus') || eTokens.includes('minus') || eTokens.includes('បូក') || eTokens.includes('ដក'))) {
+    const actionTarget = eTokens.find(t => !['add', 'subtract', 'multiply', 'divide', 'plus', 'minus', 'បូក', 'ដក'].includes(t));
     if (actionTarget && (s === actionTarget || sTokens.includes(actionTarget))) {
       return true;
     }
   }
 
-  // 7. Whole word / phrase containment
+  // 6b. Action verb matching (e.g. question asks "add or subtract?", expected is "add 6", student answers "add" or "plus")
+  const verbSynonyms: Record<string, string[]> = {
+    add: ['add', 'plus', 'addition', 'បូក', 'បន្ថែម'],
+    subtract: ['subtract', 'minus', 'subtraction', 'ដក'],
+    multiply: ['multiply', 'times', 'multiplication', 'គុណ'],
+    divide: ['divide', 'division', 'ចែក'],
+  };
+  for (const syns of Object.values(verbSynonyms)) {
+    const sHas = syns.some(v => sTokens.includes(v) || s === v);
+    const eHas = syns.some(v => eTokens.includes(v) || e === v);
+    if (sHas && eHas && (sTokens.length === 1 || eTokens.length <= 2)) {
+      return true;
+    }
+  }
+
+  // 7. Whole word / phrase containment in either direction
   if (s.length > e.length && s.includes(e)) {
     const escaped = e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(?:^|\\b|\\s)${escaped}(?:\\b|\\s|$)`, 'i');
     if (regex.test(s)) return true;
+  }
+  if (e.length > s.length && s.length >= 3 && e.includes(s)) {
+    const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?:^|\\b|\\s)${escaped}(?:\\b|\\s|$)`, 'i');
+    if (regex.test(e)) return true;
   }
 
   return false;
@@ -247,7 +288,9 @@ export function validateStepAnswer(
   if (!hcase) return { correct: false, feedback: 'Exercise not found.' };
   const step = hcase.steps[stepIndex];
   if (!step) return { correct: false, feedback: 'Step not found.' };
-  const correct = answersMatch(studentAnswer, step.expected_student_answer);
+  const engCase = getEnglishCaseData(caseId);
+  const acceptable = engCase?.steps?.[stepIndex]?.acceptableAnswers;
+  const correct = answersMatch(studentAnswer, step.expected_student_answer, acceptable);
   return { correct, feedback: correct ? 'Correct!' : 'Not quite. Try again!' };
 }
 
@@ -266,19 +309,20 @@ export function createHardcodedSession(caseId: string, grade: number = 4): Tutor
   const gradeKey = gradeToKey(grade);
   const gradeAdaptation = hcase.grade_adaptations?.[gradeKey] ?? '';
   const worksheetImage = getWorksheetImageForCase(caseId);
-  const steps: TutorStep[] = hcase.steps.map(s => ({
+  const engCase = getEnglishCaseData(caseId);
+  const steps: TutorStep[] = hcase.steps.map((s, idx) => ({
     step: s.step,
-    tutor_question: s.tutor_question,
+    tutor_question: engCase?.steps?.[idx]?.questionEng || s.tutor_question,
     expected_student_answer: s.expected_student_answer,
   }));
   return {
     case_id: caseId,
     source: 'hardcoded',
     subject: hcase.subject,
-    original_question: hcase.original_question,
+    original_question: engCase?.statementEng || hcase.original_question,
     tutor_intro: hcase.tutor_intro,
     steps,
-    hints: hcase.hints,
+    hints: engCase?.hintsEng || hcase.hints,
     explain_another_way: hcase.explain_another_way,
     visual_data: hcase.visual_data as VisualData,
     grade_adaptation: gradeAdaptation,
@@ -299,12 +343,13 @@ export function createInitialSessionState(session: TutorSession) {
   };
 }
 
-export function isAnswerCorrect(studentRaw: string, expectedRaw: string): boolean {
-  return answersMatch(studentRaw, expectedRaw);
+export function isAnswerCorrect(studentRaw: string, expectedRaw: string, acceptableAnswers?: string[]): boolean {
+  return answersMatch(studentRaw, expectedRaw, acceptableAnswers);
 }
 
 import { matchCaseFromProblem, matchCaseId } from './caseMatcher';
 import { getKhmerCaseData } from './translationService';
+import { getEnglishCaseData } from '../data/englishPedagogicalData';
 
 export const P8_ANIMAL_ANSWERS: Record<string, Record<string, boolean>> = {
   flamingo: { vertebrate: true, feathers: true, hump_on_back: false, pincers: false, wings: true },
@@ -444,11 +489,15 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
   const gradeAdaptation = hcase.grade_adaptations?.[gradeKey] ?? '';
   const worksheetImage = getWorksheetImageForCase(targetCaseId);
   const khmerCase = getKhmerCaseData(targetCaseId);
+  const engCase = getEnglishCaseData(targetCaseId);
 
   const steps = hcase.steps.map((s, idx) => {
     const kStep = khmerCase?.steps?.[idx];
+    const eStep = engCase?.steps?.[idx];
     const qKhmer = kStep?.questionKhmer || s.tutor_question;
+    const qEng = eStep?.questionEng || s.tutor_question;
     const socraticKhmer = kStep?.socraticPromptKhmer || qKhmer;
+    const socraticEng = eStep?.socraticPromptEng || qEng;
     const isEngText = (str?: string) => Boolean(str && /^[A-Za-z0-9\s.,!?:;'"()\-_/+%=]+$/.test(str.trim()));
 
     const defaultH1 = hcase.subject === 'science'
@@ -477,6 +526,13 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
       || (khmerCase?.explainKhmer?.messageKhmer && !isEngText(khmerCase.explainKhmer.messageKhmer) ? khmerCase.explainKhmer.messageKhmer : null)
       || qKhmer;
 
+    const h1Eng = eStep?.hint1Eng || hcase.hints[0] || 'Read the question carefully.';
+    const h2Eng = eStep?.hint2Eng || hcase.hints[1] || 'Look for keywords or numbers in the step.';
+    const h3Eng = eStep?.hint3Eng || hcase.hints[2] || (gradeAdaptation ? `Tip: ${gradeAdaptation}` : 'Try thinking step by step!');
+    const expEng = eStep?.explainEng || engCase?.explainEng?.messageEng || hcase.explain_another_way?.message || s.tutor_question;
+    const analogyEng = eStep?.analogyEng || engCase?.explainEng?.questionEng || hcase.explain_another_way?.question || '';
+    const analogyTitle = engCase?.titleEng || hcase.concept || 'Helpful Explanation';
+
     // Option & answer resolution for science & interactive cases
     let stepOptions: string[] | undefined = undefined;
     let stepInputFormat: 'mcq' | 'number' | 'text' = 'text';
@@ -498,37 +554,44 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
       }
     }
 
+    // Step options from English pedagogy if not set yet (e.g. multiple choice math steps)
+    if (!stepOptions && eStep?.options && eStep.options.length > 0) {
+      stepOptions = eStep.options;
+      stepInputFormat = 'mcq';
+    }
+
     return {
       id: `${targetCaseId}-step-${s.step}`,
       stepNumber: s.step,
       totalSteps: totalSteps,
       questionKhmer: qKhmer,
-      questionEng: s.tutor_question,
+      questionEng: qEng,
       inputFormat: stepInputFormat,
       ...(stepOptions ? { options: stepOptions } : {}),
       correctAnswer: stepCorrectAnswer,
+      ...(eStep?.acceptableAnswers ? { acceptableAnswers: eStep.acceptableAnswers } : {}),
       socraticPromptKhmer: socraticKhmer,
-      socraticPromptEng: s.tutor_question,
+      socraticPromptEng: socraticEng,
       hint1: {
         khmer: h1Khmer,
-        eng: hcase.hints[0] || 'Read the question carefully.',
+        eng: h1Eng,
       },
       hint2: {
         khmer: h2Khmer,
-        eng: hcase.hints[1] || 'Look for keywords or numbers in the step.',
+        eng: h2Eng,
       },
       hint3: {
         titleKhmer: 'ឧទាហរណ៍ជំនួយ',
         titleEng: 'Helpful Example',
         exampleKhmer: h3Khmer,
-        exampleEng: hcase.hints[2] || (gradeAdaptation ? `Tip: ${gradeAdaptation}` : 'Try thinking step by step!'),
+        exampleEng: h3Eng,
       },
       explainDifferently: {
         simpleKhmer: expKhmer,
-        simpleEng: hcase.explain_another_way?.message || s.tutor_question,
-        analogyTitle: hcase.concept || 'ការពន្យល់ងាយយល់',
+        simpleEng: expEng,
+        analogyTitle: analogyTitle,
         analogyKhmer: khmerCase?.explainKhmer?.questionKhmer || hcase.explain_another_way?.question || '',
-        analogyEng: hcase.explain_another_way?.question || '',
+        analogyEng: analogyEng,
         analogyType: 'apples' as const,
       },
     };
@@ -540,7 +603,7 @@ export function enrichProblemFromCase(problem: HomeworkProblem, grade: number = 
     ...problem,
     id: targetCaseId,
     problemStatementKhmer: khmerCase?.statementKhmer || hcase.original_question,
-    problemStatementEng: hcase.original_question,
+    problemStatementEng: engCase?.statementEng || hcase.original_question,
     visualData: hcase.visual_data,
     ...(finalImage ? { imageUri: finalImage } : {}),
     steps,
@@ -587,13 +650,14 @@ export function getHardcodedProblemsBySubject(
       const hcase = ALL_HARDCODED_CASES[caseId];
       if (!hcase) return null;
       const khmerData = getKhmerCaseData(caseId);
+      const engCase = getEnglishCaseData(caseId);
 
-      let titleEng = `Exercise ${idx + 1}`;
+      let titleEng = engCase?.titleEng || `Exercise ${idx + 1}`;
       let titleKhmer = `លំហាត់ទី ${idx + 1}`;
 
       if (subject === 'math') {
         const expr = hcase.original_question || hcase.ocr_style_input?.normalized_text || '';
-        titleEng = `${idx + 1}. ${expr}`;
+        titleEng = engCase?.titleEng || `${idx + 1}. ${expr}`;
         titleKhmer = `លំហាត់ ${idx + 1}៖ ${khmerData?.statementKhmer || expr}`;
       } else {
         const scienceTitleMap: Record<string, { en: string; km: string }> = {
