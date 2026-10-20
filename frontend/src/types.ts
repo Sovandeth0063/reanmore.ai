@@ -151,6 +151,7 @@ export interface UserAccount {
   username: string;
   role: UserRole;
   pin?: string | undefined;
+  idCard?: string | undefined;
   profile: UserProfile;
 }
 
@@ -166,6 +167,7 @@ export interface UserProfile {
   language: Language;
   avatarUrl?: string | undefined;
   role?: UserRole | undefined;
+  idCard?: string | undefined;
 }
 
 /* ── Parent Weekly Report types ── */

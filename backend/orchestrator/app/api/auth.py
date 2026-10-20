@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import (
+    get_student_by_identifier,
     get_student_by_name,
     get_student_by_class_and_name,
     get_student_by_id,
@@ -24,6 +25,7 @@ from app.services.auth.security import (
     create_access_token,
     decode_access_token,
 )
+import random
 
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -31,7 +33,8 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 # ── Pydantic Request & Response Schemas ──
 
 class LoginRequest(BaseModel):
-    student_name: str = Field(..., description="Student username or name (e.g. 'dara')")
+    identifier: Optional[str] = Field(default=None, description="Student ID Card Number (e.g. 'RM-48291') or name")
+    student_name: Optional[str] = Field(default=None, description="Student username/name (backward compatibility)")
     pin: str = Field(..., min_length=4, max_length=6, description="4-digit PIN (e.g. '1234')")
     class_code: Optional[str] = Field(default="MAIN", description="Optional class code (defaults to 'MAIN')")
 
@@ -39,6 +42,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     student_name: str = Field(..., min_length=2, max_length=50, description="Student name / username")
     pin: str = Field(..., min_length=4, max_length=6, description="4-digit PIN")
+    id_card: Optional[str] = Field(default=None, description="Optional custom Student ID Card number")
     grade_level: int = Field(default=4, ge=1, le=6, description="Elementary Grade Level (1-6)")
     role: str = Field(default="student", description="Role ('student', 'parent')")
     language: str = Field(default="en", description="Language preference ('en' or 'km')")
@@ -57,6 +61,7 @@ class RegisterStudentRequest(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     user_id: str
+    id_card: str
     student_name: str
     role: str
     grade_level: int
@@ -66,6 +71,7 @@ class LoginResponse(BaseModel):
 
 class UserMeResponse(BaseModel):
     user_id: str
+    id_card: Optional[str] = None
     student_name: str
     role: str
     grade_level: int
@@ -86,7 +92,7 @@ async def get_current_user(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header. Please log in with your Class Code & PIN.",
+            detail="Missing or invalid Authorization header. Please log in with your Student ID Card & PIN.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -138,7 +144,8 @@ def require_role(allowed_roles: List[str]):
 async def register(req: RegisterRequest):
     """
     Public self-registration endpoint for students and parents.
-    Enrolls student directly into the PostgreSQL database, hashes 4-digit PIN,
+    Assigns an official Student ID Card number (e.g. RM-58291),
+    enrolls student directly into PostgreSQL, hashes 4-digit PIN,
     and issues a signed 30-day JWT.
     """
     clean_name = req.student_name.strip()
@@ -146,17 +153,34 @@ async def register(req: RegisterRequest):
     clean_pin = req.pin.strip()
     clean_class = (req.class_code or "MAIN").strip().upper()
 
+    # 1. Determine unique Student ID Card number
+    if req.id_card and req.id_card.strip():
+        candidate_id = req.id_card.strip().upper()
+        if not candidate_id.startswith("RM-"):
+            candidate_id = f"RM-{candidate_id}"
+    else:
+        candidate_id = f"RM-{random.randint(10000, 99999)}"
+
+    # Ensure ID card uniqueness in database
+    collision_count = 0
+    while await get_student_by_id(candidate_id) and collision_count < 10:
+        candidate_id = f"RM-{random.randint(10000, 99999)}"
+        collision_count += 1
+
+    user_id = candidate_id
+
     # Check if student name already exists in database
     existing = await get_student_by_name(clean_username)
     if existing:
         # If the PIN matches the existing user's PIN, log them in seamlessly
         if verify_pin(clean_pin, existing.pin_hash):
-            user_id = existing.user_id
-            await update_student_last_login(user_id)
+            existing_id = existing.user_id
+            await update_student_last_login(existing_id)
             token = create_access_token(
                 {
-                    "sub": user_id,
-                    "user_id": user_id,
+                    "sub": existing_id,
+                    "user_id": existing_id,
+                    "id_card": existing_id,
                     "student_name": existing.student_name,
                     "class_code": existing.class_code,
                     "role": existing.role,
@@ -168,7 +192,8 @@ async def register(req: RegisterRequest):
             )
             return LoginResponse(
                 token=token,
-                user_id=user_id,
+                user_id=existing_id,
+                id_card=existing_id,
                 student_name=existing.student_name,
                 role=existing.role,
                 grade_level=existing.grade_level,
@@ -181,7 +206,6 @@ async def register(req: RegisterRequest):
                 detail="ឈ្មោះនេះមានរួចហើយ សូមជ្រើសរើសឈ្មោះផ្សេង (This username is already taken. Please choose another name).",
             )
 
-    user_id = f"student_{uuid.uuid4().hex[:10]}"
     pin_hashed = hash_pin(clean_pin)
 
     created = await create_student_profile(
@@ -204,6 +228,7 @@ async def register(req: RegisterRequest):
         {
             "sub": user_id,
             "user_id": user_id,
+            "id_card": user_id,
             "student_name": clean_username,
             "class_code": clean_class,
             "role": req.role,
@@ -214,11 +239,12 @@ async def register(req: RegisterRequest):
         expires_in_seconds=86400 * settings.AUTH_TOKEN_EXPIRE_DAYS,
     )
 
-    logger.info(f"Auth: Successfully registered new user {user_id} ({clean_username}) grade={req.grade_level}")
+    logger.info(f"Auth: Successfully registered new user with ID Card {user_id} ({clean_username}) grade={req.grade_level}")
 
     return LoginResponse(
         token=token,
         user_id=user_id,
+        id_card=user_id,
         student_name=clean_username,
         role=req.role,
         grade_level=req.grade_level,
@@ -230,28 +256,34 @@ async def register(req: RegisterRequest):
 @auth_router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest):
     """
-    Authenticates a student or parent via Username/Name + 4-digit PIN.
+    Authenticates a student via Student ID Card Number (e.g. 'RM-58291') or Name + 4-digit PIN.
     No class code or staff code required.
     Issues signed JWT access token valid for 30 days.
     """
-    clean_name = req.student_name.strip().lower().replace(" ", "_")
+    clean_ident = (req.identifier or req.student_name or "").strip()
+    if not clean_ident:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="សូមបញ្ចូលលេខកាតសិស្ស ឬឈ្មោះ (Please enter your Student ID Card number or name).",
+        )
+
     clean_pin = req.pin.strip()
     clean_class = (req.class_code or "MAIN").strip().upper()
 
-    # 1. Lookup in Postgres database by student username
-    student = await get_student_by_name(clean_name)
+    # 1. Lookup in Postgres database by Student ID Card number OR student name
+    student = await get_student_by_identifier(clean_ident)
     if not student and clean_class:
-        student = await get_student_by_class_and_name(clean_class, clean_name)
+        student = await get_student_by_class_and_name(clean_class, clean_ident)
 
     if not student:
-        logger.warning(f"Auth: User not found for '{clean_name}'")
+        logger.warning(f"Auth: User not found for identifier '{clean_ident}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="រកមិនឃើញគណនីនេះឡើយ សូមចុះឈ្មោះជាមុនសិន (Account not found. Please register first).",
+            detail="រកមិនឃើញកាតសិស្សនេះឡើយ សូមចុះឈ្មោះជាមុនសិន (Student ID Card not found. Please register first).",
         )
 
     if not verify_pin(clean_pin, student.pin_hash):
-        logger.warning(f"Auth: Invalid PIN attempt for '{clean_name}'")
+        logger.warning(f"Auth: Invalid PIN attempt for ID '{clean_ident}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="PIN មិនត្រឹមត្រូវឡើយ (Incorrect PIN. Please try again).",
@@ -267,6 +299,7 @@ async def login(req: LoginRequest):
     payload = {
         "sub": user_id,
         "user_id": user_id,
+        "id_card": user_id,
         "student_name": student.student_name,
         "class_code": student.class_code,
         "role": role,
@@ -279,11 +312,12 @@ async def login(req: LoginRequest):
         expires_in_seconds=86400 * settings.AUTH_TOKEN_EXPIRE_DAYS,
     )
 
-    logger.info(f"Auth: Successful login for {user_id} ({student.student_name}) role={role}")
+    logger.info(f"Auth: Successful login for ID Card {user_id} ({student.student_name}) role={role}")
 
     return LoginResponse(
         token=token,
         user_id=user_id,
+        id_card=user_id,
         student_name=student.student_name,
         role=role,
         grade_level=grade_level,

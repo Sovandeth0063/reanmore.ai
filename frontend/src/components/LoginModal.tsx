@@ -3,16 +3,20 @@ import { UserAccount, UserRole, Language } from '../types';
 import { AuthService } from '../services/authService';
 import { getDisplayName } from '../utils/language';
 import {
+  CreditCard,
   User,
-  UserPlus,
   LogIn,
   X,
   AlertCircle,
   ArrowLeft,
   ChevronRight,
-  Sparkles,
   Check,
   Delete,
+  Sparkles,
+  Award,
+  ShieldCheck,
+  QrCode,
+  ArrowRight,
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -20,7 +24,7 @@ interface LoginModalProps {
   onClose: () => void;
   onSuccess: (account: UserAccount) => void;
   language?: Language | undefined;
-  requiredRole?: UserRole | undefined; // Used for Parent Report mode verification
+  requiredRole?: UserRole | undefined;
   initialMode?: 'select' | 'login' | 'create' | undefined;
 }
 
@@ -45,25 +49,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return 'login';
   });
 
-  // Selected profile for PIN pad mode (when tapping a saved profile)
+  // Newly issued Student ID Card screen (shown right after registration)
+  const [newlyIssuedCard, setNewlyIssuedCard] = useState<UserAccount | null>(null);
+
+  // Selected profile for tactile PIN pad mode
   const [selectedAccount, setSelectedAccount] = useState<UserAccount | null>(null);
 
-  // Toggle for typing a username manually on the login tab
+  // Manual typing mode on Login tab
   const [isTypingLogin, setIsTypingLogin] = useState(false);
 
-  // PIN entry states
+  // Form states
   const [pinInput, setPinInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Manual Login fields
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [manualPin, setManualPin] = useState('');
 
   // Register fields
   const [regName, setRegName] = useState('');
-  const [regAvatar, setRegAvatar] = useState('👦');
+  const [regAvatar, setRegAvatar] = useState('🦁');
   const [regGrade, setRegGrade] = useState<number>(4);
+  const [regCustomId, setRegCustomId] = useState('');
   const [regPin, setRegPin] = useState('');
 
   // Reset state on open/close
@@ -72,6 +80,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setError(null);
       setPinInput('');
       setManualPin('');
+      setNewlyIssuedCard(null);
       const currentAccounts = AuthService.getAccounts();
 
       if (requiredRole === 'parent') {
@@ -98,12 +107,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setError(null);
 
       try {
-        const res = await AuthService.loginRemote(selectedAccount.username, pinToTest);
+        const identifierToUse = selectedAccount.idCard || selectedAccount.id || selectedAccount.username;
+        const res = await AuthService.loginRemote(identifierToUse, pinToTest);
         if (res.success && res.account) {
           onSuccess(res.account);
           onClose();
         } else {
-          setError(res.errorEng || 'Incorrect PIN. Please try again.');
+          setError(res.errorEng || 'PIN មិនត្រឹមត្រូវឡើយ (Incorrect PIN. Please try again).');
           setPinInput('');
         }
       } catch {
@@ -116,14 +126,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     [selectedAccount, onSuccess, onClose]
   );
 
-  // Handle keypad digit tap
+  // Keypad handlers
   const handleDigitPress = (digit: string) => {
     if (pinInput.length >= 4) return;
     const nextPin = pinInput + digit;
     setPinInput(nextPin);
     setError(null);
 
-    // Auto-submit on 4th digit
     if (nextPin.length === 4) {
       executePinLogin(nextPin);
     }
@@ -139,7 +148,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError(null);
   };
 
-  // Keyboard listener for PIN mode
+  // Physical keyboard listener for PIN pad
   useEffect(() => {
     if (!isOpen || !selectedAccount) return;
 
@@ -159,11 +168,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, selectedAccount, pinInput]);
 
-  // Handle Manual Login Submit
+  // Handle Manual Login with Student ID Card or Name
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginUsername.trim()) {
-      setError('Please enter your name or username.');
+    if (!loginIdentifier.trim()) {
+      setError('Please enter your Student ID Card Number or Name.');
       return;
     }
     if (!manualPin.trim() || manualPin.trim().length < 4) {
@@ -175,16 +184,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError(null);
 
     try {
-      const res = await AuthService.loginRemote(loginUsername.trim(), manualPin.trim());
+      const res = await AuthService.loginRemote(loginIdentifier.trim(), manualPin.trim());
       if (res.success && res.account) {
         onSuccess(res.account);
         onClose();
       } else {
-        setError(res.errorEng || 'Account not found or incorrect PIN. Please try again.');
+        setError(res.errorEng || 'Student ID Card not found or incorrect PIN.');
       }
     } catch {
       setError('Network error. Logging into offline profile.');
-      const localRes = AuthService.login(loginUsername.trim(), manualPin.trim());
+      const localRes = AuthService.login(loginIdentifier.trim(), manualPin.trim());
       if (localRes.success && localRes.account) {
         onSuccess(localRes.account);
         onClose();
@@ -194,15 +203,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // Handle Register Submit
+  // Handle Register Student ID Card
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim()) {
-      setError('Please enter your name.');
+      setError('Please enter learner full name.');
       return;
     }
     if (!regPin.trim() || regPin.trim().length < 4) {
-      setError('Please choose a 4-digit PIN to protect your profile.');
+      setError('Please choose a 4-digit secret PIN.');
       return;
     }
 
@@ -216,17 +225,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         regGrade,
         requiredRole === 'parent' ? 'parent' : 'student',
         language,
-        regAvatar
+        regAvatar,
+        regCustomId.trim() || undefined
       );
 
       if (res.success && res.account) {
-        onSuccess(res.account);
-        onClose();
+        // Show the Digital Student ID Card!
+        setNewlyIssuedCard(res.account);
       } else {
-        setError(res.errorEng || 'Registration failed. Please try a different name.');
+        setError(res.errorEng || 'Registration failed. Please try a different name or ID.');
       }
     } catch {
-      setError('Could not connect to database. Profile created locally.');
+      setError('Could not connect to database. Card generated locally.');
+      const randomId = `RM-${Math.floor(10000 + Math.random() * 90000)}`;
       const localRes = AuthService.createAccount(
         regName.trim().toLowerCase().replace(/\s+/g, '_'),
         'student',
@@ -237,12 +248,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           language,
           role: 'student',
           avatarUrl: regAvatar,
+          idCard: randomId,
         },
         regPin.trim()
       );
       if (localRes.success && localRes.account) {
-        onSuccess(localRes.account);
-        onClose();
+        setNewlyIssuedCard(localRes.account);
       }
     } finally {
       setIsLoading(false);
@@ -252,102 +263,189 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-emerald-950/15 border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header Banner */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 text-white px-6 py-5 relative select-none">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner">
-                {requiredRole === 'parent' ? '🛡️' : '🎓'}
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-black tracking-tight leading-snug">
-                  {requiredRole === 'parent'
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#0B1E16]/75 backdrop-blur-sm animate-fadeIn">
+      {/* Outer Card Styled with Forest Theme: 3px dark green border & offset tactile shadow */}
+      <div className="relative w-full max-w-md bg-[#F4FAF5] rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] overflow-hidden flex flex-col max-h-[92vh]">
+        {/* ========================================================================= */}
+        {/* TOP HEADER: Deep Forest Green matching the Navigation Bar                 */}
+        {/* ========================================================================= */}
+        <div className="bg-[#1B4332] text-white px-5 py-4 border-b-3 border-[#1B4332] flex items-center justify-between select-none">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#2D6A4F] border-2 border-[#52B788] flex items-center justify-center text-xl shadow-[1.5px_1.5px_0px_#0B1E16]">
+              {requiredRole === 'parent' ? '🛡️' : '🦁'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
+                  {newlyIssuedCard
+                    ? 'Student ID Card Issued!'
+                    : requiredRole === 'parent'
                     ? 'Parent Verification'
                     : selectedAccount
-                    ? 'Learner Sign-In'
-                    : activeTab === 'register'
-                    ? 'Create Learner Profile'
-                    : 'Welcome Back!'}
+                    ? 'Student ID Sign-In'
+                    : 'ReanMore Student Portal'}
                 </h2>
-                <p className="text-xs text-white/85 font-medium">
-                  {requiredRole === 'parent'
-                    ? 'Enter parent PIN code to access reports'
-                    : selectedAccount
-                    ? `Logging in as ${selectedAccount.profile.name}`
-                    : activeTab === 'register'
-                    ? 'Join ReanMore to explore Math & Science'
-                    : 'Choose your profile or enter your PIN'}
-                </p>
               </div>
+              <p className="text-[11px] text-[#A3E635] font-bold">
+                {newlyIssuedCard
+                  ? 'Your official digital identity card'
+                  : 'Elementary Math & Science Companion'}
+              </p>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-all cursor-pointer"
-              title="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-[#2D6A4F] hover:bg-[#40916C] border-2 border-[#52B788] text-white flex items-center justify-center transition-all cursor-pointer shadow-[1.5px_1.5px_0px_#0B1E16] active:scale-95"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Global Error Banner */}
         {error && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2.5 text-red-700 text-xs sm:text-sm font-semibold animate-shake">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+          <div className="mx-5 mt-3 p-3 bg-red-100 border-2 border-red-800 rounded-2xl flex items-center gap-2 text-red-900 text-xs font-black animate-shake shadow-[2px_2px_0px_#991B1B]">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-700" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto">
+        {/* Modal Scrollable Content */}
+        <div className="p-5 overflow-y-auto">
           {/* ========================================================================= */}
-          {/* SCREEN A: PIN ENTRY KEYPAD SCREEN (When a profile is selected)           */}
+          {/* VIEW 1: NEWLY ISSUED DIGITAL STUDENT ID CARD SHOWCASE                     */}
           {/* ========================================================================= */}
-          {selectedAccount && (
-            <div className="flex flex-col items-center space-y-5 animate-fadeIn">
-              {/* Profile Card Header */}
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-sm mb-2">
-                  {selectedAccount.profile.avatarUrl || '👦'}
+          {newlyIssuedCard && (
+            <div className="flex flex-col items-center space-y-4 animate-fadeIn">
+              <div className="w-full bg-white rounded-3xl border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] overflow-hidden">
+                {/* ID Card Top Ribbon */}
+                <div className="bg-[#1B4332] px-4 py-2.5 flex items-center justify-between text-white border-b-2 border-[#1B4332]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🎓</span>
+                    <span className="text-xs font-black tracking-wider uppercase">ReanMore Academy</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#52B788] text-[#0B1E16] border border-[#1B4332]">
+                    Official Student ID
+                  </span>
                 </div>
-                <h3 className="font-black text-slate-800 text-lg">
-                  {getDisplayName(selectedAccount.profile.name, false)}
-                </h3>
-                <span className="text-xs text-slate-500 font-medium">
-                  Grade {selectedAccount.profile.grade} Learner
-                </span>
+
+                {/* ID Card Body */}
+                <div className="p-4 bg-[#EDF7EE] flex items-center gap-4">
+                  {/* Photo Avatar Frame */}
+                  <div className="w-20 h-20 rounded-2xl bg-white border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] flex flex-col items-center justify-center text-4xl shrink-0 relative overflow-hidden">
+                    <span>{newlyIssuedCard.profile.avatarUrl || '🦁'}</span>
+                    <div className="absolute bottom-0 inset-x-0 bg-[#1B4332] text-white text-[8px] font-black text-center py-0.5 uppercase tracking-tighter">
+                      PHOTO
+                    </div>
+                  </div>
+
+                  {/* Student Credentials */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-black text-[#1B4332] leading-snug truncate">
+                      {getDisplayName(newlyIssuedCard.profile.name, false)}
+                    </h3>
+                    <div className="inline-block mt-1 px-2.5 py-1 rounded-xl bg-white border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332]">
+                      <span className="text-xs font-black text-[#2D6A4F] tracking-wide font-mono">
+                        {newlyIssuedCard.idCard || newlyIssuedCard.id}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5 text-[11px] font-bold text-[#1B4332]">
+                      <span>Grade {newlyIssuedCard.profile.grade}</span>
+                      <span>•</span>
+                      <span>Academic Year 2026</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ID Card Bottom Barcode Decorative Strip */}
+                <div className="bg-white px-4 py-2 border-t-2 border-[#1B4332] flex items-center justify-between">
+                  <div className="flex items-center gap-1 font-mono tracking-widest text-[#1B4332] text-xs font-black">
+                    <QrCode className="w-4 h-4 text-[#1B4332]" />
+                    <span>||| | | |||| || | |||</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#52796F]">
+                    PIN Protected
+                  </span>
+                </div>
               </div>
 
-              {/* 4 Visual PIN Indicator Dots */}
-              <div className="flex items-center justify-center gap-4 py-2">
+              <div className="text-center px-2">
+                <p className="text-xs font-bold text-[#1B4332]">
+                  🎉 Welcome to ReanMore, <strong>{newlyIssuedCard.profile.name}</strong>! Your Student ID is{' '}
+                  <span className="text-[#2D6A4F] font-black underline">{newlyIssuedCard.idCard || newlyIssuedCard.id}</span>.
+                </p>
+                <p className="text-[11px] text-[#52796F] font-semibold mt-0.5">
+                  Use this ID and your 4-digit PIN to log in anytime.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onSuccess(newlyIssuedCard);
+                  onClose();
+                }}
+                className="w-full py-3.5 px-5 rounded-2xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-sm border-2 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Enter Homework Classroom</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* VIEW 2: TACTILE 4-DIGIT PIN KEYPAD (When a Student ID Card is selected)   */}
+          {/* ========================================================================= */}
+          {!newlyIssuedCard && selectedAccount && (
+            <div className="flex flex-col items-center space-y-4 animate-fadeIn">
+              {/* Selected ID Card Badge */}
+              <div className="w-full bg-white rounded-2xl border-2 border-[#1B4332] p-3 shadow-[3px_3px_0px_#1B4332] flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#D8EEDF] border-2 border-[#1B4332] flex items-center justify-center text-2xl shrink-0">
+                  {selectedAccount.profile.avatarUrl || '🦁'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-[#1B4332] text-sm truncate">
+                      {getDisplayName(selectedAccount.profile.name, false)}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-[#D8EEDF] border border-[#1B4332] text-[10px] font-black text-[#1B4332]">
+                      Grade {selectedAccount.profile.grade}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#2D6A4F]">
+                    {selectedAccount.idCard || selectedAccount.id}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Glowing Dot Indicators */}
+              <div className="flex items-center justify-center gap-3.5 py-1">
                 {[0, 1, 2, 3].map((index) => {
                   const isFilled = pinInput.length > index;
                   return (
                     <div
                       key={index}
-                      className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                      className={`w-4 h-4 rounded-full transition-all duration-200 border-2 border-[#1B4332] ${
                         isFilled
-                          ? 'bg-emerald-500 border-2 border-emerald-500 scale-125 shadow-md shadow-emerald-500/30'
-                          : 'bg-slate-100 border-2 border-slate-300'
+                          ? 'bg-[#2D6A4F] scale-125 shadow-[1.5px_1.5px_0px_#1B4332]'
+                          : 'bg-white'
                       }`}
                     />
                   );
                 })}
               </div>
 
-              {/* Tactile On-Screen Number Pad */}
-              <div className="w-full max-w-[280px] grid grid-cols-3 gap-2.5 pt-1">
+              {/* 3x4 Tactile Keypad matching the forest theme */}
+              <div className="w-full max-w-[270px] grid grid-cols-3 gap-2">
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                   <button
                     key={digit}
                     type="button"
                     onClick={() => handleDigitPress(digit)}
                     disabled={isLoading}
-                    className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-emerald-50 active:bg-emerald-100 border border-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 select-none"
+                    className="h-12 rounded-2xl bg-white hover:bg-[#D8EEDF] active:bg-[#B7E4C7] border-2 border-[#1B4332] text-[#1B4332] font-black text-xl flex items-center justify-center shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-50 select-none"
                   >
                     {digit}
                   </button>
@@ -357,7 +455,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="button"
                   onClick={handleClearPin}
                   disabled={isLoading || pinInput.length === 0}
-                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-rose-50 border border-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-40 select-none"
+                  className="h-12 rounded-2xl bg-white hover:bg-rose-50 border-2 border-[#1B4332] text-rose-700 font-bold text-xs flex items-center justify-center shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-40 select-none"
                 >
                   Clear
                 </button>
@@ -366,7 +464,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="button"
                   onClick={() => handleDigitPress('0')}
                   disabled={isLoading}
-                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-emerald-50 active:bg-emerald-100 border border-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 select-none"
+                  className="h-12 rounded-2xl bg-white hover:bg-[#D8EEDF] active:bg-[#B7E4C7] border-2 border-[#1B4332] text-[#1B4332] font-black text-xl flex items-center justify-center shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-50 select-none"
                 >
                   0
                 </button>
@@ -375,15 +473,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="button"
                   onClick={handleBackspace}
                   disabled={isLoading || pinInput.length === 0}
-                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-amber-50 border border-slate-200 text-slate-600 font-bold flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-40 select-none"
+                  className="h-12 rounded-2xl bg-white hover:bg-amber-50 border-2 border-[#1B4332] text-[#1B4332] font-bold flex items-center justify-center shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-40 select-none"
                   title="Backspace"
                 >
                   <Delete className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Bottom Actions */}
-              <div className="w-full flex items-center justify-between pt-2">
+              {/* Back to ID Card List */}
+              <div className="w-full flex items-center justify-between pt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -391,36 +489,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setPinInput('');
                     setError(null);
                   }}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-black text-[#1B4332] hover:underline cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Switch Profile</span>
+                  <span>Choose Another Card</span>
                 </button>
               </div>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* SCREEN B: MAIN TABS (Register vs Log In)                                   */}
+          {/* VIEW 3: MAIN TABS (Register Student ID vs Log In with Student ID)         */}
           {/* ========================================================================= */}
-          {!selectedAccount && (
-            <div className="space-y-5 animate-fadeIn">
-              {/* Segmented Tab Control: Register vs Log In */}
-              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+          {!newlyIssuedCard && !selectedAccount && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Segmented Tab Pill Control */}
+              <div className="flex bg-[#D8EEDF] p-1 rounded-2xl border-2 border-[#1B4332]">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveTab('register');
                     setError(null);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                     activeTab === 'register'
-                      ? 'bg-white text-emerald-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
+                      ? 'bg-[#1B4332] text-white shadow-[2px_2px_0px_#0B1E16]'
+                      : 'text-[#1B4332] hover:bg-white/50'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span>Register</span>
+                  <CreditCard className="w-4 h-4" />
+                  <span>Register ID Card</span>
                 </button>
 
                 <button
@@ -429,10 +527,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setActiveTab('login');
                     setError(null);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                     activeTab === 'login'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
+                      ? 'bg-[#1B4332] text-white shadow-[2px_2px_0px_#0B1E16]'
+                      : 'text-[#1B4332] hover:bg-white/50'
                   }`}
                 >
                   <LogIn className="w-4 h-4" />
@@ -441,29 +539,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
 
               {/* ───────────────────────────────────────────────────────────── */}
-              {/* TAB 1: REGISTER NEW LEARNER                                  */}
+              {/* TAB A: REGISTER OFFICIAL STUDENT ID CARD                      */}
               {/* ───────────────────────────────────────────────────────────── */}
               {activeTab === 'register' && (
-                <form onSubmit={handleRegister} className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-3.5">
                   {/* Name Input */}
                   <div>
-                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Learner Name
+                    <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-1">
+                      Learner Full Name (ឈ្មោះសិស្ស)
                     </label>
                     <input
                       type="text"
                       required
                       value={regName}
                       onChange={(e) => setRegName(e.target.value)}
-                      placeholder="e.g. Dara, Sophea, Pich"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      placeholder="e.g. Dara Pich, Sophea, Borey"
+                      className="w-full px-3.5 py-2.5 bg-white border-2 border-[#1B4332] rounded-2xl text-sm font-black text-[#1B4332] placeholder-[#52796F] focus:outline-none focus:ring-2 focus:ring-[#40916C] shadow-[2px_2px_0px_#1B4332]"
                     />
                   </div>
 
                   {/* Character Avatar Picker */}
                   <div>
-                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
-                      Choose Your Mascot
+                    <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-1.5">
+                      Choose Your ID Photo Mascot
                     </label>
                     <div className="grid grid-cols-5 gap-2">
                       {AVATAR_OPTIONS.map((emoji) => {
@@ -473,18 +571,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             key={emoji}
                             type="button"
                             onClick={() => setRegAvatar(emoji)}
-                            className={`h-12 rounded-2xl flex items-center justify-center text-2xl transition-all cursor-pointer relative ${
+                            className={`h-11 rounded-2xl flex items-center justify-center text-2xl transition-all cursor-pointer border-2 border-[#1B4332] ${
                               isSelected
-                                ? 'bg-emerald-100/70 border-2 border-emerald-500 scale-105 shadow-sm'
-                                : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:scale-102'
+                                ? 'bg-[#D8EEDF] shadow-[2px_2px_0px_#1B4332] scale-105 ring-2 ring-[#2D6A4F]'
+                                : 'bg-white hover:bg-[#F0FDF4]'
                             }`}
                           >
                             <span>{emoji}</span>
-                            {isSelected && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              </div>
-                            )}
                           </button>
                         );
                       })}
@@ -493,7 +586,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Grade Level Selector */}
                   <div>
-                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-1.5">
                       Select Grade Level
                     </label>
                     <div className="grid grid-cols-3 gap-2">
@@ -504,10 +597,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             key={grade}
                             type="button"
                             onClick={() => setRegGrade(grade)}
-                            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                            className={`py-1.5 px-2 rounded-xl font-black text-xs transition-all cursor-pointer border-2 border-[#1B4332] ${
                               isSelected
-                                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20'
-                                : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+                                ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332]'
+                                : 'bg-white text-[#1B4332] hover:bg-[#D8EEDF]'
                             }`}
                           >
                             Grade {grade}
@@ -517,13 +610,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Optional Custom ID Card Number */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
+                        Student ID Card No. (លេខកាត)
+                      </label>
+                      <span className="text-[10px] font-bold text-[#52796F]">
+                        Leave blank to auto-generate
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={regCustomId}
+                      onChange={(e) => setRegCustomId(e.target.value.toUpperCase())}
+                      placeholder="e.g. RM-88291 (Optional)"
+                      className="w-full px-3.5 py-2.5 bg-white border-2 border-[#1B4332] rounded-2xl text-sm font-black text-[#1B4332] placeholder-[#52796F] font-mono focus:outline-none focus:ring-2 focus:ring-[#40916C] shadow-[2px_2px_0px_#1B4332]"
+                    />
+                  </div>
+
                   {/* 4-digit PIN */}
                   <div>
-                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
-                      Create 4-Digit PIN
+                    <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-0.5">
+                      Create 4-Digit Security PIN (លេខសម្ងាត់)
                     </label>
-                    <p className="text-[11px] text-slate-400 mb-1.5 font-medium">
-                      Keep your progress safe. You'll use this to sign in later.
+                    <p className="text-[10px] text-[#52796F] font-semibold mb-1">
+                      You will use this PIN together with your Student ID Card to log in.
                     </p>
                     <input
                       type="password"
@@ -531,43 +643,44 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       required
                       value={regPin}
                       onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
-                      placeholder="e.g. 1234"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg font-black tracking-widest text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      placeholder="••••"
+                      className="w-full px-3.5 py-2.5 bg-white border-2 border-[#1B4332] rounded-2xl text-center text-lg font-black tracking-widest text-[#1B4332] placeholder-[#52796F] focus:outline-none focus:ring-2 focus:ring-[#40916C] shadow-[2px_2px_0px_#1B4332]"
                     />
                   </div>
 
-                  {/* Register Submit Button */}
-                  <div className="pt-2">
+                  {/* Submit Button */}
+                  <div className="pt-1">
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full py-3.5 px-5 rounded-2xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-sm border-2 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      <UserPlus className="w-4 h-4" />
-                      <span>{isLoading ? 'Creating Account...' : 'Start Learning 🚀'}</span>
+                      <CreditCard className="w-4 h-4" />
+                      <span>{isLoading ? 'Issuing Card...' : 'Issue Student ID & Start Learning 🚀'}</span>
                     </button>
                   </div>
                 </form>
               )}
 
               {/* ───────────────────────────────────────────────────────────── */}
-              {/* TAB 2: LOG IN                                                 */}
+              {/* TAB B: LOG IN WITH STUDENT ID CARD                            */}
               {/* ───────────────────────────────────────────────────────────── */}
               {activeTab === 'login' && (
-                <div className="space-y-4">
-                  {/* If user has saved profiles on this device AND is not typing manually */}
+                <div className="space-y-3.5">
+                  {/* Saved Student ID Cards on this device */}
                   {accounts.length > 0 && !isTypingLogin ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-black text-slate-600 uppercase tracking-wider">
-                          Select Your Profile
+                        <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider">
+                          Select Your Student ID Card
                         </p>
-                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <span className="text-[10px] font-black text-[#1B4332] bg-[#D8EEDF] px-2 py-0.5 rounded-full border border-[#1B4332]">
                           Tap to enter PIN
                         </span>
                       </div>
 
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {/* ID Card Badges */}
+                      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                         {accounts.map((acc) => {
                           const isCurrent = current?.id === acc.id;
                           return (
@@ -578,35 +691,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 setPinInput('');
                                 setError(null);
                               }}
-                              className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer group select-none ${
+                              className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 border-[#1B4332] transition-all cursor-pointer group select-none ${
                                 isCurrent
-                                  ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-500/20'
-                                  : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50/70 shadow-sm'
+                                  ? 'bg-[#D8EEDF] shadow-[3px_3px_0px_#1B4332] ring-2 ring-[#2D6A4F]'
+                                  : 'bg-white hover:bg-[#EDF7EE] shadow-[2px_2px_0px_#1B4332]'
                               }`}
                             >
-                              <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border border-emerald-200 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                                  {acc.profile.avatarUrl || '👦'}
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-xl bg-[#EDF7EE] border-2 border-[#1B4332] flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform shadow-[1px_1px_0px_#1B4332]">
+                                  {acc.profile.avatarUrl || '🦁'}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-black text-slate-900 text-sm truncate">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-black text-[#1B4332] text-sm truncate">
                                       {getDisplayName(acc.profile.name, false)}
                                     </span>
                                     {isCurrent && (
-                                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shrink-0">
+                                      <span className="px-1.5 py-0.2 rounded-full bg-[#1B4332] text-white text-[9px] font-bold">
                                         Active
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-xs text-slate-500 font-medium">
-                                    Grade {acc.profile.grade} Learner
-                                  </span>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[11px] font-mono font-black text-[#2D6A4F]">
+                                      {acc.idCard || acc.id}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-[#52796F]">
+                                      • Grade {acc.profile.grade}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0">
-                                <span className="text-xs font-bold hidden sm:inline">Enter PIN</span>
+                              <div className="flex items-center gap-1 text-[#1B4332] shrink-0 font-black text-xs">
+                                <span>PIN</span>
                                 <ChevronRight className="w-4 h-4" />
                               </div>
                             </div>
@@ -614,21 +732,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         })}
                       </div>
 
-                      {/* Manual Login Switcher */}
+                      {/* Manual ID Card Input Toggle */}
                       <button
                         type="button"
                         onClick={() => {
                           setIsTypingLogin(true);
                           setError(null);
                         }}
-                        className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs border border-slate-200 transition-colors cursor-pointer text-center"
+                        className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-[#EDF7EE] text-[#1B4332] font-black text-xs border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] transition-colors cursor-pointer text-center"
                       >
-                        Log in by typing name & PIN
+                        Sign in with another Student ID Card No.
                       </button>
                     </div>
                   ) : (
-                    /* Manual Name + PIN Login Form */
-                    <form onSubmit={handleManualLogin} className="space-y-4">
+                    /* Manual Student ID Card Login Form */
+                    <form onSubmit={handleManualLogin} className="space-y-3.5">
                       {accounts.length > 0 && (
                         <button
                           type="button"
@@ -636,30 +754,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             setIsTypingLogin(false);
                             setError(null);
                           }}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer mb-2"
+                          className="flex items-center gap-1.5 text-xs font-black text-[#1B4332] hover:underline cursor-pointer mb-1"
                         >
                           <ArrowLeft className="w-4 h-4" />
-                          <span>Back to saved profiles</span>
+                          <span>Back to saved ID cards</span>
                         </button>
                       )}
 
                       <div>
-                        <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                          Learner Name or Username
+                        <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-1">
+                          Student ID Card No. or Name (លេខកាតសិស្ស ឬឈ្មោះ)
                         </label>
                         <input
                           type="text"
                           required
-                          value={loginUsername}
-                          onChange={(e) => setLoginUsername(e.target.value)}
-                          placeholder="e.g. Dara"
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                          value={loginIdentifier}
+                          onChange={(e) => setLoginIdentifier(e.target.value)}
+                          placeholder="e.g. RM-96960 or Piseth"
+                          className="w-full px-3.5 py-2.5 bg-white border-2 border-[#1B4332] rounded-2xl text-sm font-black text-[#1B4332] placeholder-[#52796F] font-mono focus:outline-none focus:ring-2 focus:ring-[#40916C] shadow-[2px_2px_0px_#1B4332]"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                          4-Digit PIN
+                        <label className="block text-xs font-black text-[#1B4332] uppercase tracking-wider mb-1">
+                          4-Digit Security PIN (លេខសម្ងាត់)
                         </label>
                         <input
                           type="password"
@@ -668,18 +786,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           value={manualPin}
                           onChange={(e) => setManualPin(e.target.value.replace(/\D/g, ''))}
                           placeholder="••••"
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg font-black tracking-widest text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                          className="w-full px-3.5 py-2.5 bg-white border-2 border-[#1B4332] rounded-2xl text-center text-lg font-black tracking-widest text-[#1B4332] placeholder-[#52796F] focus:outline-none focus:ring-2 focus:ring-[#40916C] shadow-[2px_2px_0px_#1B4332]"
                         />
                       </div>
 
-                      <div className="pt-2">
+                      <div className="pt-1">
                         <button
                           type="submit"
                           disabled={isLoading}
-                          className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                          className="w-full py-3.5 px-5 rounded-2xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-sm border-2 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           <LogIn className="w-4 h-4" />
-                          <span>{isLoading ? 'Signing In...' : 'Log In'}</span>
+                          <span>{isLoading ? 'Verifying Card...' : 'Sign In with Student ID 🚀'}</span>
                         </button>
                       </div>
                     </form>

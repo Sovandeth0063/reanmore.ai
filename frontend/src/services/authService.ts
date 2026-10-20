@@ -160,7 +160,7 @@ export class AuthService {
   }
 
   static async loginRemote(
-    studentName: string,
+    identifier: string,
     pin: string,
     classCode: string = 'MAIN'
   ): Promise<{ success: boolean; account?: UserAccount | undefined; errorKhmer?: string | undefined; errorEng?: string | undefined }> {
@@ -169,7 +169,7 @@ export class AuthService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          student_name: studentName.trim().toLowerCase(),
+          identifier: identifier.trim(),
           pin: pin.trim(),
           class_code: (classCode || 'MAIN').trim().toUpperCase(),
         }),
@@ -188,14 +188,20 @@ export class AuthService {
         this.setToken(data.token);
       }
 
+      const idCard = data.id_card || data.user_id;
       const accounts = this.getAccounts();
-      const existing = accounts.find((a) => a.username.toLowerCase() === data.student_name.toLowerCase());
+      const existing = accounts.find(
+        (a) =>
+          a.username.toLowerCase() === data.student_name.toLowerCase() ||
+          (a.idCard && a.idCard.toLowerCase() === idCard.toLowerCase())
+      );
 
       const account: UserAccount = {
         id: data.user_id,
         username: data.student_name,
         role: data.role as UserRole,
         pin: pin.trim(),
+        idCard,
         profile: {
           name: existing?.profile.name || data.student_name,
           grade: (data.grade_level || 4) as any,
@@ -203,10 +209,13 @@ export class AuthService {
           language: (data.language || 'en') as any,
           role: data.role as UserRole,
           avatarUrl: existing?.profile.avatarUrl || '👦',
+          idCard,
         },
       };
 
-      const existingIdx = accounts.findIndex((a) => a.id === account.id || a.username === account.username);
+      const existingIdx = accounts.findIndex(
+        (a) => a.id === account.id || a.username === account.username || (a.idCard && a.idCard === idCard)
+      );
       if (existingIdx !== -1) {
         accounts[existingIdx] = account;
       } else {
@@ -218,7 +227,7 @@ export class AuthService {
       return { success: true, account };
     } catch (err) {
       console.warn('Remote login failed, falling back to local accounts:', err);
-      return this.login(studentName, pin);
+      return this.login(identifier, pin);
     }
   }
 
@@ -229,6 +238,7 @@ export class AuthService {
     role: UserRole = 'student',
     language: string = 'en',
     avatarUrl: string = '👦',
+    customIdCard?: string,
     classCode: string = 'MAIN'
   ): Promise<{ success: boolean; account?: UserAccount | undefined; errorKhmer?: string | undefined; errorEng?: string | undefined }> {
     try {
@@ -241,6 +251,7 @@ export class AuthService {
           grade_level: gradeLevel,
           role,
           language,
+          id_card: customIdCard?.trim() || undefined,
           class_code: (classCode || 'MAIN').trim().toUpperCase(),
         }),
       });
@@ -258,11 +269,14 @@ export class AuthService {
         this.setToken(data.token);
       }
 
+      const idCard = data.id_card || data.user_id;
+
       const account: UserAccount = {
         id: data.user_id,
         username: data.student_name,
         role: data.role as UserRole,
         pin: pin.trim(),
+        idCard,
         profile: {
           name: studentName.trim(),
           grade: (data.grade_level || gradeLevel) as any,
@@ -270,11 +284,14 @@ export class AuthService {
           language: (data.language || 'en') as any,
           role: data.role as UserRole,
           avatarUrl: avatarUrl || '👦',
+          idCard,
         },
       };
 
       const accounts = this.getAccounts();
-      const existingIdx = accounts.findIndex((a) => a.id === account.id || a.username === account.username);
+      const existingIdx = accounts.findIndex(
+        (a) => a.id === account.id || a.username === account.username || (a.idCard && a.idCard === idCard)
+      );
       if (existingIdx !== -1) {
         accounts[existingIdx] = account;
       } else {
@@ -286,6 +303,7 @@ export class AuthService {
       return { success: true, account };
     } catch (err) {
       console.warn('Remote register failed, falling back to local account:', err);
+      const randomId = `RM-${Math.floor(10000 + Math.random() * 90000)}`;
       return this.createAccount(
         studentName,
         role,
@@ -296,6 +314,7 @@ export class AuthService {
           language: language as any,
           role,
           avatarUrl,
+          idCard: randomId,
         },
         pin
       );
