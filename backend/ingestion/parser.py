@@ -10,7 +10,7 @@ import json
 import csv
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 import logging
 
 # Local fallback for standalone script execution

@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import time
 import logging
-from typing import List
+from typing import List, Optional
 import numpy as np
 
 logger = logging.getLogger("ingestion.embedder")
