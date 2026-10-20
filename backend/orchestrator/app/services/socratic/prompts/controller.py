@@ -630,7 +630,8 @@ class SocraticPromptController:
         self,
         problem_text: str,
         grade_level: str = "grade_1_3",
-        session_id: str = "default_session"
+        session_id: str = "default_session",
+        exercise_context: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Plans and decomposes a homework problem into sequential Socratic step cards
@@ -646,7 +647,8 @@ class SocraticPromptController:
                 grade_level_group=group,
                 session_id=session_id
             )
-            user_prompt = template["user"].format(problem_text=problem_text)
+            context_block = f"\n\nAuthoritative Science Curriculum Reference:\n{exercise_context}" if exercise_context else ""
+            user_prompt = template["user"].format(problem_text=problem_text) + context_block
             prompt = f"{system_prompt}\n\n{user_prompt}"
 
             raw_resp = self._call_gemini_llm(prompt)
@@ -739,6 +741,35 @@ class SocraticPromptController:
         lower = problem_text.lower()
 
         # --- PHYSICAL SCIENCE & CHEMISTRY ---
+        # 0. States of Matter (Solid, Liquid, Gas)
+        if any(w in lower for w in ["states of matter", "state of matter", "three states", "solid liquid gas", "solid, liquid, gas"]) or ("solid" in lower and "liquid" in lower):
+            return [
+                {
+                    "step_number": 1,
+                    "title": "Name the Hard Things (Solids)! 🧊",
+                    "mission": "Find out how solid things keep their own shape! 🧊🧱",
+                    "clue": "Solids hold their own shape — like ice cubes, rocks, and blocks! 🧊",
+                    "concept": "solid",
+                    "expected_answer": "solid"
+                },
+                {
+                    "step_number": 2,
+                    "title": "Find Flowing Things (Liquids)! 💧",
+                    "mission": "Look at things that flow and take the shape of their cup! 🥛",
+                    "clue": "Liquids flow and take the shape of whatever cup or bowl you pour them in! 💧",
+                    "concept": "liquid",
+                    "expected_answer": "liquid"
+                },
+                {
+                    "step_number": 3,
+                    "title": "Catch the Invisible Air (Gases)! 🎈",
+                    "mission": "Discover what floats in balloons and steams from soup! 💨",
+                    "clue": "Gases float freely and spread out to fill the whole room! 🎈",
+                    "concept": "gas",
+                    "expected_answer": "gas"
+                }
+            ]
+
         # 1. Boiling / Evaporation / Steam
         if ("water" in lower or "liquid" in lower or "tea" in lower or "soup" in lower) and any(w in lower for w in ["boil", "heat", "steam", "evaporat", "kettle", "gas", "hot"]):
             return [
@@ -1292,6 +1323,30 @@ class SocraticPromptController:
         numbers = [int(n) for n in re.findall(r"\b\d+\b", homework_problem)]
         lower = homework_problem.lower()
 
+        # 0. States of Matter (Solid, Liquid, Gas)
+        if any(w in lower for w in ["states of matter", "state of matter", "three states", "solid liquid gas", "solid, liquid, gas"]) or ("solid" in lower and "liquid" in lower):
+            if step_number == 1:
+                return {
+                    "mission": "Find out how solid things keep their own shape! 🧊🧱",
+                    "clue": "Solids hold their own shape without spreading or pouring — like ice, rocks, and blocks! 🧊",
+                    "helpful_example": "🧊 An ice cube holds its square shape on the counter until it warms up!",
+                    "your_turn": "What state of matter is hard ice: Solid, Liquid, or Gas?"
+                }
+            elif step_number == 2:
+                return {
+                    "mission": "Explore how liquids flow and take the shape of their container! 💧",
+                    "clue": "Liquids have no fixed shape — they flow and take the shape of any cup or bowl! 🥛",
+                    "helpful_example": "💧 Water, milk, and apple juice all splash and pour into cups!",
+                    "your_turn": "What state of matter is drinking water: Solid, Liquid, or Gas?"
+                }
+            else:
+                return {
+                    "mission": "Discover what floats freely in balloons and steams from hot soup! 🎈",
+                    "clue": "Gases have no shape and spread out everywhere in the air! 💨",
+                    "helpful_example": "🎈 The air inside a floating birthday balloon is a Gas!",
+                    "your_turn": "What are the 3 states of matter: Solid, Liquid, and ___?"
+                }
+
         # 1. Boiling / Evaporation
         if "boil" in lower or ("water" in lower and ("heat" in lower or "steam" in lower or "evaporat" in lower or "kettle" in lower)):
             if step_number == 1:
@@ -1521,17 +1576,17 @@ class SocraticPromptController:
 
         if step_number == 1:
             return {
-                "mission": f"Explore and observe what happens with {subject_phrase}.",
-                "clue": expected_operation or "Look closely at the everyday clues around us.",
-                "helpful_example": f"🔍 When we ask questions about {subject_phrase}, we look for clues in nature! 🌟",
-                "your_turn": f"What do you notice first when thinking about {subject_phrase}?"
+                "mission": f"Let's explore {subject_phrase} together! 🌟",
+                "clue": expected_operation or f"Think about where you notice {subject_phrase} in your daily life! 🔍",
+                "helpful_example": f"👀 Just like a young explorer with a magnifying glass, look for clues about {subject_phrase}! 🔬",
+                "your_turn": f"What do you notice first when you think about {subject_phrase}?"
             }
         else:
             return {
-                "mission": f"Discover the main reason behind {subject_phrase}.",
-                "clue": expected_operation or "Put your observation and the clues together.",
-                "helpful_example": f"💡 Science helps us explain why {subject_phrase} works the way it does! ✨",
-                "your_turn": f"Can you share what you learned about {subject_phrase}?"
+                "mission": f"Discover the secret behind {subject_phrase}! 🚀",
+                "clue": expected_operation or f"Put your clues together: how does {subject_phrase} work?",
+                "helpful_example": f"💡 Everything in the world has a wonderful reason behind it! ✨",
+                "your_turn": f"Can you explain what you learned about {subject_phrase} in your own words?"
             }
 
     def parse_socratic_card(

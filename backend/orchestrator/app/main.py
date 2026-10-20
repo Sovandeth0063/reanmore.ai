@@ -6,6 +6,7 @@ from app.api.endpoints import router as api_router
 from app.api.health_routes import health_router
 from app.api.upload import upload_router
 from app.api.llm_routes import llm_router
+from app.api.auth import auth_router
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import init_db
@@ -119,3 +120,4 @@ app.include_router(health_router)
 app.include_router(api_router, prefix="/api")
 app.include_router(upload_router, prefix="/api")
 app.include_router(llm_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")

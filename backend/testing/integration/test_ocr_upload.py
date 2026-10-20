@@ -33,39 +33,23 @@ def client():
     return TestClient(app)
 
 
-def test_ocr_upload_mock_flow(client):
-    """Test image upload endpoint with simulated fallback."""
+def test_ocr_upload_degraded_when_scanner_offline(client):
+    """Test image upload endpoint returns honest degraded response when scanner is offline."""
     fake_image_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
     file = io.BytesIO(fake_image_bytes)
 
     response = client.post(
-        "/api/upload/ocr?force_mock=true",
+        "/api/upload/ocr",
         files={"file": ("math_homework.png", file, "image/png")}
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["success"] is True
-    assert data["source"] == "zero_model_fallback"
-    assert "clean_question_text" in data
-    assert len(data["questions"]) > 0
-    assert "Leo had 8 cookies" in data["clean_question_text"]
-
-
-def test_ocr_upload_science_mock_flow(client):
-    """Test science worksheet image upload with simulated fallback."""
-    fake_image_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
-    file = io.BytesIO(fake_image_bytes)
-
-    response = client.post(
-        "/api/upload/ocr?force_mock=true",
-        files={"file": ("science_experiment.png", file, "image/png")}
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert "ice" in data["clean_question_text"].lower()
-    assert data["document_meta"]["subject"] == "science"
+    assert data["success"] is False
+    assert data["source"] == "homework_scanner"
+    assert "temporarily unavailable" in data["error"].lower()
+    assert data["exercise_count"] == 0
+    assert len(data["exercises"]) == 0
 
 
 def test_ocr_upload_unsupported_file_type(client):
@@ -136,25 +120,6 @@ def test_ocr_extractor_parse_scanner_response():
     assert "Which one would you like to solve first?" in parsed["prompt_message"]
     assert len(parsed["exercises"]) == 2
 
-
-def test_ocr_upload_multi_exercise_mock_flow(client):
-    """Test image upload endpoint when multiple exercises are detected on a worksheet."""
-    fake_image_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
-    file = io.BytesIO(fake_image_bytes)
-
-    response = client.post(
-        "/api/upload/ocr?force_mock=true",
-        files={"file": ("practice_worksheet.png", file, "image/png")}
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["multiple_exercises"] is True
-    assert data["exercise_count"] >= 2
-    assert "Which one would you like to solve first?" in data["prompt_message"]
-    assert len(data["exercises"]) >= 2
-    assert any("Adjusting Tens" in ex["title"] for ex in data["exercises"])
 
 
 def test_ocr_extractor_section_grouped_multi_exercise():

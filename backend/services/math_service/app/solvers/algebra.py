@@ -141,51 +141,12 @@ def is_word_problem(expression: str) -> bool:
 def solve_math_ai(expression: str, grade_level: str) -> dict:
     """Compiles math solver steps using Gemini with grade-level adaptive dynamic prompts."""
     if not GEMINI_API_KEY:
-        nums = re.findall(r'\d+', expression)
-        if len(nums) >= 2:
-            n1, n2 = int(nums[0]), int(nums[1])
-            expr_lower = expression.lower()
-            if any(w in expr_lower for w in ["times", "each", "groups of", "multiply", "multiplied"]):
-                res = n1 * n2
-                op_name = "multiplication"
-            elif any(w in expr_lower for w in ["divided", "split", "share", "shared equally", "divide"]):
-                big, small = max(n1, n2), min(n1, n2)
-                if small <= 0:
-                    return {
-                        "solution": None,
-                        "steps": [expression],
-                        "success": False,
-                        "error": "Division by zero",
-                    }
-                res = Fraction(big, small)
-                op_name = "division"
-            elif any(w in expr_lower for w in ["total", "together", "plus", "add", "altogether", "combined"]):
-                res = n1 + n2
-                op_name = "addition"
-            else:
-                res = max(n1, n2) - min(n1, n2)
-                op_name = "subtraction"
-
-            steps = [
-                f"Identify the given quantities: {n1} and {n2}",
-                f"Determine the operation ({op_name}) from the story problem",
-                f"Calculate the final result: {_format_fraction(res)}"
-            ]
-            return {
-                "solution": _format_fraction(res),
-                "steps": steps,
-                "structured_steps": [
-                    {"step_number": 1, "title": "Extract Given Values", "clue": f"Identify {n1} and {n2}", "expected_answer": str(n1)},
-                    {"step_number": 2, "title": "Solve Problem", "clue": "Calculate the answer", "expected_answer": _format_fraction(res)}
-                ],
-                "success": True,
-                "error": None
-            }
         return {
             "solution": None,
-            "steps": [expression],
+            "steps": [],
+            "structured_steps": None,
             "success": False,
-            "error": "Gemini API key is not configured in the Math Service environment."
+            "error": "Math AI Solver unavailable: GEMINI_API_KEY is not configured in Math Service."
         }
 
     try:

@@ -24,7 +24,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onStartScan,
   onStartChat,
 }) => {
-  const isKhmer = profile.language === 'km';
+  const isKhmer = false;
   const [heroChatInput, setHeroChatInput] = useState('');
 
   const handleHeroChatSubmit = (e: React.FormEvent) => {

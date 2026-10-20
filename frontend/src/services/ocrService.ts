@@ -1,5 +1,4 @@
 import { Grade, HomeworkProblem, Subject } from '../types';
-import { MOCK_PROBLEMS as BACKEND_MOCK_WORKSHEET_PROBLEMS } from '../data/mockProblems';
 
 
 export interface OCRProcessResult {
@@ -299,32 +298,6 @@ export function parseOCRResponse(data: any): OCRProcessResult {
       const titleEng = ex.title ? `${ex.number ? `${ex.number}: ` : ''}${ex.title}` : (ex.tab_label || `Exercise ${problemCounter}`);
       const titleKhmer = ex.tab_label_khmer ? `${ex.tab_label_khmer}${ex.title ? `: ${ex.title}` : ''}` : `លំហាត់ទី ${problemCounter}`;
 
-      // Check if this matches one of our rich pre-crafted mock templates (Q5, Q6, Q7)
-      const isQ5 = ex.number === 'Q5' || (ex.title && ex.title.toLowerCase().includes('adjusting'));
-      const isQ6 = ex.number === 'Q6' || (ex.title && ex.title.toLowerCase().includes('money'));
-      const isQ7 = ex.number === 'Q7' || (ex.title && (ex.title.toLowerCase().includes('multiplication') || ex.title.toLowerCase().includes('doubling')));
-
-      let templateProblem: HomeworkProblem | undefined = undefined;
-      if (isQ5 && BACKEND_MOCK_WORKSHEET_PROBLEMS[0]) {
-        templateProblem = BACKEND_MOCK_WORKSHEET_PROBLEMS[0];
-      } else if (isQ6 && BACKEND_MOCK_WORKSHEET_PROBLEMS[1]) {
-        templateProblem = BACKEND_MOCK_WORKSHEET_PROBLEMS[1];
-      } else if (isQ7 && BACKEND_MOCK_WORKSHEET_PROBLEMS[2]) {
-        templateProblem = BACKEND_MOCK_WORKSHEET_PROBLEMS[2];
-      }
-
-      if (templateProblem) {
-        problems.push({
-          ...templateProblem,
-          id: ex.exercise_id || templateProblem.id,
-          titleEng: titleEng || templateProblem.titleEng,
-          titleKhmer: titleKhmer || templateProblem.titleKhmer,
-          problemStatementEng: fullStatement || templateProblem.problemStatementEng,
-          problemStatementKhmer: templateProblem.problemStatementKhmer || fullStatement,
-        });
-        problemCounter++;
-        continue;
-      }
 
       // Dynamic decomposition for any arbitrary exercise
       const steps: any[] = [];
@@ -463,42 +436,14 @@ export function parseOCRResponse(data: any): OCRProcessResult {
 
 import { ocrApi } from '../api';
 
-/**
- * Fetches the deterministic multi-exercise worksheet mock (Q5, Q6, Q7)
- * via ocrApi. Seamlessly falls back to client-side definition if backend is offline.
- */
-export async function fetchBackendMockExercises(): Promise<OCRProcessResult> {
-  try {
-    const data = await ocrApi.getMockWorksheet();
-    const parsed = parseOCRResponse(data);
-    if (parsed.problems.length > 0) return parsed;
-  } catch (err) {
-    console.warn('ocrApi.getMockWorksheet unreachable, using offline mock:', err);
-  }
-
-  // Fallback to client-side BACKEND_MOCK_WORKSHEET_PROBLEMS (guaranteed 100% uptime)
-  return {
-    success: true,
-    problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
-  };
-}
-
 export async function processHomeworkImage(file: File): Promise<OCRProcessResult> {
   try {
     const data = await ocrApi.uploadAndExtract(file);
-    if (
-      !data ||
-      (!data.problems?.length &&
-        !data.raw_text &&
-        !data.extracted_text &&
-        !data.exercises?.length &&
-        !data.clean_question_text &&
-        !data.pages?.length)
-    ) {
-      // Offline fallback: return standard backend mock problems
+    if (!data || !data.success) {
       return {
-        success: true,
-        problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
+        success: false,
+        problems: [],
+        error: data?.error || 'Worksheet scanner is temporarily unavailable. Please type your problem into the chat.',
       };
     }
     return parseOCRResponse(data);
@@ -506,8 +451,8 @@ export async function processHomeworkImage(file: File): Promise<OCRProcessResult
     console.error('OCR Processing failed:', error);
     return {
       success: false,
-      problems: BACKEND_MOCK_WORKSHEET_PROBLEMS,
-      error: error?.message || 'Failed to connect to OCR service',
+      problems: [],
+      error: error?.message || 'Worksheet scanner is temporarily unavailable. Please type your problem into the chat.',
     };
   }
 }

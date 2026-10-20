@@ -29,13 +29,23 @@ class IntentResult(BaseModel):
     extracted_answer: Optional[str] = Field(default=None, description="Cleaned core answer if intent is STEP_ATTEMPT (e.g. '12', 'chloroplast')")
     raw_response: Optional[str] = None
 
-# Fast-path greeting and casual phrases
+# Fast-path greeting, identity, and casual phrases
 _CHITCHAT_RE = re.compile(
-    r'^(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening)|'
+    r'^(?:'
+    r'hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening)|'
     r'thanks(?:\s+(?:a\s+lot|so\s+much|very\s+much))?|'
     r'thank\s+you(?:\s+(?:so\s+much|very\s+much))?|'
-    r'thx|ty|tysm|bye|goodbye|see\s+ya|cya)'
-    r'(?:\s+(?:there|tutor|bot|teacher|friend|ai))?[\s!.]*$',
+    r'thx|ty|tysm|bye|goodbye|see\s+ya|cya|'
+    r'what(?:\'s|\s+is|\s+ur|\s+your)\s+name|'
+    r'who\s+(?:are|r)\s+(?:you|u)|'
+    r'how\s+(?:are|r)\s+(?:you|u)(?:\s+doing)?|'
+    r'what\s+can\s+you\s+do|'
+    r'tell\s+me\s+about\s+yourself|'
+    r'what\s+are\s+you|'
+    r'who\s+is\s+reanmore|'
+    r'what\s+is\s+reanmore'
+    r')'
+    r'(?:\s+(?:there|tutor|bot|teacher|friend|ai|reanmore))?[\s!.\?]*$',
     flags=re.IGNORECASE
 )
 
@@ -284,6 +294,13 @@ def disambiguate_step_input(
             raw_response="step_off_topic"
         )
 
+    # 4.7. Standalone math arithmetic expression (e.g. "15 + 27", "8 * 6", "100 - 45", "24 / 6")
+    is_fraction_literal = bool(re.match(r'^\s*-?\d+/\d+\s*$', q))
+    is_binary_arithmetic = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$', q))
+    expected_ans = str(current_step.get("expected_answer") or "").strip()
+    if is_binary_arithmetic and q != expected_ans:
+        return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.96)
+
     # 5. Student answer attempt
     extracted = extract_core_answer(q)
     is_numeric_math = bool(re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?(?:\s*[a-zA-Z%°/]+)?$', q))
@@ -307,8 +324,9 @@ def disambiguate_step_input(
     word_count = len(q.split())
     extracted_word_count = len(extracted.split()) if extracted else 0
     is_short = word_count <= 4 or (extracted and extracted_word_count <= 4)
+    has_math_op = any(op in q for op in ['+', '-', '*', '/', '=', '×', '÷'])
 
-    if is_short:
+    if is_short and not has_math_op:
         return IntentResult(
             intent=IntentType.STEP_ATTEMPT,
             confidence=0.90,
@@ -436,7 +454,13 @@ def classify_intent_heuristic(
     if _MATH_QUESTION_RE.search(q):
         return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.90)
 
-    if not is_interrogative and len(q.split()) <= 4:
+    # Standalone math arithmetic expression
+    is_fraction_literal = bool(re.match(r'^\s*-?\d+/\d+\s*$', q))
+    if not is_fraction_literal and re.search(r'^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$', q):
+        return IntentResult(intent=IntentType.INITIAL_SOLVE, confidence=0.96)
+
+    has_math_op = not is_fraction_literal and any(op in q for op in ['+', '-', '*', '/', '=', '×', '÷'])
+    if not is_interrogative and len(q.split()) <= 4 and not has_math_op:
         return IntentResult(
             intent=IntentType.STEP_ATTEMPT,
             confidence=0.88,

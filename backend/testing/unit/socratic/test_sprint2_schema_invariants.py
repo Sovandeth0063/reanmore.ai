@@ -155,6 +155,7 @@ class TestStateAwareNumericLeakChecker:
             tutor_reply=reply,
             target_answer="15",
             is_step_solved=False,
+            is_reveal_state=True,
             current_hint_tier=3
         )
         assert is_leak is False

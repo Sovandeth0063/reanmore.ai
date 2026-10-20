@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, UserRole, Language } from '../types';
 import { AuthService } from '../services/authService';
+import { getDisplayName } from '../utils/language';
 import { User, Shield, KeyRound, UserPlus, LogIn, X, Check, AlertCircle } from 'lucide-react';
 
 interface LoginModalProps {
@@ -16,11 +17,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  language = 'km',
+  language = 'en',
   requiredRole,
   initialMode = 'select',
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const accounts = AuthService.getAccounts();
   const current = AuthService.getCurrentUser();
 
@@ -51,13 +52,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAccountClick = (acc: UserAccount, quickLogin = false) => {
+  const handleAccountClick = async (acc: UserAccount, quickLogin = false) => {
     setError(null);
     setSelectedAccount(acc);
     setPinInput(acc.pin || '');
 
     if (quickLogin || !acc.pin) {
-      const res = AuthService.login(acc.id, acc.pin, true);
+      const res = await AuthService.loginRemote('GRADE4A', acc.username, acc.pin || '1234');
       if (res.success && res.account) {
         onSuccess(res.account);
         onClose();
@@ -67,12 +68,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  const handlePinSubmit = (e?: React.FormEvent) => {
+  const handlePinSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedAccount) return;
 
     setError(null);
-    const res = AuthService.login(selectedAccount.id, pinInput);
+    const res = await AuthService.loginRemote('GRADE4A', selectedAccount.username, pinInput);
     if (res.success && res.account) {
       onSuccess(res.account);
       onClose();
@@ -81,7 +82,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  const handleCustomLogin = (e: React.FormEvent) => {
+  const handleCustomLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!usernameInput.trim()) {
@@ -89,7 +90,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    const res = AuthService.login(usernameInput, pinInput || undefined);
+    const res = await AuthService.loginRemote('GRADE4A', usernameInput, pinInput || '1234');
     if (res.success && res.account) {
       onSuccess(res.account);
       onClose();
@@ -233,10 +234,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-sm text-gray-900 truncate">{acc.profile.name}</span>
+                            <span className="font-black text-sm text-gray-900 truncate">
+                              {getDisplayName(acc.profile.name, false)}
+                            </span>
                             {isCurrent && (
                               <span className="px-1.5 py-0.5 rounded-full bg-[#2D6A4F] text-white text-[10px] font-bold shrink-0">
-                                {isKhmer ? 'សកម្ម' : 'Active'}
+                                Active
                               </span>
                             )}
                           </div>

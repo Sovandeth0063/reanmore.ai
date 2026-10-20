@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Grade, Language, UserAccount, UserRole } from '../types';
 import { GradeSubjectSelector } from './GradeSubjectSelector';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import {
   Sparkles,
   Globe,
@@ -38,7 +37,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const [draftName, setDraftName] = useState(profile.name);
   const [draftGrade, setDraftGrade] = useState<Grade>(profile.grade);
-  const [draftLanguage, setDraftLanguage] = useState<Language>(profile.language);
+  const [draftLanguage, setDraftLanguage] = useState<Language>('en');
   const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | undefined>(profile.avatarUrl);
   const [isSaved, setIsSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,25 +45,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   useEffect(() => {
     setDraftName(profile.name);
     setDraftGrade(profile.grade);
-    setDraftLanguage(profile.language);
+    setDraftLanguage('en');
     setDraftAvatarUrl(profile.avatarUrl);
   }, [profile]);
 
-  const isKhmer = draftLanguage === 'km';
+  const isKhmer = false;
   const role = currentUser?.role || profile.role || 'student';
   const isParent = role === 'parent';
 
   const hasChanges =
     draftName !== profile.name ||
     draftGrade !== profile.grade ||
-    draftLanguage !== profile.language ||
     draftAvatarUrl !== profile.avatarUrl;
 
   const handleSave = () => {
     onUpdateProfile({
       name: draftName,
       grade: draftGrade,
-      language: draftLanguage,
+      language: 'en',
       avatarUrl: draftAvatarUrl,
     });
     setIsSaved(true);
@@ -264,13 +262,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-[#A7CDB4]">
-              <span className="font-bold text-[#1B4332]">👦 សិស្ស (sochea)</span>
+              <span className="font-bold text-[#1B4332]">👦 Student (sochea)</span>
               <span className="font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
                 PIN: 1234
               </span>
             </div>
             <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-[#A7CDB4]">
-              <span className="font-bold text-[#1B4332]">👩‍👧 អាណាព្យាបាល (parent)</span>
+              <span className="font-bold text-[#1B4332]">👩‍👧 Parent (parent)</span>
               <span className="font-mono font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
                 PIN: 9999
               </span>
@@ -338,22 +336,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Language Switcher Card */}
+        {/* Language Card (English Fixed in v2.1) */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] p-4 sm:p-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-black text-base sm:text-lg text-[#1B4332] flex items-center gap-2 font-heading">
               <Globe className="w-5 h-5 text-[#1B4332] shrink-0" />
-              <span>{isKhmer ? 'ភាសាកម្មវិធី' : 'Language'}</span>
+              <span>Language</span>
             </h3>
-            <LanguageSwitcher
-              language={draftLanguage}
-              onSelectLanguage={(lang: Language) => setDraftLanguage(lang)}
-            />
+            <span className="px-3 py-1 bg-[#1B4332] text-white rounded-xl text-xs font-black border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332]">
+              English (EN)
+            </span>
           </div>
           <p className="text-xs font-bold text-[#1B4332]/80">
-            {isKhmer
-              ? 'ជ្រើសរើសភាសាដែលអ្នកចង់ប្រើប្រាស់នៅក្នុងកម្មវិធី'
-              : 'Select your preferred application display language'}
+            English is the default application display language.
           </p>
         </div>
 

@@ -19,7 +19,7 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
   onSelectExercise,
   onViewAllChats,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (problems.length <= 1) return null;

@@ -86,14 +86,10 @@ def solve_physics_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
     """
     if not GEMINI_API_KEY:
         return {
-            "solution": "Forces and motion in everyday life",
-            "steps": [
-                f"Observe what is moving or pushing in '{expression}'",
-                "See how forces (push, pull, or gravity) cause the motion",
-                "State the friendly science conclusion!"
-            ],
-            "success": True,
-            "error": None
+            "solution": None,
+            "steps": [],
+            "success": False,
+            "error": "Physics AI solver unavailable: GEMINI_API_KEY is not configured in Science Service."
         }
 
     try:

@@ -1,17 +1,12 @@
-services:
-  # State Checkpointing & Cache
-  redis:
-    image: redis/redis-stack-server:latest
-    container_name: science-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - science-network
+# ReanMore v2.1 Streamlined 4-Container Stack (Phase 1 Thin Vertical Slice - Math MVP)
+# Architecture Spec v2.1 Section 12.1 & 12.2: Sized for single 16 GB RAM / 6 GB VRAM workstation.
+# Containers: db (PostgreSQL 16), ollama (Qwen 3.5:4b), orchestrator (In-process math), frontend (React Vite)
 
-  # Persistent Logs Database (Postgres)
+services:
+  # 1. System of Record: PostgreSQL 16 Alpine
   db:
-    image: postgres:15-alpine
-    container_name: science-postgres
+    image: postgres:16-alpine
+    container_name: reanmore-postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -22,79 +17,76 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - science-network
+      - reanmore-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
 
-  # Vector DB for Physics & Biology RAG
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: science-qdrant
+  # 2. Local Resident Offline Model: Ollama Server (Optional containerized profile)
+  # NOTE: By default, Orchestrator connects to your native Host Ollama (http://host.docker.internal:11434).
+  # Run `docker compose --profile container-ollama up` only if you don't have Ollama installed on the host.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: reanmore-ollama
+    restart: always
+    profiles:
+      - container-ollama
     ports:
-      - "6333:6333"
+      - "11434:11434"
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ollama_data:/root/.ollama
     networks:
-      - science-network
+      - reanmore-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
-  # Main API Gateway
+  # 3. Core Socratic Orchestrator Gateway (FastAPI with in-process SymPy CAS & Leak Guard v2)
   orchestrator:
     build:
       context: ./orchestrator
       dockerfile: Dockerfile
-    container_name: science-orchestrator
+    container_name: reanmore-orchestrator
+    restart: always
     ports:
       - "${ORCHESTRATOR_PORT:-9000}:${ORCHESTRATOR_PORT:-9000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./orchestrator/app:/app/app
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-science_chatbot}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - LLM_PRIMARY_PROVIDER=ollama
+      - OLLAMA_MODEL=qwen3.5:4b
+      - LLM_MAX_INFLIGHT=1
+      - QUOTA_DAILY=10
+      - QUOTA_TZ=Asia/Phnom_Penh
     depends_on:
-      - redis
-      - qdrant
       - db
     networks:
-      - science-network
+      - reanmore-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
 
-  # Math Solver
-  math-service:
-    build:
-      context: ./services/math_service
-      dockerfile: Dockerfile
-    container_name: math-service
-    ports:
-      - "${MATH_SERVICE_PORT:-9001}:${MATH_SERVICE_PORT:-9001}"
-    env_file:
-      - .env
-    networks:
-      - science-network
-
-  # Unified Science Solver (Physics, Chemistry, Biology)
-  science-service:
-    build:
-      context: ./services/science_service
-      dockerfile: Dockerfile
-    container_name: science-service
-    ports:
-      - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
-    env_file:
-      - .env
-    networks:
-      - science-network
-
-  # Homework OCR + VLM Pipeline
-  ocr-service:
-    build:
-      context: ../homework_ocr_vlm
-      dockerfile: Dockerfile
-    container_name: ocr-service
-    ports:
-      - "8000:8000"
-    env_file:
-      - ../homework_ocr_vlm/.env
-    networks:
-      - science-network
+  # Frontend is run locally via `npm run dev` in /frontend for instant hot-reloading.
+  # (Vite proxies /api to http://localhost:9000)
 
 networks:
-  science-network:
+  reanmore-network:
     driver: bridge
 
 volumes:
-  qdrant_data:
   postgres_data:
+  ollama_data:

@@ -100,21 +100,27 @@ class NormalizerEngine:
     def detect_language(self, text: str) -> str:
         """
         Detects primary language/script.
+        When ENABLE_KHMER_LANGUAGE is False (v2.1 English-first launch mode),
+        returns 'english' unconditionally to isolate deferred Khmer processing.
         Returns: 'khmer', 'khmenglish', or 'english'.
         """
         if not text:
             return "english"
-            
+
+        from app.core.config import settings
+        if not getattr(settings, "ENABLE_KHMER_LANGUAGE", False):
+            return "english"
+
         # 1. Check for Khmer Unicode script (\u1780 to \u17FF)
         if re.search(r'[\u1780-\u17FF]', text):
             return "khmer"
-            
+
         # 2. Check for Khmenglish terms
         lower = text.lower()
         khm_hits = sum(1 for k in self.khmenglish_map if re.search(r'\b' + re.escape(k) + r'\b', lower))
         if khm_hits > 0:
             return "khmenglish"
-            
+
         return "english"
 
     def standardize_units_and_exponents(self, text: str) -> str:

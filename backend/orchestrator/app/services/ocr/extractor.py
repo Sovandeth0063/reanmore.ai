@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 import os
 from app.core.logging import logger
 from app.infrastructure.clients import get_service_registry
+from app.services.ocr.ingress import mask_photo_pii
 
 
 def to_khmer_numeral(n: int) -> str:
@@ -15,6 +16,8 @@ class OCRExtractor:
     Worksheet OCR & Vision Extractor.
     Communicates with the Homework Scanner microservice with graceful
     zero-model mock fallback for resilient offline testing and local development.
+    All incoming images/PDFs undergo server-side photo PII masking of student
+    name/header fields before dispatch.
     """
 
     def __init__(self):
@@ -24,30 +27,63 @@ class OCRExtractor:
         self,
         file_bytes: bytes,
         filename: str = "worksheet.png",
-        force_mock: bool = False,
     ) -> Dict[str, Any]:
         """
         Extract question text and structure from worksheet photo/PDF bytes.
+        Applies server-side PII masking to blank out student name/ID in header
+        before passing to vision models.
+        Returns structured degraded response if scanner is offline or unavailable.
         """
-        if not force_mock:
-            try:
-                registry = get_service_registry()
-                client = registry.get("HOMEWORK_SCANNER")
-                if client is not None:
-                    response = await client.process_homework(
-                        file_bytes=file_bytes,
-                        filename=filename,
-                    )
-                    return self._parse_scanner_response(response)
-            except Exception as e:
-                logger.warning(
-                    f"Homework scanner service unavailable or failed ({e}). "
-                    "Engaging zero-model fallback extraction."
+        # Server-side photo PII masking: redacts student names/ID in worksheet header
+        masked_bytes, mask_info = mask_photo_pii(file_bytes=file_bytes, filename=filename)
+
+        try:
+            registry = get_service_registry()
+            client = registry.get("HOMEWORK_SCANNER")
+            if client is not None:
+                response = await client.process_homework(
+                    file_bytes=masked_bytes,
+                    filename=filename,
                 )
+                return self._parse_scanner_response(response, mask_info=mask_info)
+        except Exception as e:
+            logger.warning(
+                f"Homework scanner service unavailable or failed ({e}). "
+                "Returning honest degraded response."
+            )
 
-        return self._generate_mock_extraction(filename)
+        return self._generate_degraded_response(
+            error="Worksheet scanner is temporarily unavailable. Please type your problem into the chat.",
+            mask_info=mask_info,
+        )
 
-    def _parse_scanner_response(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_degraded_response(
+        self, error: str, mask_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Structured honest degraded response when OCR dependencies fail."""
+        m_info = mask_info or {}
+        return {
+            "success": False,
+            "source": "homework_scanner",
+            "error": error,
+            "clean_question_text": "",
+            "multiple_exercises": False,
+            "exercise_count": 0,
+            "prompt_message": error,
+            "ui_layout": {"style": "banner", "items": []},
+            "exercises": [],
+            "questions": [],
+            "document_meta": {},
+            "overall_confidence": 0.0,
+            "warnings": [error],
+            "raw_payload": {},
+            "pii_masked": m_info.get("masked", False),
+            "mask_info": m_info,
+        }
+
+    def _parse_scanner_response(
+        self, raw: Dict[str, Any], mask_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Parse structured HomeworkResponse into clean question text, metadata, and selectable exercises."""
         pages = raw.get("pages", [])
         extracted_questions: List[Dict[str, Any]] = []
@@ -212,6 +248,7 @@ class OCRExtractor:
         }
 
         doc = raw.get("document", {})
+        m_info = mask_info or {}
         return {
             "success": True,
             "source": "homework_scanner",
@@ -226,276 +263,10 @@ class OCRExtractor:
             "overall_confidence": raw.get("confidence", 0.9),
             "warnings": raw.get("warnings", []),
             "raw_payload": raw,
+            "pii_masked": m_info.get("masked", False),
+            "mask_info": m_info,
         }
 
-    def _generate_mock_extraction(self, filename: str = "practice_worksheet.png") -> Dict[str, Any]:
-        """Deterministic zero-model simulated fallback for fast development and testing."""
-        lower_name = (filename or "practice_worksheet.png").lower()
-        is_single_specific = any(k in lower_name for k in ["single", "cookie", "fraction", "sunlight", "melt_ice", "math", "science"])
-        if not is_single_specific:
-            # Simulate a multi-exercise worksheet (Q5 Adjusting Tens, Q6 Counting Money, Q7 Multiplication)
-            exercises = [
-                {
-                    "exercise_id": "ex_1",
-                    "problem_index": 1,
-                    "tab_label": "Scanned Problem 1",
-                    "tab_label_khmer": "លំហាត់ទី ១",
-                    "number": "Q5",
-                    "title": "Adjusting Tens",
-                    "instructions": "Solve by adding/subtracting tens first and adjusting",
-                    "scanned_text": "1. 35 + 9 = ___\n2. 58 + 11 = ___",
-                    "prompt": "Solve by adding/subtracting tens first and adjusting: a) 35 + 9 = ___  b) 58 + 11 = ___",
-                    "preview": "Adjusting Tens: a) 35 + 9 = ___, b) 58 + 11 = ___",
-                    "sub_questions": [
-                        {
-                            "question_no": "a",
-                            "type": "fill_blank",
-                            "prompt": "35 + 9 = ___",
-                            "answer": "44",
-                            "expected_answer": "44",
-                            "hint": "35 + 10 = 45, then 45 - 1 = 44",
-                            "answer_areas": []
-                        },
-                        {
-                            "question_no": "b",
-                            "type": "fill_blank",
-                            "prompt": "58 + 11 = ___",
-                            "answer": "69",
-                            "expected_answer": "69",
-                            "hint": "58 + 10 = 68, then 68 + 1 = 69",
-                            "answer_areas": []
-                        },
-                    ],
-                    "confidence": 0.98,
-                },
-                {
-                    "exercise_id": "ex_2",
-                    "problem_index": 2,
-                    "tab_label": "Scanned Problem 2",
-                    "tab_label_khmer": "លំហាត់ទី ២",
-                    "number": "Q6",
-                    "title": "Counting Money & Division",
-                    "instructions": "Calculate coin amounts and divisions",
-                    "scanned_text": "1. What is the total value of eight 10p coins?\n2. How many 5p coins make 45p? (45 ÷ 5)",
-                    "prompt": "a) What is the total value of eight 10p coins? b) How many 5p coins make 45p? (45 ÷ 5)",
-                    "preview": "Counting Money & Division: Eight 10p coins, 5p coins in 45p",
-                    "sub_questions": [
-                        {
-                            "question_no": "a",
-                            "type": "fill_blank",
-                            "prompt": "What is the total value of eight 10p coins?",
-                            "answer": "80",
-                            "expected_answer": "80",
-                            "hint": "8 × 10 = 80",
-                            "answer_areas": []
-                        },
-                        {
-                            "question_no": "b",
-                            "type": "fill_blank",
-                            "prompt": "How many 5p coins make 45p? (45 ÷ 5)",
-                            "answer": "9",
-                            "expected_answer": "9",
-                            "hint": "45 ÷ 5 = 9",
-                            "answer_areas": []
-                        },
-                    ],
-                    "confidence": 0.95,
-                },
-                {
-                    "exercise_id": "ex_3",
-                    "problem_index": 3,
-                    "tab_label": "Scanned Problem 3",
-                    "tab_label_khmer": "លំហាត់ទី ៣",
-                    "number": "Q7",
-                    "title": "Multiplication & Doubling",
-                    "instructions": "Double each number to find the answer",
-                    "scanned_text": "Double 24 = ___, Double 35 = ___",
-                    "prompt": "Double 24 = ___, Double 35 = ___",
-                    "preview": "Multiplication & Doubling: Double 24, Double 35",
-                    "sub_questions": [
-                        {
-                            "question_no": "a",
-                            "type": "fill_blank",
-                            "prompt": "Double 24 = ___",
-                            "answer": "48",
-                            "expected_answer": "48",
-                            "hint": "24 + 24 = 48",
-                            "answer_areas": []
-                        },
-                        {
-                            "question_no": "b",
-                            "type": "fill_blank",
-                            "prompt": "Double 35 = ___",
-                            "answer": "70",
-                            "expected_answer": "70",
-                            "hint": "35 + 35 = 70",
-                            "answer_areas": []
-                        },
-                    ],
-                    "confidence": 0.93,
-                },
-            ]
-            questions = [
-                {"question_no": "5a", "type": "fill_blank", "prompt": "35 + 9 = ___", "confidence": 0.98, "answer_areas": []},
-                {"question_no": "5b", "type": "fill_blank", "prompt": "58 + 11 = ___", "confidence": 0.98, "answer_areas": []},
-                {"question_no": "6a", "type": "fill_blank", "prompt": "What is the total value of eight 10p coins?", "confidence": 0.95, "answer_areas": []},
-                {"question_no": "6b", "type": "fill_blank", "prompt": "How many 5p coins make 45p? (45 ÷ 5)", "confidence": 0.95, "answer_areas": []},
-            ]
-            ui_layout = {
-                "header_title": "ស្កែនលំហាត់ (OCR + VLM)",
-                "header_title_en": "Scan Homework (OCR + VLM)",
-                "back_button_text": "ត្រឡប់",
-                "back_button_text_en": "Back",
-                "mascot_message": "ខ្ញុំឃើញលំហាត់របស់អ្នកហើយ! តោះដោះស្រាយវាជាមួយគ្នា!",
-                "mascot_message_en": "I found your exercises! Let's solve them together!",
-                "selector_title": "សំណួរដែលរកឃើញ (ជ្រើសរើសមួយ):",
-                "selector_title_en": "Questions found (select one):",
-                "scanned_box_label": "សំណួរដែលស្កេនបាន:",
-                "scanned_box_label_en": "Scanned question:",
-                "confirm_question": "តើសំណួរនេះត្រឹមត្រូវទេ?",
-                "confirm_question_en": "Is this question correct?",
-                "buttons": {
-                    "retake": {
-                        "label": "ថតឡើងវិញ",
-                        "label_en": "Retake",
-                        "icon": "🔄"
-                    },
-                    "start": {
-                        "label": "តោះចាប់ផ្តើម!",
-                        "label_en": "Let's Start!",
-                        "icon": "✔"
-                    }
-                },
-                "default_selected_id": "ex_1",
-                "options": [
-                    {
-                        "id": ex["exercise_id"],
-                        "problem_index": ex["problem_index"],
-                        "tab_label": ex["tab_label"],
-                        "tab_label_khmer": ex["tab_label_khmer"],
-                        "title": ex["title"],
-                        "scanned_text": ex["scanned_text"],
-                        "prompt": ex["prompt"],
-                        "is_selected_default": (i == 0)
-                    }
-                    for i, ex in enumerate(exercises)
-                ]
-            }
-            return {
-                "success": True,
-                "source": "zero_model_fallback",
-                "clean_question_text": "Q5. Adjusting Tens: 35 + 9, 58 + 11\nQ6. Counting Money: 10p coins, 45 ÷ 5\nQ7. Multiplication & Doubling",
-                "multiple_exercises": True,
-                "exercise_count": len(exercises),
-                "prompt_message": f"I found {len(exercises)} exercises on your worksheet! Which one would you like to solve first?",
-                "ui_layout": ui_layout,
-                "exercises": exercises,
-                "questions": questions,
-                "document_meta": {
-                    "title": filename,
-                    "language": ["English"],
-                    "subject": "math",
-                },
-                "overall_confidence": 0.96,
-                "warnings": ["Simulated multi-exercise fallback mode active."],
-                "raw_payload": {},
-            }
-
-        # Single problem fallback
-        if "science" in lower_name:
-            question_text = "What happens to ice when it is left under warm sunlight?"
-            subject = "science"
-        elif "fraction" in lower_name:
-            question_text = "What is 1/2 plus 1/4?"
-            subject = "math"
-        elif "cookie" in lower_name or "math" in lower_name:
-            question_text = "Leo had 8 cookies and gave away 3 cookies to Sarah. How many cookies does Leo have left?"
-            subject = "math"
-        else:
-            question_text = "Solve the problem shown on the worksheet: What is 5 + 3?"
-            subject = "math"
-
-        single_ex = {
-            "exercise_id": "ex_1",
-            "problem_index": 1,
-            "tab_label": "Scanned Problem 1",
-            "tab_label_khmer": "លំហាត់ទី ១",
-            "number": "1",
-            "title": "Exercise 1",
-            "instructions": None,
-            "scanned_text": question_text,
-            "prompt": question_text,
-            "preview": question_text[:80],
-            "sub_questions": [],
-            "confidence": 0.99,
-        }
-        ui_layout = {
-            "header_title": "ស្កែនលំហាត់ (OCR + VLM)",
-            "header_title_en": "Scan Homework (OCR + VLM)",
-            "back_button_text": "ត្រឡប់",
-            "back_button_text_en": "Back",
-            "mascot_message": "ខ្ញុំឃើញលំហាត់របស់អ្នកហើយ! តោះដោះស្រាយវាជាមួយគ្នា!",
-            "mascot_message_en": "I found your exercise! Let's solve it together!",
-            "selector_title": "សំណួរដែលរកឃើញ (ជ្រើសរើសមួយ):",
-            "selector_title_en": "Questions found (select one):",
-            "scanned_box_label": "សំណួរដែលស្កេនបាន:",
-            "scanned_box_label_en": "Scanned question:",
-            "confirm_question": "តើសំណួរនេះត្រឹមត្រូវទេ?",
-            "confirm_question_en": "Is this question correct?",
-            "buttons": {
-                "retake": {
-                    "label": "ថតឡើងវិញ",
-                    "label_en": "Retake",
-                    "icon": "🔄"
-                },
-                "start": {
-                    "label": "តោះចាប់ផ្តើម!",
-                    "label_en": "Let's Start!",
-                    "icon": "✔"
-                }
-            },
-            "default_selected_id": "ex_1",
-            "options": [
-                {
-                    "id": "ex_1",
-                    "problem_index": 1,
-                    "tab_label": "Scanned Problem 1",
-                    "tab_label_khmer": "លំហាត់ទី ១",
-                    "title": "Exercise 1",
-                    "scanned_text": question_text,
-                    "prompt": question_text,
-                    "is_selected_default": True,
-                }
-            ]
-        }
-
-        return {
-            "success": True,
-            "source": "zero_model_fallback",
-            "clean_question_text": question_text,
-            "multiple_exercises": False,
-            "exercise_count": 1,
-            "prompt_message": "I found 1 exercise on your worksheet. Let's solve it together!",
-            "ui_layout": ui_layout,
-            "exercises": [single_ex],
-            "questions": [
-                {
-                    "question_no": "1",
-                    "type": "fill_blank",
-                    "prompt": question_text,
-                    "confidence": 0.99,
-                    "answer_areas": [],
-                }
-            ],
-            "document_meta": {
-                "title": filename,
-                "language": ["English"],
-                "subject": subject,
-            },
-            "overall_confidence": 0.99,
-            "warnings": ["Simulated fallback OCR mode active."],
-            "raw_payload": {},
-        }
 
 
 ocr_extractor = OCRExtractor()

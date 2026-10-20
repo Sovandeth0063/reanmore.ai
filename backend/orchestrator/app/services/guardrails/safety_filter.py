@@ -90,36 +90,59 @@ class SafetyFilter:
 
     # --- Tier 2B: Self-Harm Patterns ---
     _SELF_HARM_RE = re.compile(
-        r'\b(?:kill\s+myself|want\s+to\s+die|hurt\s+myself|suicide|cutting\s+myself|commit\s+suicide|'
-        r'drink\s+poison|sleep\s+forever|hang\s+myself|bleed|stab\s+myself|end\s+(?:my\s+)?life|'
-        r'jong\s+commit\s+suicide|jong\s+slap|jong\s+somlab\s+khluon|somlab\s+khluon)\b|'
-        r'(?:ចង់\s*ស្លាប់|សម្លាប់\s*ខ្លួន|មិន\s*ចង់\s*រស់\s*(?:នៅ)?|កាត់\s*ដៃ|ផឹកថ្នាំសម្លាប់ខ្លួន|ចងក|បញ្ចប់ជីវិត)',
+        r'\b(?:kill(?:ing)?\s+myself|want\s+to\s+die|hurt\s+myself|suicide|cutting?\s+(?:my(?:self)?|wrists?|skin|arm|hand)|'
+        r'cut\s+(?:my\s+)?(?:wrists?|arm|skin|hand)|commit\s+suicide|drink\s+poison|sleep\s+forever|'
+        r'hang\s+myself|bleed|stab(?:bing)?\s+(?:my(?:self)?|arm)|end\s+(?:my\s+life|it)|'
+        r'better\s+without\s+me|no\s+one\s+will\s+miss\s+me|goodbye\s+forever|wish\s+a\s+truck\s+would\s+hit\s+me|'
+        r'pills?\s+so\s+i\s+can\s+sleep|bottle\s+of\s+pills|take\s+all\s+medicine|'
+        r'(?:don\'?t|do\s+not|not?)\s+want\s+to\s+live|hate\s+my\s+life|jump\s+(?:from|off|in|into)\s+.*(?:roof|building|river|bridge)|'
+        r'drown|painlessly|stop\s+the\s+pain|dying\s+is\s+better|'
+        r'jong\s+commit\s+suicide|jong\s+slap|jong\s+somlab\s+khluon|somlab\s+khluon|jong\s+die|'
+        r'knhom\s+cut\s+wrist|jong\s+jump|jong\s+cut\s+(?:my\s+)?(?:hand|wrist))\b|'
+        r'(?:ចង់\s*ស្លាប់|សម្លាប់\s*ខ្លួន|មិន\s*ចង់\s*រស់|កាត់\s*ដៃ|ផឹកថ្នាំ|ចងក|បញ្ចប់ជីវិត|'
+        r'បើខ្ញុំស្លាប់|លាហើយ|ចាក់ដៃ|លេបថ្នាំ|លោត|គ្មានអ្នកណានឹក|កាំបិតចាក់ដៃ)',
         re.IGNORECASE
     )
 
     # --- Tier 2A: Child Abuse Patterns ---
     _ABUSE_RE = re.compile(
-        r'\b(?:(?:my\s+)?(?:dad|mom|uncle|stepdad|stepmom|parents?)\s+(?:hits?|beats?|hurts?|slaps?|burns?)\s+me|'
-        r'someone\s+is\s+(?:touching|hurting|beating|hitting)\s+me|someone\s+hurts?\s+me|someone\s+touching\s+me|'
+        r'\b(?:(?:my\s+)?(?:dad|mom|uncle|stepdad|stepmom|parents?|cousin|neighbor|ke|pa|mak|mak\s+chong|poo)\s+.*'
+        r'(?:hits?|beats?|hurts?|slaps?|slapped|burns?|burned|kicks?|threw|whipped|punish|locks?|forces?|pulls?|violent|drunk|does\s+bad\s+things)|'
+        r'someone\s+(?:is\s+)?(?:touching|hurting|beating|hitting|forces?)\s+me|someone\s+hurts?\s+me|'
+        r'someone\s+touching\s+me|someone\s+force\s+me|touch\s+him|touches\s+me|'
         r'i\s+am\s+being\s+(?:hurt|abused|beaten|hit)|'
         r'abuse|abused|(?:don\'?t\s+feel|not|feel\s+not)\s+safe\s+at\s+home|poo\s+.*beats?\s+me|'
-        r'hit\s+me\s+with\s+a\s+belt|whipped\s+with|private\s+parts|closet\s+for\s+hours|'
-        r'comes\s+to\s+my\s+room\s+at\s+night|comes\s+into\s+my\s+room|'
-        r'(?:scared|afraid|fear)\s+(?:of\s+)?(?:my|someone|a\s+person|him|her|them|strangers?)|'
-        r'poo\s+knhom\s+beat\s+me|ke\s+thveu\s+bab\s+knhom)\b|'
+        r'hit\s+me\s+with|whipped\s+with|private\s+parts|closet\s+for\s+hours|'
+        r'comes\s+to\s+my\s+room|comes\s+into\s+my\s+room|'
+        r'bruises?\s+on\s+my|(?:scared|afraid|fear|klach)\s+(?:of\s+)?(?:going\s+home|my\s+uncle|my\s+dad|him|her|them|someone|a\s+person|strangers?)|'
+        r'burned?\s+my\s+hand|slapped?\s+me|pulls?\s+(?:my\s+)?clothes|nobody\s+feeds\s+me|'
+        r'threw\s+a\s+.*bottle|told\s+me\s+not\s+to\s+tell|don\'?t\s+talk|'
+        r'beat\s+me\s+with\s+(?:wire|stick)|ke\s+beat\s+me|pa\s+hit\s+me|pa\s+slap|'
+        r'knhom\s+klach\s+going\s+home|poo\s+knhom\s+beat\s+me|ke\s+thveu\s+bab\s+knhom)\b|'
         r'(?:គេ\s*វាយ\s*ខ្ញុំ|គេ\s*ធ្វើ\s*បាប\s*ខ្ញុំ|មាន\s*គេ\s*ធ្វើ\s*បាប\s*ខ្ញុំ|'
-        r'(?:ឪពុក|ពូ|ម្តាយ|ម៉ែ|ប៉ា|ម៉ាក់)(?:\s*ខ្ញុំ)?\s*(?:វាយ|ធ្វើបាប|ទះ|ទាត់)|'
-        r'បៀតបៀន(?:រាងកាយ)?|មិន\s*(?:មាន\s*)?សុវត្ថិភាព|ខ្សែក្រវ៉ាត់|ចូលបន្ទប់ខ្ញុំពេលយប់|កន្លែងកំបាំង)',
+        r'(?:ឪពុក|ពូ|ម្តាយ|ម៉ែ|ប៉ា|ម៉ាក់|ម៉ែចុង)(?:\s*ខ្ញុំ)?\s*(?:វាយ|ធ្វើបាប|ទះ|ទាត់|ដេញ|ស្រវឹង|ចាប់|បង្ខំ|ដុត)|'
+        r'បៀតបៀន(?:រាងកាយ)?|មិន\s*(?:មាន\s*)?សុវត្ថិភាព|ខ្សែក្រវ៉ាត់|ចូលបន្ទប់ខ្ញុំ|កន្លែងកំបាំង|'
+        r'ខ្លាច\s*មិន\s*ហ៊ាន\s*ទៅផ្ទះ|បង្ខំ\s*ខ្ញុំ|គំរាម|បិទទ្វារបន្ទប់|ដេញ\s*ខ្ញុំ\s*ចេញ|'
+        r'ទាត់\s*ខ្ញុំ|ដំបង)',
         re.IGNORECASE
     )
 
     # --- Tier 2C: Immediate Danger & Violence Patterns ---
     _DANGER_RE = re.compile(
-        r'\b(?:stranger\s+(?:followed|following)\s+me|someone\s+is\s+following\s+me|kidnap|kidnapper|'
-        r'chasing\s+me|man\s+with\s+(?:a\s+)?(?:knife|gun|machete)|house\s+is\s+on\s+fire|'
-        r'house\s+is\s+flooding|breaking\s+into\s+my\s+door|black\s+van|grabbed\s+my|'
-        r'shoot\s+(?:you|everyone|people|kids|school)|gun|bomb|murder|knife)\b|'
-        r'(?:មនុស្សចម្លែក|ដើរតាមខ្ញុំ|គាស់ផ្ទះ|ផ្ទះ.*កំពុងឆេះ|ដេញកាប់|តាមចាប់|កាន់កាំភ្លើង|ចាប់កាតាប)',
+        r'\b(?:stranger.*(?:follow(?:ed|s|ing)?|offer(?:ed|s|ing)?|candy|pull(?:ed|s|ing)?|grab(?:bed|s|bing)?)|someone\s+(?:is\s+)?(?:follow(?:ed|s|ing)?)\s+me|'
+        r'someone\s+follow\s+me|ke\s+follow\s+me|dor\s+tam\s+knhom|'
+        r'two\s+(?:big\s+)?men\s+are\s+following|following\s+me\s+in\s+the\s+alley|'
+        r'man\s+with\s+(?:a\s+)?(?:knife|gun|machete)|standing\s+outside\s+my\s+window|'
+        r'house\s+is\s+on\s+fire|gas\s+leak|filling\s+with\s+smoke|smoke\s+everywhere|'
+        r'fire\s+in\s+(?:my\s+house|kitchen)|cannot\s+breathe|'
+        r'water\s+flooding|flooding\s+our\s+house|house\s+is\s+flooding|flood|'
+        r'breaking\s+into|break\s+(?:my\s+)?window|force\s+open.*(?:door|window)|front\s+door|'
+        r'kidnap|kidnapper|black\s+van|chasing\s+me|car\s+stop.*come\s+inside|'
+        r'shoot\s+(?:us|you|everyone|people|kids|school)|threatening\s+to\s+shoot|'
+        r'locked\s+outside\s+in\s+the\s+dark|grabbed?\s+my\s+(?:backpack|arm|hand)|'
+        r'strange\s+person|thief.*(?:house|knife)|gun|bomb|murder|machete)\b|'
+        r'(?:មនុស្សចម្លែក|ដើរតាម|គាស់ផ្ទះ|ផ្ទះ.*កំពុងឆេះ|ភ្លើងឆេះ|ដេញកាប់|តាមចាប់|កាន់កាំភ្លើង|ចាប់កាតាប|'
+        r'ឡាន.*ឡើងជិះ|ទឹកជន់លិច|លួចមើល.*បង្អួច|តាមលួចមើល|ផ្សែង|ទាញដៃ|ចោរ|កាំបិត|ជាប់នៅក្នុងបន្ទប់)',
         re.IGNORECASE
     )
 

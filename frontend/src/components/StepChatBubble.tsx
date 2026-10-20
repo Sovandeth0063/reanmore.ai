@@ -4,7 +4,7 @@ import { TunsayAvatar } from './TunsayAvatar';
 import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, ListOrdered, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
-import { answersMatch, normalizeWithKhmer } from '../services/hardcodedTutorProvider';
+import { answersMatch, normalizeWithKhmer } from '../utils/answerNormalization';
 
 interface StepChatBubbleProps {
   step: StepItem;
@@ -37,7 +37,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   onNavigateStep,
   onStepAnswerSubmit,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const rawStep = step as any;
   const stepNum = step.stepNumber || rawStep.step_number || stepIndex + 1;
 
@@ -165,6 +165,13 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   const canGoBack = stepIndex > 0;
   const canGoNext = (isCompleted || stepIndex < Math.max(...completedStepIndices, -1)) && stepIndex + 1 < totalSteps;
 
+  const clueText = stripMd(
+    step.clue ||
+    rawStep.clue ||
+    (Array.isArray(step.hints) && step.hints.length > 0 ? step.hints[0] : '') ||
+    (Array.isArray(rawStep.hints) && rawStep.hints.length > 0 ? rawStep.hints[0] : '')
+  );
+
   return (
     <div className="w-full bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] sm:shadow-[4px_4px_0px_#1B4332] p-3.5 sm:p-5 lg:p-6 space-y-3.5 sm:space-y-4 animate-fadeIn">
       {/* Top Banner: Step Indicator & ReanMore Mascot Avatar */}
@@ -201,8 +208,8 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         )}
       </div>
 
-      {/* ReanMore Socratic Guiding Prompt with Embedded Visual Support */}
-      <div className="p-3 sm:p-4 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-2 sm:space-y-3">
+      {/* ReanMore Socratic Guiding Prompt with Embedded Visual Support & Helpful Tip */}
+      <div className="p-3 sm:p-4 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-2.5 sm:space-y-3">
         <div>
           <p className="text-[10px] sm:text-xs font-black text-[#1B4332] uppercase tracking-wider mb-0.5 sm:mb-1">
             {isKhmer ? 'សំណួរណែនាំពី ReanMore៖' : "ReanMore's Guiding Prompt:"}
@@ -211,6 +218,19 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
             {promptText}
           </p>
         </div>
+
+        {/* Kid-Friendly Helpful Tip Banner */}
+        {clueText && (
+          <div className="p-2 sm:p-2.5 bg-white/95 rounded-lg sm:rounded-xl border border-[#2D6A4F]/30 text-xs sm:text-sm text-[#1B4332] font-semibold flex items-start gap-2 shadow-[1px_1px_0px_#1B4332]">
+            <span className="text-base shrink-0 select-none">💡</span>
+            <div className="leading-snug">
+              <span className="font-black text-[#2D6A4F] uppercase text-[10px] sm:text-xs block mb-0.5">
+                {isKhmer ? 'តម្រុយជំនួយ៖' : 'Helpful Tip:'}
+              </span>
+              <span>{clueText}</span>
+            </div>
+          </div>
+        )}
 
         {/* Visual Widget directly inside the Guiding Prompt box */}
         {visualData && (

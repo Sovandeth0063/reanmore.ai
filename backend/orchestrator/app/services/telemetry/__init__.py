@@ -9,10 +9,23 @@ from app.services.telemetry.safety_audit import (
     record_safety_event,
     get_safety_audit_store,
 )
+from app.services.telemetry.gap_recorder import (
+    GapRecorder,
+    gap_recorder,
+    record_gap_event,
+    log_gap_event,
+    calculate_priority_score,
+)
 
 __all__ = [
     "SafetyAuditStore",
     "SafetyAuditEvent",
     "record_safety_event",
     "get_safety_audit_store",
+    "GapRecorder",
+    "gap_recorder",
+    "record_gap_event",
+    "log_gap_event",
+    "calculate_priority_score",
 ]
+

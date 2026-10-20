@@ -1,7 +1,9 @@
 import { UserAccount, UserProfile, UserRole } from '../types';
+import { getDisplayName } from '../utils/language';
 
 const CURRENT_USER_KEY = 'reanmore_auth_current_user_v1';
 const ACCOUNTS_KEY = 'reanmore_auth_accounts_v1';
+const TOKEN_KEY = 'reanmore_auth_token_v1';
 
 export const DEFAULT_ACCOUNTS: UserAccount[] = [
   {
@@ -10,7 +12,7 @@ export const DEFAULT_ACCOUNTS: UserAccount[] = [
     role: 'student',
     pin: '1234',
     profile: {
-      name: 'សុជា (Sochea)',
+      name: 'Sochea',
       grade: 4,
       subject: 'math',
       language: 'en',
@@ -23,10 +25,10 @@ export const DEFAULT_ACCOUNTS: UserAccount[] = [
     role: 'parent',
     pin: '9999',
     profile: {
-      name: 'អ្នកម្តាយ សុជា (Parent)',
+      name: 'Parent',
       grade: 4,
       subject: 'math',
-      language: 'km',
+      language: 'en',
       role: 'parent',
     },
   },
@@ -34,6 +36,26 @@ export const DEFAULT_ACCOUNTS: UserAccount[] = [
 
 export class AuthService {
   private static listeners: Array<(account: UserAccount | null) => void> = [];
+
+  static getToken(): string | null {
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  static setToken(token: string | null): void {
+    try {
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    } catch (err) {
+      console.error('Failed to set token in localStorage:', err);
+    }
+  }
 
   static subscribe(callback: (account: UserAccount | null) => void): () => void {
     this.listeners.push(callback);
@@ -58,7 +80,14 @@ export class AuthService {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map((acc: UserAccount) => ({
+            ...acc,
+            profile: {
+              ...acc.profile,
+              language: 'en' as const,
+              name: getDisplayName(acc.profile?.name || '', false) || acc.profile?.name || 'Sochea',
+            },
+          }));
         }
       }
     } catch {}
@@ -84,7 +113,14 @@ export class AuthService {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.id) {
-          return parsed;
+          return {
+            ...parsed,
+            profile: {
+              ...parsed.profile,
+              language: 'en' as const,
+              name: getDisplayName(parsed.profile?.name || '', false) || parsed.profile?.name || 'Sochea',
+            },
+          };
         }
       }
       // If never visited/booted before, seed default user (sochea) once
@@ -163,7 +199,68 @@ export class AuthService {
     return { success: true, account };
   }
 
+  static async loginRemote(
+    classCode: string,
+    studentName: string,
+    pin: string
+  ): Promise<{ success: boolean; account?: UserAccount | undefined; errorKhmer?: string | undefined; errorEng?: string | undefined }> {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          class_code: classCode.trim().toUpperCase(),
+          student_name: studentName.trim().toLowerCase(),
+          pin: pin.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          errorKhmer: data.detail || 'ការចូលបរាជ័យ (Login failed)',
+          errorEng: data.detail || 'Login failed',
+        };
+      }
+
+      if (data.token) {
+        this.setToken(data.token);
+      }
+
+      const account: UserAccount = {
+        id: data.user_id,
+        username: data.student_name,
+        role: data.role as UserRole,
+        pin: pin.trim(),
+        profile: {
+          name: data.student_name,
+          grade: (data.grade_level || 4) as any,
+          subject: 'math',
+          language: (data.language || 'km') as any,
+          role: data.role as UserRole,
+        },
+      };
+
+      const accounts = this.getAccounts();
+      const existingIdx = accounts.findIndex((a) => a.id === account.id || a.username === account.username);
+      if (existingIdx !== -1) {
+        accounts[existingIdx] = account;
+      } else {
+        accounts.push(account);
+      }
+      this.saveAccounts(accounts);
+      this.setCurrentUser(account);
+
+      return { success: true, account };
+    } catch (err) {
+      console.warn('Remote login failed, falling back to local accounts:', err);
+      return this.login(studentName, pin);
+    }
+  }
+
   static logout(): void {
+    this.setToken(null);
     this.setCurrentUser(null);
   }
 

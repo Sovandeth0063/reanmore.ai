@@ -34,8 +34,8 @@ function getTodayString(): string {
 }
 
 
-export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile, onStartPractice: _onStartPractice }) => {
-  const isKhmer = profile.language === 'km';
+export const DailyStreakCard: React.FC<DailyStreakCardProps> = ({ profile: _profile, onStartPractice: _onStartPractice }) => {
+  const isKhmer = false;
   const today = getTodayString();
 
   const [streakState, setStreakState] = useState<{

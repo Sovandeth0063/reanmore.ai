@@ -1,0 +1,167 @@
+[
+  {
+    "id": "sci_bio_001",
+    "subject": "science",
+    "unit": "Living Things & Plants",
+    "topic": "Parts of a Plant",
+    "grade_band": "grade_1_3",
+    "title": "Plant Structure and Functions",
+    "text": "Green plants have three main vegetative organs: roots, stems, and leaves. Roots anchor the plant in soil and absorb water and dissolved mineral nutrients. The stem holds the leaves upright toward sunlight and transports water from roots to leaves through xylem tubes. Leaves contain chlorophyll, a green pigment that traps sunlight to create glucose food during photosynthesis.",
+    "key_concepts": ["roots", "stem", "leaves", "chlorophyll", "photosynthesis"],
+    "source": "Primary Science Grade 2, Unit 3: Plants All Around Us"
+  },
+  {
+    "id": "sci_bio_002",
+    "subject": "science",
+    "unit": "Living Things & Plants",
+    "topic": "Plant Life Cycle & Seeds",
+    "grade_band": "grade_1_3",
+    "title": "Seed Germination and Growth",
+    "text": "A plant begins its life cycle as a seed. For a seed to germinate (sprout), it requires three essential conditions: water (moisture), warmth, and air (oxygen). Seeds do not need sunlight to sprout underground because the seed contains stored food called the cotyledon. Once green leaves emerge above soil, the seedling begins making its own food with sunlight.",
+    "key_concepts": ["germination", "seed", "water", "warmth", "cotyledon"],
+    "source": "Primary Science Grade 3, Unit 1: How Plants Grow"
+  },
+  {
+    "id": "sci_bio_003",
+    "subject": "science",
+    "unit": "Animal Kingdom & Habitats",
+    "topic": "Animal Classification",
+    "grade_band": "grade_1_3",
+    "title": "Major Groups of Animals",
+    "text": "Animals are divided into vertebrates (animals with backbones) and invertebrates (animals without backbones). Mammals are warm-blooded vertebrates that have fur or hair, breathe air with lungs, give birth to live young, and feed their babies with mother's milk (e.g., dogs, cats, cows, whales, humans). Birds have feathers, wings, beaks, and lay eggs with hard shells. Fish live in water, have scales, and breathe underwater using gills that extract dissolved oxygen from water. Reptiles are cold-blooded with dry scaly skin and lay eggs on land. Amphibians like frogs begin life in water with gills and later develop lungs to live on land, keeping their skin moist.",
+    "key_concepts": ["vertebrates", "mammals", "fur", "hair", "milk", "birds", "feathers", "fish", "gills", "breathe underwater", "scales", "reptiles", "scaly skin", "amphibians"],
+    "source": "Primary Science Grade 3, Unit 4: Animal Families"
+  },
+  {
+    "id": "sci_bio_004",
+    "subject": "science",
+    "unit": "Ecosystems & Energy",
+    "topic": "Photosynthesis and Food Production",
+    "grade_band": "grade_4_6",
+    "title": "Photosynthesis in Green Plants",
+    "text": "Photosynthesis is the biochemical process by which green plants manufacture their own food. Plants absorb carbon dioxide from the air through tiny leaf pores called stomata, and water from soil through root hairs. Inside plant cells, chloroplasts use green chlorophyll pigment to capture light energy from the sun. The chemical equation converts carbon dioxide and water into glucose (sugar) and releases oxygen gas as a byproduct.",
+    "key_concepts": ["photosynthesis", "carbon dioxide", "water", "glucose", "oxygen", "chloroplasts", "stomata"],
+    "source": "Primary Science Grade 5, Unit 2: Producers and Food Chains"
+  },
+  {
+    "id": "sci_bio_005",
+    "subject": "science",
+    "unit": "Ecosystems & Energy",
+    "topic": "Food Chains and Food Webs",
+    "grade_band": "grade_4_6",
+    "title": "Energy Flow in Ecosystems",
+    "text": "A food chain shows how energy moves from one living organism to another. All food chains begin with the Sun as the primary energy source. Producers (green plants) make food through photosynthesis. Primary consumers (herbivores like grasshoppers and rabbits) eat producers. Secondary consumers (carnivores like frogs and snakes) eat primary consumers. Apex predators (like eagles) sit at the top. Decomposers (bacteria and fungi) break down dead organisms, returning nutrients to the soil.",
+    "key_concepts": ["food chain", "producers", "consumers", "herbivores", "carnivores", "decomposers"],
+    "source": "Primary Science Grade 5, Unit 5: Ecosystems in Nature"
+  },
+  {
+    "id": "sci_phys_001",
+    "subject": "science",
+    "unit": "States of Matter & Changes",
+    "topic": "The Three States of Matter",
+    "grade_band": "grade_1_3",
+    "title": "Solids, Liquids, and Gases",
+    "text": "Matter is anything that has mass and takes up space. There are three common states of matter: 1. Solids have a fixed shape and fixed volume; their particles are packed tightly together in a pattern. 2. Liquids have a fixed volume but take the shape of whatever container they are in; their particles can slide past one another. 3. Gases have no fixed shape and no fixed volume; their particles spread out freely to fill any container.",
+    "key_concepts": ["matter", "solid", "liquid", "gas", "volume", "particles"],
+    "source": "Primary Science Grade 2, Unit 2: Materials Around Us"
+  },
+  {
+    "id": "sci_phys_002",
+    "subject": "science",
+    "unit": "States of Matter & Changes",
+    "topic": "Changes of State",
+    "grade_band": "grade_1_4",
+    "title": "Heating and Cooling Matter",
+    "text": "Matter changes state when thermal energy (heat) is added or removed: Melting occurs when a solid is heated and turns into a liquid (e.g., ice to water at 0°C). Freezing or solidification occurs when a liquid is cooled into a solid. Evaporation and boiling turn a liquid into a gas (e.g., water boiling to steam at 100°C). Condensation occurs when cooling turns gas back into liquid droplets (e.g., dew forming on grass or water droplets on a cold glass).",
+    "key_concepts": ["melting", "freezing", "evaporation", "boiling", "condensation"],
+    "source": "Primary Science Grade 3, Unit 5: Heating and Cooling"
+  },
+  {
+    "id": "sci_phys_003",
+    "subject": "science",
+    "unit": "Forces, Motion & Magnets",
+    "topic": "Pushes, Pulls and Friction",
+    "grade_band": "grade_1_4",
+    "title": "Forces that Cause Motion",
+    "text": "A force is a push or a pull acting on an object. Forces can make stationary objects move, speed them up, slow them down, stop them, or change their direction. Friction is a resistive force that opposes motion when two surfaces slide against each other. For example, it is harder to slide a box on rough grass because the rough texture creates high friction that resists movement, whereas smooth ice or polished floors have very little friction so things slide easily.",
+    "key_concepts": ["force", "push", "pull", "motion", "friction", "rough grass", "smooth ice", "opposes motion"],
+    "source": "Primary Science Grade 3, Unit 6: Forces and Movement"
+  },
+  {
+    "id": "sci_phys_004",
+    "subject": "science",
+    "unit": "Forces, Motion & Magnets",
+    "topic": "Magnets and Magnetic Poles",
+    "grade_band": "grade_2_5",
+    "title": "Properties of Magnets",
+    "text": "A magnet attracts magnetic materials like iron, steel, nickel, and cobalt. Every magnet has two ends called poles: a North Pole (N) and a South Pole (S). The law of magnetic attraction states: Opposite poles attract each other (North attracts South). Like poles repel each other (North pushes away North, and South pushes away South). Non-magnetic materials like wood, plastic, glass, and aluminum do not stick to magnets.",
+    "key_concepts": ["magnet", "magnetic poles", "north pole", "south pole", "attract", "repel"],
+    "source": "Primary Science Grade 4, Unit 3: The Magic of Magnets"
+  },
+  {
+    "id": "sci_phys_005",
+    "subject": "science",
+    "unit": "Forces, Motion & Simple Machines",
+    "topic": "Gravity",
+    "grade_band": "grade_3_6",
+    "title": "Earth's Gravitational Pull",
+    "text": "Gravity is an invisible pulling force exerted by Earth that pulls all physical objects toward the center of the planet. When you drop an apple or jump into the air, gravity is the force pulling you back down to the ground. Mass is the amount of matter in an object (measured in kilograms), while weight is the measure of gravitational pull acting upon that mass (measured in Newtons).",
+    "key_concepts": ["gravity", "gravitational pull", "mass", "weight"],
+    "source": "Primary Science Grade 4, Unit 6: Earth and Gravity"
+  },
+  {
+    "id": "sci_earth_001",
+    "subject": "science",
+    "unit": "Earth & Solar System",
+    "topic": "The Water Cycle",
+    "grade_band": "grade_3_6",
+    "title": "Stages of the Water Cycle",
+    "text": "The water cycle is the continuous movement of water on, above, and below Earth's surface driven by heat energy from the Sun: 1. Evaporation: Sunlight heats liquid ocean and lake water, turning it into invisible water vapor gas that rises into the atmosphere. 2. Condensation: As water vapor rises high and cools, it condenses into tiny liquid water droplets forming clouds. 3. Precipitation: When cloud droplets become too heavy, they fall back to Earth as rain, snow, sleet, or hail. 4. Collection: Water gathers in rivers, lakes, and oceans.",
+    "key_concepts": ["water cycle", "evaporation", "condensation", "precipitation", "collection"],
+    "source": "Primary Science Grade 4, Unit 4: Water and Weather"
+  },
+  {
+    "id": "sci_earth_002",
+    "subject": "science",
+    "unit": "Earth & Solar System",
+    "topic": "Day and Night / Earth's Rotation",
+    "grade_band": "grade_2_5",
+    "title": "Day, Night, and Earth Rotation",
+    "text": "Earth rotates on an imaginary tilted axis from west to east once every 24 hours (one full day). Because the Sun is stationary relative to Earth, only half of Earth faces the Sun at any given moment. The half facing the Sun experiences daylight. The half facing away from the Sun experiences nighttime and darkness. As Earth continuously spins, locations rotate into and out of sunlight, creating the regular cycle of sunrise and sunset.",
+    "key_concepts": ["rotation", "axis", "day and night", "24 hours", "sunrise", "sunset"],
+    "source": "Primary Science Grade 3, Unit 7: Sun, Earth and Moon"
+  },
+  {
+    "id": "sci_earth_003",
+    "subject": "science",
+    "unit": "Earth & Solar System",
+    "topic": "The Solar System",
+    "grade_band": "grade_4_6",
+    "title": "Planets in Our Solar System",
+    "text": "Our solar system consists of one central star (the Sun) and eight major planets orbiting it held by gravity. In order of distance from the Sun: Mercury, Venus, Earth, and Mars are the four inner, rocky terrestrial planets. Jupiter, Saturn, Uranus, and Neptune are the four outer gas and ice giants. Mercury is the smallest and closest planet to the Sun, while Jupiter is the largest planet in our solar system.",
+    "key_concepts": ["solar system", "planets", "Sun", "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn"],
+    "source": "Primary Science Grade 5, Unit 7: Journey Through Space"
+  },
+  {
+    "id": "sci_bio_006",
+    "subject": "science",
+    "unit": "Human Body & Health",
+    "topic": "Skeletal and Muscular System",
+    "grade_band": "grade_3_6",
+    "title": "Bones and Muscles",
+    "text": "The human skeletal system is made up of 206 bones that provide structure, protect internal organs (like the skull protecting the brain and rib cage protecting heart and lungs), and allow movement. Muscles are attached to bones by strong fibrous cords called tendons. Muscles work in opposing pairs: when one muscle contracts (shortens and pulls), its partner relaxes (lengthens). For example, to bend your arm, your biceps contracts while your triceps relaxes.",
+    "key_concepts": ["skeleton", "bones", "muscles", "tendons", "contract", "relax", "pairs"],
+    "source": "Primary Science Grade 4, Unit 1: Inside Our Bodies"
+  },
+  {
+    "id": "sci_bio_007",
+    "subject": "science",
+    "unit": "Human Body & Health",
+    "topic": "Human Digestive System",
+    "grade_band": "grade_4_6",
+    "title": "How Digestion Works",
+    "text": "Digestion is the process of breaking down food into simple nutrients that the body can absorb for energy, growth, and cell repair: 1. Mouth: Teeth chew food and saliva begins chemical breakdown with enzymes. 2. Esophagus: Food tube that pushes food to the stomach through muscular contractions. 3. Stomach: Acidic gastric juices churn food into a thick liquid. 4. Small Intestine: Nutrients are absorbed through the intestinal walls into the bloodstream. 5. Large Intestine: Absorbs excess water and leaves solid waste.",
+    "key_concepts": ["digestion", "mouth", "esophagus", "stomach", "small intestine", "large intestine", "nutrients"],
+    "source": "Primary Science Grade 5, Unit 1: Food and Digestion"
+  }
+]

@@ -33,7 +33,7 @@ export const ExerciseCelebrationBanner: React.FC<ExerciseCelebrationBannerProps>
   onNext,
   onReview,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const bannerRef = useRef<HTMLDivElement>(null);
 
   // Scroll into view when shown

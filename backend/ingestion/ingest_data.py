@@ -1,133 +1,70 @@
 """
-File: ingestion/ingest_data.py
-Description: Data Ingestion Pipeline. Reads science reference data from science_reference.json,
-             generates vector embeddings using Gemini, and uploads them to Qdrant collections.
+File: backend/ingestion/ingest_data.py
+Description: Data Ingestion Pipeline runner. Upgraded to support both legacy science_reference.json
+             and arbitrary curriculum files (PDF, Markdown, JSON) with payload metadata indexing.
 """
 
 import os
-import json
-import uuid
-import google.generativeai as genai
-from qdrant_client import QdrantClient
-from qdrant_client.http import models
+import sys
+from pathlib import Path
 
-# 1. Initialize Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-if not GEMINI_API_KEY:
-    print("[ERROR] GEMINI_API_KEY environment variable is not set.")
-    print("Please set it in your environment before running this script.")
-    import sys
-    sys.exit(1)
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-# 2. Initialize Qdrant Client
-# Connects to localhost (host machine) by default, or QDRANT_HOST if running inside docker
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-
-print(f"Connecting to Qdrant at http://{QDRANT_HOST}:{QDRANT_PORT}...")
+# Load environment variables
 try:
-    qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-except Exception as e:
-    print(f"[ERROR] Failed to connect to Qdrant: {e}")
-    import sys
-    sys.exit(1)
+    from dotenv import load_dotenv
+    for env_path in [Path(".env"), Path("backend/.env"), Path("../../.env")]:
+        if env_path.exists():
+            load_dotenv(env_path)
+            break
+except ImportError:
+    pass
 
-# 3. Embedding Helper
-def get_embedding(text: str) -> list:
-    """
-    Generates a 768-dimension vector embedding for the input text using Gemini.
-    """
-    try:
-        response = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_document"
-        )
-        return response["embedding"]
-    except Exception as e:
-        print(f"Warning: failed to get embedding with models/text-embedding-004: {e}. Trying models/embedding-001...")
-        # Fallback to older embedding model (768 dimensions as well)
-        response = genai.embed_content(
-            model="models/embedding-001",
-            content=text,
-            task_type="retrieval_document"
-        )
-        return response["embedding"]
+try:
+    from backend.ingestion.pipeline import CurriculumIngestionPipeline, IngestionConfig
+    from backend.ingestion.schemas import GradeTier, SubjectArea
+except ImportError:
+    from pipeline import CurriculumIngestionPipeline, IngestionConfig
+    from schemas import GradeTier, SubjectArea
+
 
 def main():
-    # 4. Load Science Reference Data
-    data_file = os.path.join(os.path.dirname(__file__), "data_sources", "science_reference.json")
-    if not os.path.exists(data_file):
+    # If arguments are passed, pass through to pipeline CLI
+    if len(sys.argv) > 1:
+        from pipeline import main as cli_main
+        cli_main()
+        return
+
+    # Default legacy run: ingest science_reference.json
+    data_file = Path(__file__).parent / "data_sources" / "science_reference.json"
+    if not data_file.exists():
         print(f"[ERROR] Data file not found at: {data_file}")
         return
 
-    with open(data_file, "r", encoding="utf-8") as f:
-        documents = json.load(f)
+    print("Running default ingestion for science_reference.json...")
+    config = IngestionConfig(
+        collection_name=os.getenv("QDRANT_COLLECTION", "science_curriculum_v2"),
+        qdrant_host=os.getenv("QDRANT_HOST", "localhost"),
+        qdrant_port=int(os.getenv("QDRANT_PORT", 6333)),
+        dry_run=not bool(os.getenv("GEMINI_API_KEY")),
+    )
 
-    # Track created collections to avoid redundant requests
-    created_collections = set()
+    pipeline = CurriculumIngestionPipeline(config=config)
+    report = pipeline.run_file(
+        file_path=data_file,
+        grade=GradeTier.GRADE_4_6,
+        subject=SubjectArea.SCIENCE,
+        chapter="General Science Reference"
+    )
 
-    print(f"Loaded {len(documents)} document entries for ingestion.")
+    print("\n" + "=" * 50)
+    print("      DATA INGESTION PIPELINE COMPLETE")
+    print("=" * 50)
+    print(f"Chunks Created  : {report.total_chunks_created}")
+    print(f"Points Upserted : {report.total_points_upserted}")
+    print(f"Duration        : {report.duration_seconds:.2f}s")
+    if report.errors:
+        print(f"Errors          : {report.errors}")
+    print("=" * 50 + "\n")
 
-    for idx, doc in enumerate(documents):
-        collection_name = doc.get("collection")
-        keyword = doc.get("keyword")
-        text = doc.get("text")
-        steps = doc.get("steps", [])
-
-        if not collection_name or not text or not keyword:
-            print(f"Skipping entry {idx+1}: missing collection, keyword, or text.")
-            continue
-
-        print(f"\nProcessing [{collection_name}] -> '{keyword}'...")
-
-        # 5. Create Collection if not already done
-        if collection_name not in created_collections:
-            # Check if collection exists in Qdrant
-            collections_list = qdrant_client.get_collections().collections
-            exists = any(c.name == collection_name for c in collections_list)
-            
-            if not exists:
-                print(f"Creating collection '{collection_name}' with 768 dimensions...")
-                qdrant_client.create_collection(
-                    collection_name=collection_name,
-                    vectors_config=models.VectorParams(
-                        size=768,  # Gemini text-embedding-004 uses 768 dimensions
-                        distance=models.Distance.COSINE
-                    )
-                )
-            created_collections.add(collection_name)
-
-        # 6. Generate Vector Embedding
-        print("Generating embedding vector...")
-        vector = get_embedding(text)
-
-        # 7. Upload Point to Qdrant
-        point_id = str(uuid.uuid4())
-        payload = {
-            "keyword": keyword,
-            "text": text,
-            "steps": steps
-        }
-
-        print(f"Uploading point {point_id} to Qdrant...")
-        qdrant_client.upsert(
-            collection_name=collection_name,
-            points=[
-                models.PointStruct(
-                    id=point_id,
-                    vector=vector,
-                    payload=payload
-                )
-            ]
-        )
-        print(f"Ingested successfully!")
-
-    print("\n==============================================")
-    print("      DATA INGESTION PIPELINE COMPLETE        ")
-    print("==============================================")
 
 if __name__ == "__main__":
     main()

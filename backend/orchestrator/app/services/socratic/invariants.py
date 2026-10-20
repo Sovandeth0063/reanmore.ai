@@ -146,6 +146,9 @@ def extract_raw_input_numeric_tokens(raw_text: str) -> Set[str]:
     found_nums = re.findall(r"(?<![\w/])[-+]?\d+(?:\.\d+)?(?:/\d+)?(?![\w/])", norm_text)
     for n in found_nums:
         tokens.add(n)
+        if "/" in n:
+            for p in n.split("/"):
+                tokens.add(p)
         try:
             val = float(n)
             if val.is_integer():

@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from app.core.logging import logger
 from app.services.ocr.extractor import ocr_extractor
+from app.api.auth import get_optional_user
 
 upload_router = APIRouter(prefix="/upload", tags=["Upload & OCR"])
 
@@ -18,7 +19,7 @@ MAX_FILE_SIZE_MB = 25
 )
 async def upload_and_ocr(
     file: UploadFile = File(..., description="Worksheet photo or PDF"),
-    force_mock: bool = Query(False, description="Force zero-model simulated extraction"),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
 ):
     filename = file.filename or "worksheet.png"
     suffix = Path(filename).suffix.lower()
@@ -37,24 +38,14 @@ async def upload_and_ocr(
             detail=f"File exceeds maximum allowed size of {MAX_FILE_SIZE_MB}MB.",
         )
 
-    logger.info(f"[OCR Upload] Received '{filename}' ({size_mb:.2f} MB)")
+    logger.info(f"[OCR Upload] Received '{filename}' ({size_mb:.2f} MB) - applying server-side PII header masking")
 
     result = await ocr_extractor.extract_from_bytes(
         file_bytes=file_bytes,
         filename=filename,
-        force_mock=force_mock,
     )
 
     return result
-
-
-@upload_router.get(
-    "/mock",
-    summary="Get hardcoded multi-exercise worksheet mock directly",
-    description="Returns the deterministic multi-exercise worksheet (Q5, Q6, Q7) for frontend testing and offline development.",
-)
-async def get_mock_worksheet():
-    return ocr_extractor._generate_mock_extraction("practice_worksheet.png")
 
 
 class SelectExerciseRequest(BaseModel):
@@ -72,6 +63,7 @@ class SelectExerciseRequest(BaseModel):
 )
 async def select_exercise(
     request: SelectExerciseRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
 ):
     from app.api.endpoints import handle_query, QueryRequest
     from fastapi import BackgroundTasks
@@ -83,7 +75,7 @@ async def select_exercise(
         language=request.language,
     )
     bg = BackgroundTasks()
-    response = await handle_query(query_req, bg)
+    response = await handle_query(query_req, bg, current_user=current_user)
     return {
         "status": "success",
         "selected_exercise_id": request.exercise_id,

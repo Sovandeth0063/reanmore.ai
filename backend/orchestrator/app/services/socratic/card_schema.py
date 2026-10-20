@@ -117,6 +117,10 @@ class StepWidgetPayload(BaseModel):
         default=None,
         description="Optional visual scaffolding data for the active exercise"
     )
+    quota_remaining: Optional[Dict[str, int]] = Field(
+        default=None,
+        description="Optional remaining daily and monthly problem quota allowances for student"
+    )
 
     def get_active_step(self) -> Optional[SocraticStep]:
         """Returns the currently active step object, or None if index is out of range."""

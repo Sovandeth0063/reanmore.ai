@@ -32,6 +32,12 @@ class SessionContext:
     grade_level: str = "grade_1_3"
     language: str = "en"
     original_raw_query: Optional[str] = None
+
+    # Student Identity Context (Spec Section 1 & Section 4)
+    user_id: Optional[str] = None
+    student_name: Optional[str] = None
+    role: Optional[str] = "student"
+    class_code: Optional[str] = None
     
     # Socratic Tutoring Status & Stepper Widget Persistence
     solved_steps: List[Dict[str, Any]] = field(default_factory=list)
@@ -203,7 +209,11 @@ class SessionContext:
             "worksheet_data": self.worksheet_data,
             "image_uri": self.image_uri,
             "session_title": self.session_title,
-            "session_title_khmer": self.session_title_khmer
+            "session_title_khmer": self.session_title_khmer,
+            "user_id": self.user_id,
+            "student_name": self.student_name,
+            "role": self.role,
+            "class_code": self.class_code
         }
 
     @classmethod
@@ -234,7 +244,11 @@ class SessionContext:
             worksheet_data=data.get("worksheet_data"),
             image_uri=data.get("image_uri"),
             session_title=data.get("session_title"),
-            session_title_khmer=data.get("session_title_khmer")
+            session_title_khmer=data.get("session_title_khmer"),
+            user_id=data.get("user_id"),
+            student_name=data.get("student_name"),
+            role=data.get("role", "student"),
+            class_code=data.get("class_code")
         )
 
 
@@ -375,3 +389,21 @@ class SessionManager:
 
 
 session_manager = SessionManager()
+
+
+class SessionTurnLockManager:
+    """
+    In-memory per-session turn locking manager (Architecture v2.1 Section 5.5 & 12.1).
+    Guarantees strict FIFO serialization of student turns for any individual session,
+    preventing concurrent state races without requiring Redis distributed mutexes.
+    """
+    def __init__(self):
+        self._locks: Dict[str, asyncio.Lock] = {}
+
+    def get_lock(self, session_id: str) -> asyncio.Lock:
+        if session_id not in self._locks:
+            self._locks[session_id] = asyncio.Lock()
+        return self._locks[session_id]
+
+
+session_turn_lock_manager = SessionTurnLockManager()

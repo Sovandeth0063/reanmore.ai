@@ -1,99 +1,169 @@
-# WEG Homework AI & Socratic Tutoring Ecosystem 🎓
+# ReanMore.ai (រៀនបន្ថែម) 🚀
 
-> **Integrated multimodal homework digitization and AI Socratic tutoring system** for elementary school students (Grades 1–6) in **Math** and **Science** (Physics, Chemistry, Biology), supporting both **English** and **Khmer**.
+> **Intelligent Elementary STEM Socratic Tutoring Ecosystem (Grades 1–6)**  
+> Built for accessible, privacy-preserving, and pedagogically grounded learning in Math & Science, supporting step-by-step problem decomposition without ever giving away direct answers.
+
+---
+
+## 🌟 Overview
+
+**ReanMore.ai** is a specialized educational AI platform tailored for elementary school students (ages 6–12). Unlike generic chatbots that instantly reveal final answers, ReanMore acts as a warm, encouraging Socratic tutor. It guides children through multi-step milestones using concrete, kid-friendly analogies (such as *"Cookie Bakery Boxes"*, *"Tall Ten-Towers"*, and *"Apple Baskets"*), interactive visual diagrams, and adaptive comprehension checks.
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ```text
-                      ┌─────────────────────────────────────────┐
-                      │    Homework Scanner & OCR (Port 9003)   │
-                      │   Universal VLM + Precision Geometry    │
-                      └────────────────────┬────────────────────┘
-                                           │ Scanned JSON
-                                           ▼
-┌─────────────────────────────────────┐                  ┌─────────────────────────────────────────┐
-│        Frontend Web UI (Port 5173)  │ ──── /api/query ─▶│      Backend Orchestrator (Port 9000)   │
-│ - React 19 + Vite + Tailwind CSS    │                  │ - LangGraph Socratic State Machine      │
-│ - Tunsay Mascot & Stepper Card      │◀─── Socratic ────│ - Math Microservice (Port 9001)         │
-│ - Multi-Exercise Worksheet Bar      │     Responses    │ - Science Microservice (Port 9002)      │
-└─────────────────────────────────────┘                  │ - Redis + Postgres + Qdrant Databases   │
-                                                         └─────────────────────────────────────────┘
+                               ┌─────────────────────────────────────────┐
+                               │       ReanMore Web Frontend             │
+                               │  - React 19 + TypeScript + Vite         │
+                               │  - Interactive Stepper & StepTrail UI   │
+                               │  - On-Card 💡 Helpful Tip Banners       │
+                               │  - Tunsay Rabbit Mascot Feedback        │
+                               └────────────────────┬────────────────────┘
+                                                    │
+                                     REST / JSON    │ /api/v1/query
+                                                    ▼
+                               ┌─────────────────────────────────────────┐
+                               │      FastAPI Orchestrator Gateway       │
+                               │  - Language & Intent Router             │
+                               │  - Multi-Exercise Worksheet Stepper     │
+                               │  - Deterministic CAS Math Engine        │
+                               │  - Socratic State Machine               │
+                               │  - Leak Guard v2 (Zero Direct Answers)  │
+                               │  - Student Session & Telemetry State    │
+                               └──────┬─────────────────┬────────────────┘
+                                      │                 │
+                ┌─────────────────────┴───────┐         └─────────────────────────┐
+                ▼                             ▼                                   ▼
+┌───────────────────────────────┐ ┌───────────────────────────────┐ ┌───────────────────────────────┐
+│       PostgreSQL 16           │ │         Redis Stack           │ │       Qdrant Vector DB        │
+│ - Student Profiles & Progress │ │ - Real-Time Session Memory    │ │ - MoEYS Curriculum Embeddings │
+│ - Daily/Monthly Quota Records │ │ - 10-Problem/Day Rate Limits  │ │ - Grade 1–6 STEM Knowledge    │
+└───────────────────────────────┘ └───────────────────────────────┘ └───────────────────────────────┘
 ```
 
 ---
 
-## 📂 Project Structure
+## 🚀 Key Capabilities & Features
+
+### 1. 🎓 Kid-Friendly Socratic Pedagogy
+- **No Direct Answer Leakage:** Invariant safety engine mathematically and syntactically prevents the system from dumping final solutions.
+- **Relatable Analogies for Young Learners:**
+  - **Single Blocks & Finger Counting 🧱🖐️:** Encourages starting with the larger number and counting forward.
+  - **Cookie Bakery Boxes 🍪📦:** Regrouping addition conceptualized as packing 10 loose cookies into 1 bakery box.
+  - **Tall Ten-Towers 🗼:** Tens and ones place value represented as snapping 10 blocks into a tower.
+  - **Unpacking Gift & Crayon Boxes 🎁🖍️:** Borrowing in subtraction taught as opening a 10-pack of crayons to share with friends.
+- **Instant On-Card `💡 Helpful Tip`:** High-visibility contextual clue box directly below the problem statement so elementary students never get stuck.
+
+### 2. 🧮 Fast In-Process Math Solver & Verification
+- High-speed Computer Algebra System (CAS) solving multi-digit addition, subtraction with borrowing, multiplication, and division.
+- Step-by-step milestone decomposition matching elementary school curricula.
+- Tolerant student answer normalization (supports spelled numbers, units, comma separations, and conversational answers like *"it is 12 cookies"*).
+
+### 3. 🔬 Curricular Science Exploration
+- Interactive Socratic inquiry for Grade 1–6 Science (States of Matter: Solids 🧊, Liquids 💧, Gases 🎈, Plants, Habitats, Energy).
+- Multi-step inquiry guiding the student to observe properties before arriving at scientific conclusions.
+
+### 4. 🛡️ Child Safety & Privacy (COPPA / GDPR-K Aligned)
+- **Zero Cloud API Dependency Option:** Runs offline on local hardware via quantized open-weights models or containerized microservices.
+- **Student Privacy:** Zero personally identifiable information (PII) required; login via simple Class Code + 4-digit PIN.
+- **Deflection Guardrails:** Automatically flags and redirects off-topic, unsafe, or non-educational inquiries back to learning.
+
+---
+
+## 📁 Repository Structure
 
 ```text
-Science_chatbot/
-├── docker-compose.yml              # Multi-Service Docker Orchestration
-├── start_all.ps1                   # One-click Windows PowerShell startup script
-├── .env.example                    # Example environment configuration
-├── pytest.ini                      # Central pytest configuration
-│
-└── backend/                        # 🧠 Complete Backend System & Microservices
-    ├── orchestrator/               # Main Gateway API & LangGraph State Machine (Port 9000)
-    ├── homework_ocr_vlm/           # Universal VLM Homework Extraction Service (Port 9003)
-    │   ├── app/                    # Layout, OCR, Preprocessing, VLM
-    │   ├── sample_inputs/          # Test images (test1.png)
-    │   ├── sample_outputs/         # Benchmark JSON extractions
-    │   ├── scripts/                # test_image_scanner.py, run_worksheet_test.py
-    │   └── tests/                  # Pytest pipeline tests & fixtures
-    ├── services/
-    │   ├── math_service/           # Math solver (SymPy + LLM validator, Port 9001)
-    │   └── science_service/        # Science solver (Physics, Chemistry, Biology, Port 9002)
-    ├── testing/                    # Test Suites & Developer Playgrounds
-    │   ├── unit/                   # Gateway, Guardrails, NLU, Socratic, Solvers
-    │   ├── integration/            # End-to-end multi-service tests
-    │   └── tools/                  # interactive_chat.py, interactive_nlu_tester.py
-    └── ingestion/                  # Qdrant Vector Data Ingestion Pipeline
+.
+├── backend/
+│   ├── docker-compose.yml          # Container configuration (Postgres, Redis, Orchestrator)
+│   ├── orchestrator/               # Core FastAPI gateway & Socratic engine
+│   │   ├── app/
+│   │   │   ├── api/                # REST endpoints (/api/v1/query, /health, /auth, etc.)
+│   │   │   ├── core/               # App configuration & settings
+│   │   │   ├── infrastructure/     # Database & Redis connectors
+│   │   │   └── services/           # Socratic graph, intent NLU, CAS engine, guardrails
+│   │   └── requirements.txt
+│   ├── ingestion/                  # Curriculum PDF/text chunking & Qdrant vector pipeline
+│   └── testing/                    # Comprehensive integration & release-gate test suites
+├── docs/                           # Architecture specifications, pedagogical designs, pilot logs
+│   ├── CURRENT_STATUS_AND_PENDING_FEATURES.md
+│   ├── ReanMore_Architecture_v2.1.md
+│   ├── pilot/                      # Classroom observation protocol & consent templates
+│   └── plans/                      # Detailed implementation status matrix
+├── frontend/                       # Interactive web application
+│   ├── src/
+│   │   ├── api/                    # Backend API client connectors
+│   │   ├── components/             # StepChatBubble, StepCard, MathKeypad, HomeworkScanner
+│   │   ├── services/               # Answer validation & session services
+│   │   └── utils/                  # Kid analogy generator, language helpers, normalizers
+│   └── package.json
+└── scripts/                        # Maintenance & deployment automation utilities
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## 🛠️ Getting Started
 
-> 📖 **For complete step-by-step setup instructions, environment config, and troubleshooting, see the [Fullstack Setup Guide](SETUP_GUIDE.md).**
+### Prerequisites
+- **Node.js**: v18+ and **npm**
+- **Python**: v3.11+
+- **Docker & Docker Compose**: v2.20+
 
-### Option 1: Docker Stack (Backend & Databases)
-```bash
-docker compose up --build
-```
-Then in a separate terminal:
-```bash
-cd frontend && npm install && npm run dev
-```
-This launches:
-- **Orchestrator Gateway**: `http://localhost:9000`
-- **Homework Scanner**: `http://localhost:9003`
-- **Math Service**: `http://localhost:9001`
-- **Science Service**: `http://localhost:9002`
-- **Databases**: Redis (`6379`), PostgreSQL (`5432`), Qdrant (`6333`)
-
-### Option 2: Local Development
-1. **Launch all 4 backend microservices**:
-   ```powershell
-   .\start_all.ps1
+### 1. Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
    ```
-2. Open `http://localhost:5173` in your browser.
+2. Copy the sample environment file:
+   ```bash
+   cp .env.example .env
+   ```
+3. Start the core backend infrastructure:
+   ```bash
+   docker compose up -d
+   ```
+4. Verify backend health:
+   ```bash
+   curl http://localhost:9000/health
+   # Response: {"status":"healthy","database":"connected","version":"2.1.0"}
+   ```
+
+### 2. Frontend Setup
+1. In a new terminal, navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Quality Gates
 
-Run all unit tests:
-```powershell
-.\.venv\Scripts\python.exe -m pytest testing/unit
+Run the automated verification suite to validate math decomposition, science inquiry, and leak-free guardrails:
+```bash
+python scratch/test_endpoints.py
 ```
 
-Run Homework Scanner tests:
-```powershell
-.\.venv\Scripts\python.exe -m pytest services/homework_scanner/tests/test_pipeline.py -m "not integration"
-```
+---
 
-Interactive Socratic CLI Tutor:
-```powershell
-.\.venv\Scripts\python.exe testing/tools/interactive_chat.py
-```
+## 🗺️ Roadmap & Pending Features
+
+See [`docs/CURRENT_STATUS_AND_PENDING_FEATURES.md`](docs/CURRENT_STATUS_AND_PENDING_FEATURES.md) for full tracking:
+- **Offline Photo OCR / VLM Ingress:** Direct camera / image upload parsing of physical paper worksheets into the multi-exercise stepper.
+- **Bilingual Khmer (ភាសាខ្មែរ) NLP:** Unspaced script segmentation (`khmer-nltk`) and MoEYS Grade 1–6 textbook bilingual alignment.
+- **Live Classroom Pilot Trial:** Physical classroom observational study with elementary school students.
+
+---
+
+## 📄 License
+This project is developed for the Khmer Enterprise STEM educational initiative. All rights reserved.

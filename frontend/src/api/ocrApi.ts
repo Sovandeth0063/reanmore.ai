@@ -86,7 +86,6 @@ export const ocrApi = {
     file: File | Blob,
     options?: {
       filename?: string;
-      forceMock?: boolean;
       onProgress?: (percent: number) => void;
       abortSignal?: AbortSignal;
     }
@@ -96,8 +95,7 @@ export const ocrApi = {
     const filename = options?.filename || (file instanceof File ? file.name : 'worksheet.jpg');
     formData.append('file', optimizedBlob, filename);
 
-    const queryParams = options?.forceMock ? '?force_mock=true' : '';
-    const raw = await xhrUpload<unknown>(`/upload/ocr${queryParams}`, formData, {
+    const raw = await xhrUpload<unknown>('/upload/ocr', formData, {
       onProgress: options?.onProgress,
       abortSignal: options?.abortSignal,
       timeoutMs: 90_000,
@@ -113,19 +111,6 @@ export const ocrApi = {
       error: 'OCR response schema mismatch',
       problems: [],
     };
-  },
-
-  /**
-   * Get deterministic sample worksheet for testing (dev only).
-   */
-  async getMockWorksheet(): Promise<OcrExtractionResult> {
-    const raw = await request<unknown>('/upload/mock', {
-      method: 'GET',
-      timeoutMs: 10_000,
-    });
-
-    const parsed = OcrExtractionResultSchema.safeParse(raw);
-    return parsed.success ? parsed.data : { success: false, problems: [] };
   },
 
   /**

@@ -94,9 +94,11 @@ def resolve_query_rewrite(
     norm = normalized_query or query
     has_pronoun = bool(_PRONOUN_RE.search(norm))
     is_elliptical = bool(_ELLIPTICAL_RE.search(norm))
+    has_math_op = any(op in norm for op in ['+', '-', '*', '/', '=', '×', '÷'])
     is_short_attempt = bool(
         has_active_problem and active_step and len(norm.split()) <= 4 and 
-        not norm.lower().startswith(("what", "why", "how", "solve", "can"))
+        not norm.lower().startswith(("what", "why", "how", "solve", "can")) and
+        not has_math_op
     )
 
     # Fast-path: if query has no pronouns, is not elliptical, and has no active context -> self-contained
@@ -208,13 +210,11 @@ def determine_routing(
     science_url = getattr(settings, "SCIENCE_SERVICE_URL", "http://localhost:9002")
 
     if subj_upper == "MATH":
-        if intent == "STEP_ANSWER_ATTEMPT":
-            endpoint = f"{math_url}/validate"
-            reason = f"Math domain validation ({subtopic}) via Math Microservice"
-        else:
-            endpoint = f"{math_url}/solve"
-            reason = f"Math problem decomposition & solving ({subtopic}) via Math Microservice"
-        return ("MATH_SERVICE", endpoint, reason)
+        return (
+            "IN_PROCESS_MATH_CAS",
+            "app.services.socratic.math_engine.cas",
+            f"In-process SymPy CAS & Socratic Skill Template ({subtopic})"
+        )
 
     if subj_upper == "SCIENCE":
         if intent == "STEP_ANSWER_ATTEMPT":

@@ -49,6 +49,10 @@ class SafeguardingAlertRecord:
     notification_ping: str = "" # Content-free ping
     acknowledged_at_utc: Optional[str] = None
     acknowledged_by: Optional[str] = None
+    dispatch_status: str = "PENDING"  # PENDING, DISPATCHED, SKIPPED_NO_WEBHOOK, FAILED
+    dispatch_channel: str = "in_memory"  # in_memory, webhook, log
+    dispatch_error: Optional[str] = None
+    dispatched_at_utc: Optional[str] = None
 
 
 # In-memory Review Queue for Safeguarding Officer
@@ -64,6 +68,103 @@ def format_content_free_notification_ping(token: str, sla_minutes: int = SAFEGUA
         f"ReanMore Alert: New safeguarding review pending for token [{token}]. "
         f"SLA: {sla_minutes}m. Log in: {SAFEGUARDING_PORTAL_URL}"
     )
+
+
+def dispatch_external_safeguarding_ping(
+    record: SafeguardingAlertRecord,
+    webhook_url: Optional[str] = None,
+    timeout_sec: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Dispatches a content-free safeguarding alert ping to an external notification channel (webhook/SMS gateway).
+    CRITICAL INVARIANT: The ping contains ONLY the pseudonymous student token, review SLA,
+    and secure portal URL. NEVER transmits raw student messages, quotes, or child PII.
+    """
+    from app.core.config import settings
+
+    target_url = webhook_url if webhook_url is not None else settings.SAFEGUARDING_WEBHOOK_URL
+    timeout = timeout_sec if timeout_sec is not None else settings.SAFEGUARDING_DISPATCH_TIMEOUT_SEC
+
+    if not target_url:
+        record.dispatch_status = "SKIPPED_NO_WEBHOOK"
+        record.dispatch_channel = "log"
+        logger.warning(
+            f"[SafeguardingDispatch] No external webhook configured. Notification ping recorded in audit log: {record.notification_ping}"
+        )
+        return {
+            "dispatched": False,
+            "channel": "log",
+            "status": "SKIPPED_NO_WEBHOOK",
+            "notification_ping": record.notification_ping,
+        }
+
+    # Strict content-free payload: pseudonymous token and portal link only
+    content_free_payload = {
+        "event": "safeguarding_review_pending",
+        "notification_ping": record.notification_ping,
+        "student_token": record.student_token,
+        "severity_tier": record.severity_tier,
+        "category": record.category,
+        "target_recipient": record.target_recipient,
+        "owner": record.owner,
+        "sla_minutes": record.sla_minutes,
+        "out_of_hours": record.out_of_hours,
+        "portal_url": SAFEGUARDING_PORTAL_URL,
+        "timestamp_utc": record.created_at_utc,
+    }
+
+    try:
+        import httpx
+
+        response = httpx.post(
+            target_url,
+            json=content_free_payload,
+            timeout=timeout,
+            headers={"Content-Type": "application/json", "User-Agent": "ReanMore-Safeguarding/2.1"},
+        )
+        if 200 <= response.status_code < 300:
+            record.dispatch_status = "DISPATCHED"
+            record.dispatch_channel = "webhook"
+            record.dispatched_at_utc = datetime.now(timezone.utc).isoformat()
+            logger.info(
+                f"[SafeguardingDispatch] Dispatched content-free ping for token {record.student_token} to webhook."
+            )
+            return {
+                "dispatched": True,
+                "channel": "webhook",
+                "status": "DISPATCHED",
+                "status_code": response.status_code,
+                "notification_ping": record.notification_ping,
+            }
+        else:
+            record.dispatch_status = "FAILED"
+            record.dispatch_channel = "webhook"
+            record.dispatch_error = f"HTTP {response.status_code}: {response.text[:100]}"
+            logger.error(
+                f"[SafeguardingDispatch] Webhook returned error {response.status_code} for token {record.student_token}."
+            )
+            return {
+                "dispatched": False,
+                "channel": "webhook",
+                "status": "FAILED",
+                "status_code": response.status_code,
+                "error": record.dispatch_error,
+                "notification_ping": record.notification_ping,
+            }
+    except Exception as exc:
+        record.dispatch_status = "FAILED"
+        record.dispatch_channel = "webhook"
+        record.dispatch_error = str(exc)
+        logger.error(
+            f"[SafeguardingDispatch] Failed to dispatch webhook alert for token {record.student_token}: {exc}"
+        )
+        return {
+            "dispatched": False,
+            "channel": "webhook",
+            "status": "FAILED",
+            "error": str(exc),
+            "notification_ping": record.notification_ping,
+        }
 
 
 def get_safeguarding_review_queue() -> List[SafeguardingAlertRecord]:
@@ -149,7 +250,8 @@ def dispatch_safety_alert(
     is_school_session: bool = True,
     school_id: Optional[str] = None,
     student_token: Optional[str] = None,
-    has_recusal_conflict: bool = False
+    has_recusal_conflict: bool = False,
+    webhook_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Evaluates and dispatches safety alerts according to safeguarding protocol.
@@ -159,6 +261,7 @@ def dispatch_safety_alert(
     - Danger -> School Safety Coordinator + Emergency Services
     - Alerts transmit pseudonymous tokens, never child PII.
     - Recusal conflict routes immediately to District Focal Point.
+    - Automatically attempts live content-free ping dispatch to configured external webhook.
     """
     token = student_token or generate_student_token(session_id)
     now_utc = datetime.now(timezone.utc)
@@ -265,9 +368,12 @@ def dispatch_safety_alert(
     )
     _SAFEGUARDING_REVIEW_QUEUE.append(record)
 
+    # Live external notification ping dispatch
+    dispatch_res = dispatch_external_safeguarding_ping(record, webhook_url=webhook_url)
+
     logger.warning(
         f"[SafetyEscalation] Tier 2 alert dispatched for token {token} to {target_recipient} "
-        f"(level={escalation_level}, out_of_hours={out_of_hours})."
+        f"(level={escalation_level}, out_of_hours={out_of_hours}, dispatch_status={record.dispatch_status})."
     )
 
     return {
@@ -284,6 +390,9 @@ def dispatch_safety_alert(
         "out_of_hours": out_of_hours,
         "payload": alert_payload,
         "notification_ping": notification_ping,
+        "dispatch_status": record.dispatch_status,
+        "dispatch_channel": record.dispatch_channel,
+        "dispatch_result": dispatch_res,
         "child_facing_guidance": child_guidance,
         "tutor_state": "PAUSED"
     }
@@ -292,7 +401,8 @@ def dispatch_safety_alert(
 def dispatch_escalation_alert(
     safety_result: Any,
     student_token: Optional[str] = None,
-    session_id: str = "sess_default"
+    session_id: str = "sess_default",
+    webhook_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Direct dispatcher accepting a SafetyResult object."""
     tier = getattr(safety_result, "severity_tier", 2)
@@ -302,5 +412,6 @@ def dispatch_escalation_alert(
         severity_tier=tier,
         category=str(cat),
         text_snippet=getattr(safety_result, "redacted_text", ""),
-        student_token=student_token
+        student_token=student_token,
+        webhook_url=webhook_url,
     )

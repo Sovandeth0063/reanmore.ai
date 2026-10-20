@@ -12,11 +12,13 @@ import uuid
 import asyncio
 from collections import OrderedDict
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Depends, status
 from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.services.llm import llm_service, ModelTier
 from app.core.logging import logger
+from app.api.auth import get_optional_user, get_current_user
+from app.services.quota.quota_guard import quota_guard, QuotaExhaustedException
 from app.infrastructure.database import (
     save_session_and_telemetry,
     get_all_session_logs,
@@ -25,6 +27,7 @@ from app.infrastructure.database import (
     get_student_telemetry_stats,
 )
 from app.services.socratic.graph import socratic_graph, _is_answer_equivalent
+from app.services.socratic.validate_answer import validate_student_answer
 from app.services.socratic.card_schema import StepWidgetPayload
 from app.services.socratic.prompts.controller import socratic_prompt_controller as prompt_controller
 from app.services.session import session_manager
@@ -118,6 +121,9 @@ async def translate_to_khmer(text: str) -> str:
     Translates English tutor response to Khmer using LLM Service, preserving LaTeX math.
     Uses in-memory caching to avoid redundant API calls.
     """
+    if not getattr(settings, "ENABLE_KHMER_LANGUAGE", False):
+        return text
+
     if not text or not text.strip():
         return text
     
@@ -162,6 +168,12 @@ async def handle_translate(request: TranslateRequest):
     Direct endpoint for translating arbitrary UI, problem, or step strings to Khmer or English.
     Supports single text or batch texts with caching and prompt-controller LLM integration.
     """
+    if not getattr(settings, "ENABLE_KHMER_LANGUAGE", False):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Khmer translation is deferred to ReanMore v2.2. English-first mode is active."
+        )
+
     target = request.get_target_lang()
     source = request.source_lang or ("km" if target == "en" else "en")
 
@@ -220,7 +232,11 @@ async def handle_translate(request: TranslateRequest):
 
 
 @router.post("/query", response_model=QueryResponse)
-async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks):
+async def handle_query(
+    request: QueryRequest,
+    background_tasks: BackgroundTasks,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+):
     raw_query = request.query.strip()
     session_id = request.session_id or str(uuid.uuid4())
     req_lang = request.language.lower().strip()
@@ -231,6 +247,12 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
 
     # 1. Load context state from SessionManager (Redis / Local fallback)
     session = session_manager.get_or_create_session(session_id)
+    if current_user:
+        session.user_id = current_user.get("user_id")
+        session.student_name = current_user.get("student_name")
+        session.role = current_user.get("role", "student")
+        session.class_code = current_user.get("class_code")
+
     prev_hint_count = session.hint_count
     prev_step_index = session.current_step_index
 
@@ -280,12 +302,47 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         if is_english_exercise:
             language = "en"
 
-        # If frontend sent active step or problem context, recognize active problem state
-        if not has_active_state and (active_step_dict or (ctx_statement and p_ctx.get("activeStepIndex", 0) > 0)):
-            has_active_state = True
-
         # 2. Pipeline Stage 1 & 2: Normalize
         normalized_query = normalize_query(raw_query)
+
+        # Check if incoming query is a standalone binary math calculation or explicit solve request
+        is_fraction_literal = bool(re.match(r'^\s*-?\d+/\d+\s*$', normalized_query))
+        has_binary_math = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$', normalized_query))
+        expected_ans_str = str(active_step_dict.get("expected_answer") or "").strip() if active_step_dict else ""
+        is_step_ans_match = bool(expected_ans_str and normalized_query.strip() == expected_ans_str)
+        is_explicit_solve = bool(re.match(r'^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference)\b', normalized_query, re.I))
+        is_standalone_new_math = has_binary_math and not is_step_ans_match
+
+        # If query is an unambiguous new problem, override and reset active state
+        if is_standalone_new_math or is_explicit_solve:
+            has_active_state = False
+            active_step_dict = None
+            ctx_statement = None
+        elif not has_active_state and (active_step_dict or (ctx_statement and p_ctx.get("activeStepIndex", 0) > 0)):
+            has_active_state = True
+
+        # Phase 1: Quota Check (Only for fresh problem plans; free for active problem steps/hints)
+        user_id = session.user_id or (current_user.get("user_id") if current_user else None) or "anonymous_student"
+        user_role = session.role or (current_user.get("role") if current_user else None) or "student"
+        
+        # 1 Page = 1 Quota deduction on worksheet scan confirmation (or exercise_id or session_id)
+        if request.worksheet_page:
+            quota_problem_id = f"{session_id}_page_{request.worksheet_page}"
+        elif request.exercise_id:
+            quota_problem_id = request.exercise_id
+        else:
+            quota_problem_id = session_id
+
+        is_new_problem_plan = not has_active_state
+
+        if is_new_problem_plan:
+            quota_check = await quota_guard.check_quota(
+                user_id=user_id,
+                role=user_role,
+                problem_id=quota_problem_id,
+            )
+            if not quota_check.allowed:
+                raise QuotaExhaustedException(quota_check)
 
         # 3. Pipeline Stage 3: Rewrite if needed (resolve pronouns/elliptical references)
         prev_q = session.turns[-1].get("user") if session.turns else None
@@ -368,7 +425,7 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 )
                 if explain_resp and explain_resp.text:
                     solution_text = explain_resp.text.strip()
-                    if language == "khmer":
+                    if language == "khmer" and getattr(settings, "ENABLE_KHMER_LANGUAGE", False):
                         solution_text = await translate_to_khmer(solution_text)
                     return QueryResponse(
                         category=detected_subject,
@@ -390,7 +447,12 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 logger.warning(f"Contextual explanation generation failed: {e}")
 
         # Route according to classified intent
-        is_new_problem_intent = (intent_res.intent in (IntentType.INITIAL_SOLVE, IntentType.REQUEST_PRACTICE)) and (not has_active_state or not active_step_dict)
+        is_new_problem_intent = (
+            intent_res.intent in (IntentType.INITIAL_SOLVE, IntentType.REQUEST_PRACTICE)
+            or is_standalone_new_math
+            or is_explicit_solve
+        ) and (intent_res.intent not in (IntentType.CHITCHAT, IntentType.OFF_TOPIC, IntentType.CLARIFY))
+
         if not has_active_state or is_new_problem_intent:
             if intent_res.intent == IntentType.CHITCHAT:
                 state_input["detected_intent"] = "CHITCHAT"
@@ -405,13 +467,18 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
                 state_input["current_step_index"] = 0
                 state_input["step_widget"] = None
         else:
-            if intent_res.intent == IntentType.INITIAL_SOLVE and has_active_state:
+            if intent_res.intent == IntentType.CHITCHAT:
+                state_input["detected_intent"] = "CHITCHAT"
+            elif intent_res.intent == IntentType.OFF_TOPIC:
+                state_input["detected_intent"] = "OFF_TOPIC_DEFLECTED"
+            elif intent_res.intent == IntentType.CLARIFY:
+                state_input["detected_intent"] = "CLARIFY"
+            elif intent_res.intent == IntentType.STEP_ATTEMPT:
                 state_input["detected_intent"] = StudentIntent.STEP_ANSWER_ATTEMPT.value
                 state_input["student_attempt"] = intent_res.extracted_answer or raw_query
             else:
-                state_input["detected_intent"] = _map_intent(intent_res.intent).value
-                if intent_res.extracted_answer:
-                    state_input["student_attempt"] = intent_res.extracted_answer
+                state_input["detected_intent"] = StudentIntent.STEP_ANSWER_ATTEMPT.value
+                state_input["student_attempt"] = intent_res.extracted_answer or raw_query
 
         # 5. Invoke Socratic Graph asynchronously
         res = await socratic_graph.ainvoke(state_input, config=config)
@@ -430,7 +497,7 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         intent = res.get("detected_intent", "INITIAL_QUESTION" if (not has_active_state or is_new_problem_intent) else "STEP_ANSWER_ATTEMPT")
 
         # Translate to Khmer if requested
-        if language == "khmer":
+        if language == "khmer" and getattr(settings, "ENABLE_KHMER_LANGUAGE", False):
             if solution_text:
                 logger.info("Endpoints: Translating final Socratic response back to Khmer...")
                 solution_text = await translate_to_khmer(solution_text)
@@ -532,6 +599,31 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
         session.tutor_feedback = solution_text
         session.formatted_markdown = solution_text
         session.is_problem_complete = is_complete
+
+        # Phase 2: Quota Commit (Deducts 1 quota point only upon successful problem plan creation)
+        if is_new_problem_plan and widget_dict and widget_dict.get("steps") and not is_deflected and res.get("is_safe") is not False:
+            commit_res = await quota_guard.commit_quota(
+                user_id=user_id,
+                problem_id=quota_problem_id,
+                problem_hash=None,
+                subject=subject or "math",
+                tokens_consumed=0,
+                role=user_role,
+            )
+            widget_dict["quota_remaining"] = {
+                "daily": commit_res.daily_remaining,
+                "monthly": commit_res.monthly_remaining,
+            }
+        elif widget_dict:
+            # For free interactions (hints, answer validations, steps), populate current quota remaining
+            now_phnom = quota_guard.get_phnom_penh_now()
+            d_str, m_str = quota_guard.get_date_keys(now_phnom)
+            d_used, m_used = quota_guard._get_current_usage(user_id, d_str, m_str)
+            widget_dict["quota_remaining"] = {
+                "daily": max(0, settings.QUOTA_DAILY - d_used),
+                "monthly": max(0, settings.QUOTA_MONTHLY - m_used),
+            }
+
         if widget_dict:
             session.set_step_widget(widget_dict)
         session.add_turn(user_input=raw_query, bot_response=solution_text)
@@ -562,7 +654,8 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
             worksheet_data=getattr(session, "worksheet_data", None),
             image_uri=getattr(session, "image_uri", None),
             session_title=getattr(session, "session_title", None),
-            session_title_khmer=getattr(session, "session_title_khmer", None)
+            session_title_khmer=getattr(session, "session_title_khmer", None),
+            user_id=session.user_id,
         )
 
         return QueryResponse(
@@ -585,6 +678,8 @@ async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks)
             degrade_to_tap_first=res.get("degrade_to_tap_first", False)
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error executing Socratic Graph: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Socratic loop execution error: {str(e)}")
@@ -801,34 +896,23 @@ class StepValidateRequest(BaseModel):
 async def fast_validate_answer_endpoint(request: StepValidateRequest):
     """
     Ultra-fast (< 5ms) deterministic answer evaluation for inline math and science steps.
-    Instantly returns near-miss detection, encouraging child-friendly feedback, and progressive hints.
+    Routes through validate_student_answer as the single validation path, guaranteeing
+    non-directional near-miss feedback and invariant-backed evaluation.
     """
-    is_correct = _is_answer_equivalent(request.student_answer, request.expected_answer)
-    near_miss = False
-    diff = None
-
-    try:
-        ns = float(re.sub(r"[^\d.]", "", str(request.student_answer)))
-        ne = float(re.sub(r"[^\d.]", "", str(request.expected_answer)))
-        diff = abs(ns - ne)
-        if diff in (1, 2):
-            near_miss = True
-    except Exception:
-        pass
+    outcome = validate_student_answer(
+        student_attempt=request.student_answer,
+        expected_answer=request.expected_answer,
+        step_id=str(request.step_number) if request.step_number else None,
+    )
 
     is_km = request.language == "km"
-    if is_correct:
-        msg_km = f"🎉 ត្រឹមត្រូវហើយ! ចម្លើយ «{request.student_answer}» ពិតជាត្រឹមត្រូវ!"
-        msg_en = f"🎉 Correct! Your answer '{request.student_answer}' is spot on!"
-    elif near_miss and diff == 1:
-        msg_km = f"💡 ជិតត្រូវហើយ! ចម្លើយ «{request.student_answer}» ខ្វះតែ ១ ទៀតប៉ុណ្ណោះ! សាកល្បងរាប់បន្ថែម ១ ទៀតណា៎! 🍎"
-        msg_en = f"💡 So close! Your answer '{request.student_answer}' is just 1 away! Try counting on 1 more! 🍎"
-    elif near_miss and diff == 2:
-        msg_km = f"💡 ជិតដល់ហើយ! ចម្លើយ «{request.student_answer}» គឺជិតត្រូវណាស់ (ខ្វះតែ ២ ទៀត)!"
-        msg_en = f"💡 Almost there! Your answer '{request.student_answer}' is very close (just 2 away)!"
-    else:
-        msg_km = f"🤔 ព្យាយាមម្តងទៀតណា៎! ចម្លើយ «{request.student_answer}» មិនទាន់ត្រឹមត្រូវឡើយ។"
-        msg_en = f"🤔 Try again! '{request.student_answer}' is not quite right."
+    is_correct = outcome.is_correct
+    near_miss = outcome.is_near_miss
+    diff = outcome.numeric_diff
+
+    # Non-directional standardized feedback
+    msg_km = outcome.feedback_khmer
+    msg_en = outcome.feedback_eng
 
     return {
         "is_correct": is_correct,
@@ -871,7 +955,7 @@ async def get_all_sessions(limit: int = 50):
 
 @router.get("/stats")
 @router.get("/streak")
-async def get_student_stats():
+async def get_student_stats(current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
     Retrieves dynamic student learning streak, total XP, and activity metrics computed from PostgreSQL database.
     """
@@ -893,7 +977,11 @@ async def get_student_stats():
 
 
 @router.post("/session/sync")
-async def sync_session(request: SessionSyncRequest, background_tasks: BackgroundTasks):
+async def sync_session(
+    request: SessionSyncRequest,
+    background_tasks: BackgroundTasks,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+):
     """
     Synchronizes full session state (including multi-exercise worksheet queues, titles, problem step progress, and step widgets)
     to both Redis / local memory and PostgreSQL database.
@@ -906,6 +994,12 @@ async def sync_session(request: SessionSyncRequest, background_tasks: Background
         has_img = bool(request.image_uri)
 
         session = session_manager.get_or_create_session(request.session_id)
+        if current_user:
+            session.user_id = current_user.get("user_id")
+            session.student_name = current_user.get("student_name")
+            session.role = current_user.get("role", "student")
+            session.class_code = current_user.get("class_code")
+
         if request.subject:
             session.subject = request.subject
         session.grade_level = request.grade_level
@@ -945,7 +1039,8 @@ async def sync_session(request: SessionSyncRequest, background_tasks: Background
                 session_title=request.title or session.session_title,
                 session_title_khmer=request.title_khmer or session.session_title_khmer,
                 worksheet_data=session.worksheet_data,
-                image_uri=request.image_uri or session.image_uri
+                image_uri=request.image_uri or session.image_uri,
+                user_id=session.user_id,
             )
 
         return {

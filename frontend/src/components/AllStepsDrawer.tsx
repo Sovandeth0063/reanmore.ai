@@ -15,11 +15,11 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
   steps,
   currentStepIndex,
   isOpen,
-  language = 'km',
+  language = 'en',
   onSelectStep,
   onClose,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

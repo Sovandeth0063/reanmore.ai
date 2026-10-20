@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Grade, Language } from '../types';
 import { BookOpen, GraduationCap, Sparkles, Calculator, Atom } from 'lucide-react';
 
@@ -10,10 +10,10 @@ interface GradeSubjectSelectorProps {
 
 export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
   currentGrade,
-  language = 'km',
+  language = 'en',
   onSelectGrade
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const grades: Grade[] = [1, 2, 3, 4, 5, 6];
 
   const subjects = [

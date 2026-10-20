@@ -27,7 +27,6 @@ def solve_grade_1_3_biology(expression: str) -> dict:
     - Living vs Non-living things
     - Animal habitats (ocean, jungle, desert, arctic)
     - Life cycles (butterfly caterpillar, frog tadpole, plant seed)
-    - 5 Human Senses
     """
     expr_l = expression.lower()
 
@@ -87,20 +86,6 @@ def solve_grade_1_3_biology(expression: str) -> dict:
             "error": None
         }
 
-    # 5. Cell Organelles (Auxiliary elementary introduction)
-    if "mitochondria" in expr_l or "powerhouse" in expr_l:
-        steps = [
-            "🔬 Observe: Inside every living plant and animal cell are tiny helper parts.",
-            "⚡ Function: Mitochondria turn food nutrients into energy the cell can use.",
-            "🌟 Conclusion: Mitochondria are known as the powerhouse of the cell!"
-        ]
-        return {
-            "solution": "Mitochondria produces cellular energy (ATP)",
-            "steps": steps,
-            "success": True,
-            "error": None
-        }
-
     return {"success": False}
 
 
@@ -111,14 +96,10 @@ def solve_biology_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
     """
     if not GEMINI_API_KEY:
         return {
-            "solution": "Living organisms and nature",
-            "steps": [
-                f"Identify the living plant, animal, or habitat in '{expression}'",
-                "Observe how it lives, eats, or grows in nature",
-                "State the friendly science conclusion!"
-            ],
-            "success": True,
-            "error": None
+            "solution": None,
+            "steps": [],
+            "success": False,
+            "error": "Biology AI solver unavailable: GEMINI_API_KEY is not configured in Science Service."
         }
 
     try:

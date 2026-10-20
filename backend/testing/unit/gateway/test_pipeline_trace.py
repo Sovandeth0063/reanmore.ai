@@ -115,8 +115,8 @@ def test_determine_routing():
         is_deflected=False,
         is_safe=True
     )
-    assert target == "MATH_SERVICE"
-    assert "/solve" in ep
+    assert target == "IN_PROCESS_MATH_CAS"
+    assert "cas" in ep
 
     # Science routing
     target, ep, reason = determine_routing(

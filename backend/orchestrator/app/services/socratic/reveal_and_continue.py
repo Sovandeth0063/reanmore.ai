@@ -267,6 +267,28 @@ def reveal_and_continue_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "was_revealed": True,
     })
 
+    try:
+        from app.services.telemetry.gap_recorder import log_gap_event
+        log_gap_event(
+            gap_type="learner",
+            gap_code="REVEAL_TRIGGERED",
+            severity=2,
+            user_id=state.get("user_id"),
+            session_id=state.get("session_id"),
+            problem_id=state.get("problem_id"),
+            grade_tier=state.get("grade_level", "grade_1_3"),
+            subject=state.get("subject", "math"),
+            step_index=active_step.step_number,
+            details={
+                "step_title": active_step.title,
+                "concept": active_step.concept,
+                "expected_answer": active_step.expected_answer,
+                "frustration_score": frustration,
+            }
+        )
+    except Exception as e:
+        logger.debug(f"[RevealAndContinue] Gap log failed: {e}")
+
     # 4. Advance widget (mark step complete so pipeline can continue)
     active_step.student_answer = active_step.expected_answer  # record correct answer
     has_more = widget.advance_step(recorded_answer=active_step.expected_answer)
@@ -288,6 +310,7 @@ def reveal_and_continue_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "mastery": mastery,
         "take_a_break": False,
         "frustration_score": frustration,
+        "is_reveal_state": True,
     }
 
     if not has_more:

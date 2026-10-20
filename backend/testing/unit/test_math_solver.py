@@ -32,5 +32,6 @@ def test_word_problem_division_preserves_fractional_result_without_api_key(monke
 
     result = solve_math_ai("5 cookies shared equally between 2 children", "grade_3_4")
 
-    assert result["success"] is True
-    assert result["solution"] == "2.5"
+    assert result["success"] is False
+    assert result["solution"] is None
+    assert "GEMINI_API_KEY" in result.get("error", "")

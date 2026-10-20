@@ -12,6 +12,7 @@ import { AnimalFeatureCard } from './widgets/AnimalFeatureCard';
 import { AnimalGroupCard } from './widgets/AnimalGroupCard';
 import { MultipleChoiceWidget } from './widgets/MultipleChoiceWidget';
 import { ObjectGroupsWidget } from './widgets/ObjectGroupsWidget';
+import { VisualRenderer } from './visual/VisualRenderer';
 
 interface Props {
   visualData: VisualData | null;
@@ -56,6 +57,16 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
   if (!visualData) return null;
 
   const v = visualData as Record<string, any>;
+
+  // Route deterministic VisualSpec models from Architecture v2.1 to pure SVG VisualRenderer
+  if (
+    v.schema_version === 1 ||
+    ['ten_frame', 'fraction_bar', 'bar_model', 'array_grid'].includes(visualData.type) ||
+    (visualData.type === 'number_line' && v.params) ||
+    (visualData.type === 'base_ten_blocks' && v.params)
+  ) {
+    return <VisualRenderer spec={visualData as any} />;
+  }
 
   switch (visualData.type) {
     case 'number_line':

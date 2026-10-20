@@ -1,0 +1,137 @@
+# Full Multi-Container Configuration (Archived for Phase 3/4 expansion: Science RAG, MinIO Vault, Microservices)
+# For Phase 1 Thin Vertical Slice (Math MVP), use docker-compose.yml (4 containers: db, ollama, orchestrator, frontend)
+
+services:
+  # State Checkpointing & Session Quota Cache
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: reanmore-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - reanmore-network
+
+  # Persistent Logs, Student Profiles & Usage Ledger Database (PostgreSQL 16)
+  db:
+    image: postgres:16-alpine
+    container_name: reanmore-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-science_chatbot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - reanmore-network
+
+  # Vector DB for Physics & Biology Curriculum RAG
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: reanmore-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - reanmore-network
+
+  # MinIO File Vault Storage (Textbooks & Student Scans)
+  minio:
+    image: minio/minio:latest
+    container_name: reanmore-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - reanmore-network
+
+  # Ollama Local Offline Model Fallback
+  ollama:
+    image: ollama/ollama:latest
+    container_name: reanmore-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - reanmore-network
+
+  # Main API Gateway & Socratic Orchestrator
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: reanmore-orchestrator
+    ports:
+      - "${ORCHESTRATOR_PORT:-9000}:${ORCHESTRATOR_PORT:-9000}"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - qdrant
+      - db
+      - minio
+    networks:
+      - reanmore-network
+
+  # Math Solver Service (SymPy CAS)
+  math-service:
+    build:
+      context: ./services/math_service
+      dockerfile: Dockerfile
+    container_name: reanmore-math
+    ports:
+      - "${MATH_SERVICE_PORT:-9001}:${MATH_SERVICE_PORT:-9001}"
+    env_file:
+      - .env
+    networks:
+      - reanmore-network
+
+  # Unified Science Solver Service (Physics, Chemistry, Biology)
+  science-service:
+    build:
+      context: ./services/science_service
+      dockerfile: Dockerfile
+    container_name: reanmore-science
+    ports:
+      - "${SCIENCE_SERVICE_PORT:-9002}:${SCIENCE_SERVICE_PORT:-9002}"
+    env_file:
+      - .env
+    depends_on:
+      - qdrant
+    networks:
+      - reanmore-network
+
+  # ReanMore Frontend Web Application (React + Vite + Tailwind/CSS)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: reanmore-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:9000/api
+    depends_on:
+      - orchestrator
+    networks:
+      - reanmore-network
+
+networks:
+  reanmore-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  minio_data:
+  ollama_data:

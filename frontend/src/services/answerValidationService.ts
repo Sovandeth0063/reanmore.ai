@@ -1,5 +1,5 @@
 import { StepItem, Language, HomeworkProblem } from '../types';
-import { answersMatch, normalizeWithKhmer, isAnswerCorrect } from './hardcodedTutorProvider';
+import { answersMatch, normalizeWithKhmer, isAnswerCorrect } from '../utils/answerNormalization';
 import { cleanBilingualOption } from '../utils/language';
 
 export interface StepValidationResult {

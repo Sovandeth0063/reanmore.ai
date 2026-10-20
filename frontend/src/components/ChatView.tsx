@@ -13,11 +13,9 @@ import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
 import { StepItem } from '../types';
 import { askTunsayTutor } from '../services/geminiService';
 import { tutorApi } from '../api';
-import { enrichProblemFromCase } from '../services/hardcodedTutorProvider';
 import { fastValidateStepAnswer } from '../services/answerValidationService';
-import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, Trash2, MessageSquare, Sparkles, Layers, Menu, X, RotateCcw } from 'lucide-react';
-import { ALL_HARDCODED_CASES } from '../data/hardcodedCases';
-import { matchCaseId } from '../services/caseMatcher';
+import { MathKeypad } from './MathKeypad';
+import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, Trash2, MessageSquare, Sparkles, Layers, Menu, X, RotateCcw, Calculator } from 'lucide-react';
 import {
   updateActivity,
   findActiveActivity,
@@ -232,8 +230,8 @@ function mapWidgetToStepItems(widget: any): StepItem[] {
     const options = s.options && Array.isArray(s.options) && s.options.length > 0 ? s.options : undefined;
     const inputFormat = options ? 'mcq' : (isNum ? 'number' : 'text');
     const hints = Array.isArray(s.hints) ? s.hints : [];
-    const clue = s.clue || hints[0] || 'សូមពិនិត្យមើលសំណួរ និងការណែនាំដោយប្រុងប្រយ័ត្ន។';
-    const example = s.helpful_example || hints[1] || 'ព្យាយាមគិតម្តងមួយជំហានៗ!';
+    const clue = s.clue || hints[0] || 'Please review the question and hints carefully.';
+    const example = s.helpful_example || hints[1] || 'Try thinking one step at a time!';
     return {
       id: `step-${stepNum}`,
       stepNumber: stepNum,
@@ -257,7 +255,7 @@ function mapWidgetToStepItems(widget: any): StepItem[] {
       status: idx === 0 ? 'in_progress' : 'locked',
       hint1: { khmer: clue, eng: clue },
       hint2: { khmer: example, eng: example },
-      hint3: { titleKhmer: 'ជំនួយ', titleEng: 'Help', exampleKhmer: hints[2] || '', exampleEng: hints[2] || '' },
+      hint3: { titleKhmer: 'Help', titleEng: 'Help', exampleKhmer: hints[2] || '', exampleEng: hints[2] || '' },
       explainDifferently: {
         simpleKhmer: mission,
         simpleEng: mission,
@@ -305,13 +303,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onSelectExercise,
   onExerciseComplete,
 }) => {
-  const isKhmer = profile.language === 'km';
+  const isKhmer = false;
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const messages = activeSession?.messages ?? [];
 
-  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(() => {
-    return initialProblem ? enrichProblemFromCase(initialProblem, profile.grade) : undefined;
-  });
+  const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(() => {
     if (initialProblem?.id && activeSession?.problemStepProgress?.[initialProblem.id]) {
       return activeSession.problemStepProgress[initialProblem.id].currentStepIndex ?? 0;
@@ -354,6 +350,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [sidebarMode, setSidebarMode] = useState<'worksheet' | 'chats'>('worksheet');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [inputQuery, setInputQuery] = useState('');
+  const [isMathKeypadOpen, setIsMathKeypadOpen] = useState(false);
   const [isSayoThinking, setIsSayoThinking] = useState(false);
   const [sayoStatus, setSayoStatus] = useState<TunsayState>('idle');
   const [thinkingTextIdx, setThinkingTextIdx] = useState(0);
@@ -376,7 +373,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       hasWavedRef.current = false;
       setSayoStatus('idle');
-      const enriched = initialProblem ? enrichProblemFromCase(initialProblem, profile.grade) : undefined;
+      const enriched = initialProblem;
       setActiveProblem(enriched);
       setCelebratingProblemId(null);
 
@@ -1027,46 +1024,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputQuery('');
     shouldAutoScrollToBottomRef.current = true;
 
-    // Always try to match the typed text to a known exercise case.
-    // If a DIFFERENT case is matched, reset progress and switch to the new problem.
+    // Detect if input is a standalone binary math calculation or problem starter
+    const isBinaryMath = /^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$/.test(userText);
+    const isNewProblemPhrase = /^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference|new\s+problem|another\s+problem)\b/i.test(userText);
+    const expectedAns = String(currentStep?.correctAnswer || currentStep?.expectedAnswer || '').trim();
+    const isExpectedAnsMatch = expectedAns.length > 0 && userText.toLowerCase() === expectedAns.toLowerCase();
+
+    const isExplicitNewProblem = (isBinaryMath && !isExpectedAnsMatch) || isNewProblemPhrase;
+
     let currentProblem = activeProblem;
 
-    // Check if the student is answering the current active step via chat input
-    if (currentProblem && currentStep && !completedStepIndices.includes(currentStepIndex)) {
+    if (isExplicitNewProblem) {
+      // Clear previous problem so this new query initiates a fresh Socratic decomposition
+      currentProblem = undefined;
+      setActiveProblem(undefined);
+      setCurrentStepIndex(0);
+      setMaxUnlockedStepIndex(0);
+      setCompletedStepIndices([]);
+    } else if (currentProblem && currentStep && !completedStepIndices.includes(currentStepIndex)) {
       const isQuestionOrHelp = /(?:help|hint|explain|why|how|what|confused|stuck|\?)/i.test(userText);
       const isShortAnswer = userText.length <= 40;
       if (!isQuestionOrHelp && isShortAnswer) {
-        // Attempt to answer the active step
-        const isAnswerHandled = await handleStepAnswer(userText);
-        if (isAnswerHandled) {
-          return;
-        }
+        // Attempt to answer the active step and do not double-send to tutorApi
+        await handleStepAnswer(userText);
+        return;
       }
     }
 
-    // Only attempt matching to an existing case if there is NO active problem and the query is long enough to be an exercise
-    if (!currentProblem && userText.length >= 15) {
-      const matchedId = matchCaseId(userText);
-      if (matchedId) {
-        const newProblem = enrichProblemFromCase(
-          {
-            id: matchedId,
-            titleKhmer: `លំហាត់ ${matchedId}`,
-            titleEng: `Exercise ${matchedId}`,
-            grade: profile.grade,
-            subject: profile.subject,
-            problemStatementKhmer: '',
-            problemStatementEng: userText,
-            steps: [],
-          },
-          profile.grade
-        );
-        if (newProblem) {
-          currentProblem = newProblem;
-          setActiveProblem(newProblem);
-        }
-      }
-    }
+
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -1550,7 +1535,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       stepIndex={stepCardData.activeIdx}
                       totalSteps={stepCardData.totalSteps}
                       language={profile.language}
-                      visualData={activeProblem?.visualData || (activeProblem?.id ? ALL_HARDCODED_CASES[activeProblem.id]?.visual_data : null) || (stepCardData.widget as any)?.visualData}
+                      visualData={activeProblem?.visualData || (stepCardData.widget as any)?.visualData}
                       completedStepIndices={stepCardData.completedSteps}
                       isLatest={msg.id === messages[messages.length - 1]?.id}
                       onOpenHints={() => {
@@ -1688,7 +1673,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   step={currentStep}
                   isCompleted={completedStepIndices.includes(currentStepIndex)}
                   language={profile.language}
-                  visualData={activeProblem.visualData || (activeProblem.id ? ALL_HARDCODED_CASES[activeProblem.id]?.visual_data : null)}
+                  visualData={activeProblem.visualData}
                   onAnswerSubmit={handleStepAnswer}
                   onNextStep={
                     currentStepIndex < maxUnlockedStepIndex && currentStepIndex + 1 < (activeProblem?.steps?.length || 0)
@@ -1727,8 +1712,41 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <div ref={chatEndRef} />
         </div>
 
+        {/* Interactive Math Keypad & Problem Builder */}
+        <MathKeypad
+          isOpen={isMathKeypadOpen}
+          onClose={() => setIsMathKeypadOpen(false)}
+          onInsert={(char) => {
+            setInputQuery(prev => prev + char);
+            lastInteractionRef.current = Date.now();
+          }}
+          onBackspace={() => {
+            setInputQuery(prev => prev.slice(0, -1));
+            lastInteractionRef.current = Date.now();
+          }}
+          onClear={() => {
+            setInputQuery('');
+            lastInteractionRef.current = Date.now();
+          }}
+          onSelectStarter={(prob) => {
+            setInputQuery(prob);
+            lastInteractionRef.current = Date.now();
+            setIsMathKeypadOpen(false);
+          }}
+        />
+
         {/* Bottom Chat Input Bar */}
         <div className="px-2.5 sm:px-5 py-2 sm:py-3 bg-white border-t-2 sm:border-t-3 border-[#1B4332] shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {/* Queue Status Notification Banner */}
+          {isSayoThinking && (
+            <div className="mb-2 px-3 py-2 bg-emerald-50 border-2 border-emerald-400 rounded-xl flex items-center gap-2 animate-pulse">
+              <span className="text-base">🌟</span>
+              <span className="text-xs sm:text-sm font-black text-[#1B4332]">
+                {isKhmer ? 'អ្នកស្ថិតក្នុងជួរបន្ទាប់! ReanMore កំពុងគិត...' : "You're next in line! ReanMore is preparing your step-by-step guidance..."}
+              </span>
+            </div>
+          )}
+
           {/* Tap-First Degraded Suggested Chips (Sprint 0.3) */}
           {(() => {
             const lastMsg = messages[messages.length - 1];
@@ -1771,6 +1789,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
               title={isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}
             >
               <Camera className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsMathKeypadOpen(prev => !prev)}
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0 ${
+                isMathKeypadOpen ? 'bg-emerald-700 text-white' : 'bg-[#E8F5E9] text-[#1B4332]'
+              }`}
+              title="Math Keypad & Problem Builder (Grades 1-6)"
+            >
+              <Calculator className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
 
             <div className="flex-1 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] px-3 sm:px-4 flex items-center">

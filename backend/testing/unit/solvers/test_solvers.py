@@ -189,8 +189,53 @@ def test_math_punctuation_and_double_equals():
     assert math_verify("x == 3", "x = 3") is True
 
 
-def test_math_offline_multiplication_and_division():
-    mul_res = solve_math("3 boxes with 4 cookies each")
-    assert mul_res["solution"] == "12"
-    div_res = solve_math("12 candies shared equally among 3 friends")
-    assert div_res["solution"] == "4"
+def test_math_offline_degraded_when_gemini_unset(monkeypatch):
+    import services.math_service.app.solvers.algebra as alg
+    monkeypatch.setattr(alg, "GEMINI_API_KEY", "")
+    mul_res = alg.solve_math("3 boxes with 4 cookies each")
+    assert mul_res["success"] is False
+    assert mul_res["solution"] is None
+    assert mul_res["steps"] == []
+    assert "unavailable" in mul_res["error"].lower()
+
+
+def test_science_offline_degraded_when_gemini_unset(monkeypatch):
+    import services.science_service.app.solvers.biology as bio
+    import services.science_service.app.solvers.chemistry as chem
+    import services.science_service.app.solvers.physics as phys
+
+    monkeypatch.setattr(bio, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(chem, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(phys, "GEMINI_API_KEY", "")
+
+    bio_res = bio.solve_biology_ai("unknown cellular enzyme kinetics")
+    assert bio_res["success"] is False
+    assert bio_res["solution"] is None
+    assert bio_res["steps"] == []
+    assert "unavailable" in bio_res["error"].lower()
+
+    chem_res = chem.solve_chemistry_ai("complex precipitation reaction between barium and sulfate")
+    assert chem_res["success"] is False
+    assert chem_res["solution"] is None
+    assert chem_res["steps"] == []
+    assert "unavailable" in chem_res["error"].lower()
+
+    phys_res = phys.solve_physics_ai("calculate angular momentum of spinning top")
+    assert phys_res["success"] is False
+    assert phys_res["solution"] is None
+    assert phys_res["steps"] == []
+    assert "unavailable" in phys_res["error"].lower()
+
+
+def test_biology_mitochondria_falls_through_grade_1_3_rules(monkeypatch):
+    import services.science_service.app.solvers.biology as bio
+    # 1. Deterministic Grade 1-3 matcher does NOT match mitochondria anymore
+    rule_res = bio.solve_grade_1_3_biology("What is mitochondria in a cell?")
+    assert rule_res["success"] is False
+
+    # 2. Main solve_biology falls through to AI/Qdrant path (degraded if unconfigured)
+    monkeypatch.setattr(bio, "GEMINI_API_KEY", "")
+    full_res = bio.solve_biology("What is mitochondria in a cell?")
+    assert full_res["success"] is False
+    assert full_res["solution"] is None
+    assert "GEMINI_API_KEY" in full_res.get("error", "")

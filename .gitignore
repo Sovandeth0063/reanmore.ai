@@ -56,7 +56,17 @@ htmlcov/
 
 # Logs & Database Persistence
 *.log
+*.lock
+.lock
 scratch/
 sample_outputs/
 postgres_data/
 qdrant_data/
+
+
+# Agent Customizations & Skills (User Private)
+.agents/
+.agent/
+SKILL_TEMPLATE.md
+
+

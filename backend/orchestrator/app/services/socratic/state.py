@@ -94,3 +94,7 @@ class TutorState(TypedDict, total=False):
     unclear_streak: int                    # Consecutive UNCLEAR turns count
     degrade_to_tap_first: bool             # True when >= 3 consecutive UNCLEAR turns
     suggested_chips: Optional[List[str]]   # Tap-first choice chips (hints, pad, reread)
+
+    # --- RAG Science Curriculum Grounding (Phase 3) ---
+    retrieved_context: Optional[str]       # Authoritative textbook curriculum context
+    curriculum_citations: Optional[List[str]] # Verified textbook citations

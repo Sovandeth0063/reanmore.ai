@@ -4,7 +4,6 @@ import { TunsayAvatar } from './TunsayAvatar';
 import { HomeworkProblem, Language, Grade } from '../types';
 import { MOCK_PROBLEMS } from '../data/mockProblems';
 import { processHomeworkImage } from '../services/ocrService';
-import { getHardcodedProblemsBySubject } from '../services/hardcodedTutorProvider';
 import { OcrConfirmModal } from './OcrConfirmModal';
 
 interface HomeworkScannerProps {
@@ -20,7 +19,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
   onHomeworkConfirmed,
   onCancel
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const effectiveGrade = Math.min(Math.max(grade || 2, 1), 3);
   const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm'>('capture');
   const [imageUri, setImageUri] = useState<string>('');
@@ -64,14 +63,13 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
     setUploadedFile(null);
 
     // Route to curriculum exercises for this subject (Grade 1-3)
-    const { problems, imageUri: hardcodedImage } = getHardcodedProblemsBySubject(subject, effectiveGrade);
-    const chosenProblems = problems.length > 0 ? problems : MOCK_PROBLEMS.filter(p => p.subject === subject);
+    const chosenProblems = MOCK_PROBLEMS.filter(p => p.subject === subject);
     const mainProblem = chosenProblems[0] || MOCK_PROBLEMS[0];
 
     setDetectedProblems(chosenProblems);
     setSelectedProblem(mainProblem);
     setAnalysisError(null);
-    setImageUri(hardcodedImage || mainProblem.imageUri || '');
+    setImageUri(mainProblem?.imageUri || '');
     // Directly open the exercise selector so the user can choose which exercise to proceed with!
     setStage('confirm');
   };

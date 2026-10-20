@@ -1,0 +1,143 @@
+# ReanMore v2.1: Current Status & Pending Features Roadmap
+
+> **Authoritative Architecture:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md)  
+> **Collaborator Guide:** [`docs/plans/README.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/plans/README.md)  
+> **Target Release:** v2.1 (English-first MVP, 100% Offline Local Model, 4-Container Stack)  
+> **Verification Status:** **100% Green Unit Tests (624/624) + Verified Live Browser Walkthroughs ✅**
+
+---
+
+## 1. Executive Summary
+
+ReanMore is an offline-first, $0.00 cloud inference Socratic STEM homework tutor for elementary students in Grades 1–6 (Mathematics & Science). 
+
+Instead of dumping direct answers, ReanMore decomposes problems into 2–4 bite-sized pedagogical milestones, enforces 3-tier progressive hints paired with **deterministic SVG visual models** (Ten-Frames, Number Lines, Base-Ten Blocks, Array Grids, Fraction Bars, Bar Models), and strictly quarantines premature answers via **Leak Guard v2**.
+
+This document summarizes **what has been completed and verified** and provides the comprehensive engineering roadmap for **what is left (OCR photo ingress, bilingual Khmer NLP/translation, and classroom field testing)**.
+
+---
+
+## 2. Status Matrix at a Glance
+
+```mermaid
+flowchart TD
+    subgraph COMPLETED ["✅ COMPLETED & LIVE VERIFIED"]
+        Q["Normal Query & Intent Flow: Arithmetic vs Chitchat Routing"]
+        P["Kid-Friendly Pedagogy: On-Card Clues, Concrete Analogies & Story Explanations"]
+        M["In-Process SymPy CAS & 7 Math Skill Templates"]
+        V["Deterministic SVG VisualSpec Engine & 6 React Visual Manipulatives"]
+        L["Leak Guard v2: 0 Answer Leaks across 100 Adversarial Probes"]
+        G["Unified Gap Accounting: PostgreSQL gap_events & Admin Digest CLI"]
+        R["Curriculum Science RAG: FastEmbed BGE + Qdrant Embedded (30/30 Golden Tests)"]
+        S["Streamlined Topology: 4-Container Stack with Live Code Volume Mount"]
+    end
+
+    subgraph PENDING ["⏳ PENDING ENGINEERING ROADMAP (STAFF LEFT)"]
+        F1["Feature A: Local Worksheet Photo Ingress (Docling v2 / Offline VLM)"]
+        F2["Feature B: Bilingual Khmer NLP & Translation (Script Segmentation & MoEYS)"]
+        F3["Feature C: Live Classroom Field Observation Trial (6-10 Students)"]
+        F4["Feature D: Legacy Microservice Pruning (Archive math_service & science_service)"]
+    end
+
+    COMPLETED --> PENDING
+```
+
+---
+
+## 3. What We Have Built & Verified (Completed)
+
+### 3.1 Normal Query Flow & Socratic Walkthroughs
+* **NLU Chitchat & Persona Protection**: Greetings (`what ur name`, `hello`, `who are you`) route cleanly to friendly lion mascot persona greetings with **0 step cards**, eliminating ghost card bugs.
+* **Arithmetic Problem Route Isolation**: Standalone math calculations (`15 + 27`, `8 * 6`, `100 - 45`) route directly to `INITIAL_SOLVE` rather than being hijacked as step attempts.
+* **Pipeline Tracer Rewriter Guard**: Mathematical expressions with operators (`+`, `-`, `*`, `/`) are shielded from conversational query rewriting corruption.
+* **Multi-Turn State Reset**: Submitting a new question or calculation cleanly clears previous problem states, resets stepper indices, and begins a fresh decomposition without duplicate requests.
+* **Step Auto-Advancement**: Evaluates student inputs in real time (< 1ms deterministic check), presents celebration feedback, and auto-advances the student across all milestone steps until problem completion.
+* **Docker Live Volume Mount**: Synchronized `- ./orchestrator/app:/app/app` in `docker-compose.yml`, allowing instant backend updates without slow container rebuilds.
+
+### 3.2 Kid-Friendly Pedagogical Explanations & Scaffolding
+* **Concrete Real-World Analogies**:
+  * **Addition & Regrouping (`+`)**: Replaced dry math jargon (*"trade 10 ones for 1 ten rod"*) with intuitive elementary models: Single Blocks & Finger Counting 🧱🖐️, Cookie Bakery Boxes 🍪📦 (*"10 cookies fill 1 full box, extra cookies stay out on the plate!"*), and Ten-Towers 🗼.
+  * **Subtraction & Regrouping (`-`)**: Replaced abstract borrowing rules with Unwrapping a Ten-Box 🎁 (*"We need to give blocks away, but our loose pile is too small! Let's unwrap 1 ten-box to get 10 fresh blocks to share!"*) and Crayon Box Sharing 🖍️.
+  * **Multiplication (`×`)**: Team counting and Egg Cartons 🥚 (*"Skip count the rows: 3, 6, 9, 12!"*).
+  * **Fractions (`/`)**: Equal Pizza Slicing 🍕 (*"2 slices out of a 4-slice pizza is the exact same amount of yummy pizza as 1 giant half-pizza slice!"*).
+* **Direct On-Card `💡 Helpful Tip` Banner**: Rendered directly inside the Guiding Prompt box on both `StepChatBubble.tsx` and `StepCard.tsx`, giving elementary students immediate conceptual anchor clues without forcing them into nested modals.
+* **Story-Driven "Explain Differently"**: Synthesizes rich, relatable everyday stories in `hintHelper.ts` rather than mechanically restating the problem mission.
+* **States of Matter Science Scaffolding**: Structured 3-step concrete inquiry for Solids 🧊 (ice keeping its shape), Liquids 💧 (water flowing and splashing into cups), and Gases 🎈 (air filling floating balloons and steam from hot soup).
+
+### 3.3 Core Symbolic & Observability Systems
+* **In-Process SymPy CAS**: Symbolic arithmetic equivalence engine; LLM never performs raw math calculations.
+* **Deterministic SVG VisualSpec Engine**: 6 pure React SVG visual components (`TenFrameSVG`, `NumberLineSVG`, `BaseTenBlocksSVG`, `ArrayGridSVG`, `FractionBarSVG`, `BarModelSVG`).
+* **Leak Guard v2**: 6-token disclosure window, allowlist for given operands, and visual label scanner (0 leaks across 100 adversarial attack probes).
+* **Unified Gap Accounting**: PostgreSQL `gap_events` table (Content, Learner, and System gaps) with automated weekly Monday morning Admin Audit Digest CLI.
+* **Curriculum Science RAG**: Local FastEmbed ONNX runtime (`BAAI/bge-small-en-v1.5`) with embedded Qdrant vector store indexing 15 elementary science units (100% retrieval success across 30 golden curriculum questions).
+
+---
+
+## 4. Pending Features Roadmap (Staff Left to Do)
+
+### Feature 1: Local Worksheet Photo Ingress (OCR / Offline VLM)
+* **Status:** `PENDING (Phase 4)`
+* **Current Foundation:**
+  * Frontend camera snapshot and file upload modal ([`HomeworkScanner.tsx`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/frontend/src/components/HomeworkScanner.tsx)).
+  * Backend PII student name/header redaction filter ([`ingress.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/ocr/ingress.py)).
+  * Honest degradation notice when vision service is not running.
+* **Remaining Engineering Work:**
+  1. **Deploy 100% Local Offline Vision Model**: Integrate IBM Docling v2 or a quantized local Vision-Language Model (such as `qwen2.5-vl:3b` or `minicpm-v:8b`) running locally without cloud API dependencies ($0.00 inference cost).
+  2. **Multi-Exercise Bounding Box Extraction**: Detect individual problem numbers on printed worksheets, crop bounding boxes, and populate the frontend `WorksheetQueue` stepper automatically.
+  3. **Handwritten Arithmetic Digit Recognition**: Recognize pencil/pen handwritten student work on physical paper.
+
+---
+
+### Feature 2: Bilingual Khmer NLP & Translation (v2.2 Scope)
+* **Status:** `PENDING (Phase 5 / v2.2)`
+* **Current Foundation:**
+  * v2.1 MVP is 100% English-first to ensure high generation speed and zero hallucinations on 6 GB VRAM workstations.
+  * Basic Khmer numeral mapping (១, ២, ៣ ↔ 1, 2, 3) and affirmative/negative stubs exist in [`graph.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/socratic/graph.py).
+* **Remaining Engineering Work:**
+  1. **Unspaced Khmer Script Segmentation & Tokenization**: Integrate `khmer-nltk` / CRF word-boundary tokenizers to accurately parse unspaced Khmer text.
+  2. **Bilingual Parallel Socratic Prompts**: Complete formal Khmer translations for all 7 math skill templates, guiding prompts, on-card clues, and 3-tier hints.
+  3. **MoEYS Official Textbook Ingestion**: Ingest official Ministry of Education, Youth and Sport (MoEYS) Grade 1–6 Science and Math textbooks into the local Qdrant vector database.
+  4. **Khmer Math Word Problem Parser**: Entity, subject, and quantity extraction for Khmer word problem stories (e.g. សុខា មានស្វាយ ៥ ផ្លែ... Sokha has 5 mangoes).
+  5. **Dynamic UI Language Toggle**: Full bilingual language switcher in the frontend header with culturally warm student particles (ប្អូន, កូន, ចាស/បាទ).
+
+---
+
+### Feature 3: Physical Classroom Field Observation Trial
+* **Status:** `READY FOR FIELD EXECUTION`
+* **Current Foundation:**
+  * 8-student testing protocol, parent/teacher consent templates, and teacher observation rubric complete in [`docs/pilot/`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/pilot/).
+  * 50 golden elementary math worksheets evaluation suite verified 100% green.
+* **Remaining Work:**
+  1. Coordinate with a Phnom Penh elementary school to run an in-person pilot session with 6–10 students in Grades 2–4.
+  2. Collect qualitative field observations on hint comprehension, mascot engagement, and student independence.
+
+---
+
+### Feature 4: Legacy Microservice Pruning (Tech Debt Cleanup)
+* **Status:** `READY FOR ARCHIVAL`
+* **Current Foundation:**
+  * Standalone microservices in `backend/services/math_service/` (:9001) and `backend/services/science_service/` (:9002) have been fully superseded by in-process SymPy CAS and in-process FastEmbed RAG.
+* **Remaining Work:**
+  1. Archive the legacy microservice folders into a git branch (`legacy/microservices`).
+  2. Remove deprecated directories from the active repository tree to keep the codebase lean.
+
+---
+
+## 5. Verification Commands for Collaborators
+
+```powershell
+# 1. Run Full Unit Test Suite (624 tests)
+& .venv\Scripts\python.exe -m pytest backend/testing/unit/ -v
+
+# 2. Run 50 Golden Math Worksheets Benchmark
+& .venv\Scripts\python.exe backend/testing/evaluation/golden_worksheet_evaluator.py
+
+# 3. Run 30 Golden Science Curriculum RAG Benchmark
+& .venv\Scripts\python.exe backend/testing/evaluation/science_rag_evaluator.py
+
+# 4. Run 100 Adversarial Leak Guard Probes
+& .venv\Scripts\python.exe -m pytest backend/testing/unit/guardrails/test_leak_guard_v2.py -v
+
+# 5. Run Live End-to-End Orchestrator API Verification
+python scratch/test_endpoints.py
+```

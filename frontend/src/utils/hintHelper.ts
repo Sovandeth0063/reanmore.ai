@@ -44,8 +44,8 @@ function cleanMd(val: any): string {
  * 3. Scanned VLM / OCR exercises (with prompt, sub_questions, mission)
  * 4. Synthesized fallback steps (regex parsed from conversational LLM output)
  */
-export function resolveStepHints(step?: StepItem | any, language: Language = 'km'): ResolvedStepHints {
-  const isKhmer = language === 'km';
+export function resolveStepHints(step?: StepItem | any, language: Language = 'en'): ResolvedStepHints {
+  const isKhmer = false;
   if (!step) {
     return {
       hint1: isKhmer ? 'សូមអានសំណួរដោយប្រុងប្រយ័ត្ន។' : 'Read the question carefully.',
@@ -159,15 +159,6 @@ export function resolveStepHints(step?: StepItem | any, language: Language = 'km
     const parts = [raw.clue, raw.helpfulExample || raw.helpful_example].filter(Boolean).map(cleanMd);
     simpleExp = parts.join(' ');
   }
-  if (!simpleExp && (raw.mission || raw.questionKhmer || raw.questionEng)) {
-    const m = cleanMd(raw.mission || raw.questionKhmer || raw.questionEng);
-    simpleExp = isKhmer ? `គោលដៅនៃជំហាននេះគឺ៖ ${m}` : `The goal of this step is: ${m}`;
-  }
-  if (!simpleExp) {
-    simpleExp = isKhmer
-      ? 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា មួយជំហានម្តងៗដោយភាពជឿជាក់!'
-      : "Let's solve this together, one step at a time with confidence!";
-  }
 
   // --- Analogy & Visual ---
   let anTitle = isKhmer ? 'ឧទាហរណ៍រូបភាព' : 'Visual Analogy';
@@ -180,6 +171,49 @@ export function resolveStepHints(step?: StepItem | any, language: Language = 'km
   if (!anExp && (raw.helpfulExample || raw.helpful_example)) {
     anExp = cleanMd(raw.helpfulExample || raw.helpful_example);
   }
+
+  // Synthesize rich, story-driven, elementary-calibrated explanations if empty or duplicate of mission
+  const fullText = [
+    raw.title, raw.mission, raw.clue, raw.yourTurn,
+    raw.socraticPromptEng, raw.questionEng, raw.concept
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  const isGeneric = !simpleExp || simpleExp === raw.mission || simpleExp === raw.questionEng || simpleExp.length < 15;
+
+  if (isGeneric) {
+    if (fullText.includes('block') || fullText.includes('ones') || fullText.includes('add') || fullText.includes('+')) {
+      if (fullText.includes('tower') || fullText.includes('pack') || fullText.includes('trade') || fullText.includes('carry')) {
+        simpleExp = "Every time we collect 10 loose pieces, they snap together into 1 tall ten-tower! 🗼 Any leftover pieces stay on the desk as single blocks! 🧱";
+        anTitle = "Cookie Box Bakery 🍪📦";
+        anExp = "Imagine baking cookies: 10 cookies fill 1 full box 📦! Any extra cookies that don't fit in the box stay out on the plate for you to snack on! 😋";
+      } else {
+        simpleExp = "We are putting our loose single blocks together! Combine both piles into one big group and count them up using your fingers! 🖐️";
+        anTitle = "Apple Baskets 🍎🍏";
+        anExp = "Imagine putting red apples and green apples into one big basket to see how many yummy apples you have in all!";
+      }
+    } else if (fullText.includes('unpack') || fullText.includes('borrow') || fullText.includes('take away') || fullText.includes('minus') || fullText.includes('-')) {
+      simpleExp = "We need to give blocks away, but our loose pile is too small! So we unwrap 1 packed ten-box 📦 to get 10 fresh blocks to share! 🎁";
+      anTitle = "Crayon Box Sharing 🖍️";
+      anExp = "Imagine you have a sealed 10-pack of crayons! To share with your friends, you open the pack so everyone gets single crayons to draw with! 🎨";
+    } else if (fullText.includes('solid') || fullText.includes('liquid') || fullText.includes('gas') || fullText.includes('matter')) {
+      simpleExp = "Everything in the world is matter! Solids hold their shape 🧊, liquids flow and splash 💧, and gases float invisibly in the air 🎈!";
+      anTitle = "Ice Cube Journey 🧊💧🎈";
+      anExp = "An ice cube is hard and solid 🧊. In warm sun, it melts into liquid water 💧. When boiled in a kettle, it floats up into the sky as gas steam 🎈!";
+    } else if (fullText.includes('group') || fullText.includes('multiply') || fullText.includes('times') || fullText.includes('×') || fullText.includes('*')) {
+      simpleExp = "Multiplication is just super-fast counting of equal teams! Instead of counting one by one, count team by team! 🚀";
+      anTitle = "Egg Cartons 🥚";
+      anExp = "Think of an egg carton with rows! Skip count the rows (like 3, 6, 9, 12) to quickly find the total number of eggs!";
+    } else if (fullText.includes('fraction') || fullText.includes('/')) {
+      simpleExp = "Fractions are all about fair sharing! Slicing into equal pieces makes it easy to compare amounts! 🍕";
+      anTitle = "Pizza Slices 🍕";
+      anExp = "2 slices out of a 4-slice pizza is the exact same amount of pizza as 1 giant slice out of a 2-slice pizza (half the whole pizza)! 🍕";
+    } else {
+      simpleExp = isKhmer
+        ? 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា មួយជំហានម្តងៗដោយភាពជឿជាក់!'
+        : "Let's take it one step at a time! Read the clue, imagine it in real life, and give it your best try! 🌟";
+    }
+  }
+
   if (!anExp) {
     anExp = isKhmer
       ? 'ស្រមៃមើលចំនួន ឬរូបភាពជាក់ស្តែង (ដូចជាផ្លែឈើ ឬដុំគ្រួស) ដើម្បីជួយឱ្យការគិតកាន់តែច្បាស់លាស់។'

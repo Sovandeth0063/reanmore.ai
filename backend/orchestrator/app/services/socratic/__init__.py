@@ -11,7 +11,12 @@ from app.services.socratic.card_schema import (
 from app.services.socratic.state import TutorState, StepAttempt
 from app.services.socratic.hint_engine import HintEngine
 from app.services.socratic.clarify import SocraticClarifier
-from app.services.socratic.graph import build_socratic_graph, socratic_graph
+def __getattr__(name: str):
+    if name in ("build_socratic_graph", "socratic_graph"):
+        from app.services.socratic import graph
+        return getattr(graph, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "SocraticStep",
@@ -22,5 +27,5 @@ __all__ = [
     "HintEngine",
     "SocraticClarifier",
     "build_socratic_graph",
-    "socratic_graph"
+    "socratic_graph",
 ]

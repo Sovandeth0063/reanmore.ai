@@ -27,7 +27,7 @@ export const StepCard: React.FC<StepCardProps> = ({
   onOpenHints,
   onOpenExplainDifferently,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect' | 'near_miss'>('none');
   const [typedAnswer, setTypedAnswer] = useState('');
@@ -108,7 +108,7 @@ export const StepCard: React.FC<StepCardProps> = ({
       </div>
 
       {/* ReanMore Socratic Guiding Prompt with Embedded Visual Support */}
-      <div className="p-3 sm:p-4 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-2 sm:space-y-3">
+      <div className="p-3 sm:p-4 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-2.5 sm:space-y-3">
         <div>
           <p className="text-[10px] sm:text-xs font-black text-[#1B4332] uppercase tracking-wider mb-0.5 sm:mb-1">
             {isKhmer ? 'សំណួរណែនាំពី ReanMore៖' : "ReanMore's Guiding Prompt:"}
@@ -117,6 +117,19 @@ export const StepCard: React.FC<StepCardProps> = ({
             {isKhmer ? step.socraticPromptKhmer : step.socraticPromptEng}
           </p>
         </div>
+
+        {/* Kid-Friendly Helpful Tip / Clue Banner */}
+        {step.clue && (
+          <div className="p-2 sm:p-2.5 bg-white/90 rounded-lg sm:rounded-xl border border-[#2D6A4F]/30 text-xs sm:text-sm text-[#1B4332] font-semibold flex items-start gap-2 shadow-[1px_1px_0px_#1B4332]">
+            <span className="text-base shrink-0 select-none">💡</span>
+            <div className="leading-snug">
+              <span className="font-black text-[#2D6A4F] uppercase text-[10px] sm:text-xs block mb-0.5">
+                {isKhmer ? 'តម្រុយជំនួយ៖' : 'Helpful Tip:'}
+              </span>
+              <span>{step.clue}</span>
+            </div>
+          </div>
+        )}
 
         {/* Visual Widget directly inside the Guiding Prompt box */}
         {visualData && (

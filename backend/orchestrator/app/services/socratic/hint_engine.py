@@ -54,6 +54,25 @@ class HintEngine:
             step.hints[next_tier - 1] = hint_text
 
         logger.info(f"[HintEngine] Generated hint level {next_tier} for step {step.step_number}")
+
+        if next_tier == 3:
+            try:
+                from app.services.telemetry.gap_recorder import log_gap_event
+                log_gap_event(
+                    gap_type="learner",
+                    gap_code="HINT_ESCALATION",
+                    severity=1,
+                    grade_tier=grade_level,
+                    step_index=step.step_number,
+                    details={
+                        "step_title": step.title,
+                        "concept": step.concept,
+                        "prior_attempts": prior_attempts,
+                    }
+                )
+            except Exception as e:
+                logger.debug(f"[HintEngine] Gap log failed: {e}")
+
         return next_tier, hint_text
 
     def generate_hint(
@@ -66,6 +85,7 @@ class HintEngine:
         """
         Generates a grade-appropriate hint for the target tier.
         Uses deterministic pedagogical heuristics with LLM template fallback.
+        Enforces strict zero answer leakage: Tier 1-3 hints never contain the expected answer.
         """
         prior_attempts = prior_attempts or []
         attempts_str = ", ".join(prior_attempts) if prior_attempts else "None yet"
@@ -73,23 +93,40 @@ class HintEngine:
         # 1. Deterministic elementary heuristics
         fallback_hint = self._generate_rule_based_hint(step, tier, grade_level)
         if fallback_hint:
-            return fallback_hint
+            hint_text = fallback_hint
+        else:
+            # 2. LLM Prompt Controller fallback
+            try:
+                prompt_data = self.prompt_controller.format_prompt(
+                    template_name="progressive_hint_generation",
+                    grade_level=grade_level,
+                    hint_tier=tier,
+                    step_mission=step.mission,
+                    your_turn_question=step.your_turn,
+                    step_concept=step.concept or step.title,
+                    prior_attempts=attempts_str
+                )
+                hint_text = f"💡 Think about {step.title.lower()}! Review clue: {step.clue}"
+            except Exception as e:
+                logger.warning(f"Error generating LLM hint: {e}. Using deterministic fallback.")
+                hint_text = f"💡 Check the clue: {step.clue}"
 
-        # 2. LLM Prompt Controller fallback
-        try:
-            prompt_data = self.prompt_controller.format_prompt(
-                template_name="progressive_hint_generation",
-                grade_level=grade_level,
-                hint_tier=tier,
-                step_mission=step.mission,
-                your_turn_question=step.your_turn,
-                step_concept=step.concept or step.title,
-                prior_attempts=attempts_str
+        # Zero-leakage invariant guard: verify hint with LeakGuard
+        if step.expected_answer:
+            from app.services.guardrails.leak_guard import check_tutor_response_leak
+            is_leak, _, reason = check_tutor_response_leak(
+                tutor_reply=hint_text,
+                target_answer=str(step.expected_answer),
+                is_step_solved=False,
+                is_reveal_state=False,
+                current_hint_tier=tier,
+                problem_text=f"{step.mission} {step.clue} {step.your_turn}"
             )
-            return f"💡 Think about {step.title.lower()}! Review clue: {step.clue}"
-        except Exception as e:
-            logger.warning(f"Error generating LLM hint: {e}. Using deterministic fallback.")
-            return f"💡 Check the clue: {step.clue}"
+            if is_leak:
+                logger.warning(f"[HintEngine] Leaked answer detected in hint tier {tier}: {reason}. Sanitizing.")
+                hint_text = f"💡 Parallel clue: Think about our clue '{step.clue}' and apply it to a similar example step by step!"
+
+        return hint_text
 
     def _generate_rule_based_hint(
         self,
@@ -99,6 +136,9 @@ class HintEngine:
     ) -> Optional[str]:
         """
         Generates clean visual and conceptual scaffolds without leaking expected answers.
+        Tier 1: Guiding Nudge (re-focus on clue/starting values, no arithmetic)
+        Tier 2: Visual Scaffold (emoji diagrams, concrete pictures, no answer disclosure)
+        Tier 3: Worked Parallel Example (different numbers/objects; never active answer)
         """
         question = step.your_turn.strip()
         q_lower = question.lower() + " " + step.mission.lower() + " " + step.clue.lower()
@@ -147,29 +187,29 @@ class HintEngine:
             return f"👀 Focus on the keyword in our mission: '{step.mission}'. What is the key thing we should find?"
 
         elif tier == 2:
-            # Tier 2: Visual Scaffold
+            # Tier 2: Visual Scaffold (Zero answer disclosure)
             if is_boiling or is_melting:
                 return "🎨 Visual helper:\n🧊 (Solid Ice) ➡️ [Heat 🔥] ➡️ 💧 (Liquid Water) ➡️ [More Heat 🔥] ➡️ 💨 (Steam / Gas)!"
             elif is_plant:
                 return "🎨 Visual helper:\n☀️ Sunlight + 🌧️ Water + 🍃 Green Leaf ➡️ 🍬 Plant Food (Sugar) + 🌬️ Fresh Oxygen!"
             elif is_gravity:
-                return "🎨 Visual helper:\n🍎 (Apple in air) ⬇️⬇️ [ Earth's Gravity Pull ] ⬇️⬇️ 🌍 (Falls to Ground)!"
+                return "🎨 Visual helper:\n🍎 (Apple in air) ⬇️⬇️ [ Earth's Invisible Downward Pull ] ⬇️⬇️ 🌍 (Falls to Ground)!"
             elif is_magnet:
-                return "🎨 Visual helper:\n🧲 [North Pole] ➡️ ❤️ ⬅️ [South Pole] (Opposite poles attract and stick together!)"
+                return "🎨 Visual helper:\n🧲 [North Pole] ➡️ ❤️ ⬅️ [South Pole] (Opposite poles pull toward each other and stick together!)"
             elif is_shadow:
-                return "🎨 Visual helper:\n🔦 (Light Beam) ➡️ ✋ (Hand Blocks Light) ➡️ ⬛ (Dark Shadow on Wall)!"
+                return "🎨 Visual helper:\n🔦 (Light Beam) ➡️ ✋ (Hand Blocks Light) ➡️ ⬛ (Dark Shape on Wall)!"
             elif is_sink_float:
                 return "🎨 Visual helper:\n🌊 Water Surface: 🪵 (Light Wood Floats 🛶) | ⬇️ 🪨 (Heavy Rock Sinks to Bottom)!"
             elif is_lifecycle:
                 if "frog" in q_lower or "tadpole" in q_lower:
-                    return "🎨 Visual helper:\n🥚 (Egg in Pond) ➡️ 🐟 (Swimming Tadpole with Tail) ➡️ 🐸 (Adult Hopping Frog)!"
-                return "🎨 Visual helper:\n🥚 (Egg) ➡️ 🐛 (Caterpillar) ➡️ 🥥 (Chrysalis / Cocoon) ➡️ 🦋 (Butterfly)!"
+                    return "🎨 Visual helper:\n🥚 (Egg in Pond) ➡️ 🐟 (Swimming Baby with Tail) ➡️ 🐸 (Adult Hopping Frog)!"
+                return "🎨 Visual helper:\n🥚 (Egg) ➡️ 🐛 (Caterpillar) ➡️ 🥥 (Protective Pod / Shell) ➡️ 🦋 (Butterfly)!"
             elif is_day_night:
                 return "🎨 Visual helper:\n☀️ Sun Shining ➡️ 🌍 [Day Side ☀️ | Night Side 🌙] ➡️ (Earth spins once every 24 hours)!"
             elif is_rain:
-                return "🎨 Visual helper:\n💧 (Water evaporates) ➡️ ☁️ (Clouds get heavy) ➡️ 🌧️ (Rain falls down)!"
+                return "🎨 Visual helper:\n💧 (Water rises as vapor) ➡️ ☁️ (Clouds get heavy) ➡️ 🌧️ (Rain falls down)!"
             elif is_sound:
-                return "🎨 Visual helper:\n🥁 (Drum skin vibrates) 〰️〰️ (Sound waves travel through air) ➡️ 👂 (Ears hear sound)!"
+                return "🎨 Visual helper:\n🥁 (Drum skin shakes rapidly) 〰️〰️ (Sound waves travel through air) ➡️ 👂 (Ears hear sound)!"
             elif is_math and len(numbers) >= 2 and numbers[0] <= 15 and numbers[1] <= 15:
                 a, b = numbers[0], numbers[1]
                 if "-" in question or any(w in q_lower for w in ["left", "remain", "gave", "ate", "lost", "minus"]):
@@ -180,39 +220,84 @@ class HintEngine:
             return f"🎨 Let's picture it! {step.helpful_example}"
 
         elif tier == 3:
-            # Tier 3: Micro-Breakdown
+            # Tier 3: Worked Parallel Example (different numbers/objects, zero answer leakage)
             if is_boiling:
-                return "🧩 Micro-step: When liquid water heats up and turns into steam/gas, this process is called Evaporation!"
+                return "🧩 Parallel Example: Think about a puddle on a sunny sidewalk. The sun warms the puddle until the liquid disappears into the air as misty vapor. What word describes that liquid-to-gas change?"
             elif is_melting:
-                return "🧩 Micro-step: When solid ice heats up and turns into liquid water, this process is called Melting!"
+                return "🧩 Parallel Example: Think about chocolate chips held in a warm hand. The solid chips absorb heat and turn into runny syrup. What word describes that solid-to-liquid change?"
             elif is_plant:
-                return "🧩 Micro-step: 'Photo' means light, and 'synthesis' means putting things together. The word is Photosynthesis!"
+                return "🧩 Parallel Example: Just like a baker combines flour, eggs, and oven heat to bake bread, green plants combine sunlight, soil moisture, and air to make their sweet food. What is this plant food-making process called?"
             elif is_gravity:
-                return "🧩 Micro-step: The pulling force that starts with the letter 'G' is Gravity!"
+                return "🧩 Parallel Example: If you drop a soccer ball from the top of the stairs, an invisible planetary pull brings it straight down to the floor. What invisible force is pulling it down?"
             elif is_magnet:
-                return "🧩 Micro-step: Magnets pull on metals like iron, and opposite poles (North & South) Attract!"
+                return "🧩 Parallel Example: Think about how two ends of toy train cars snap together when facing the right way. What action do opposite poles do to each other?"
             elif is_shadow:
-                return "🧩 Micro-step: A shadow forms when an opaque object blocks light from passing through."
+                return "🧩 Parallel Example: If you hold a textbook in front of a lamp, the textbook stops the light beams, casting a dark shape on the wall behind it."
             elif is_sink_float:
-                return "🧩 Micro-step: Light objects like wood float on top; heavy objects like rocks sink to the bottom."
+                return "🧩 Parallel Example: A heavy iron anchor drops deep to the ocean floor, while a hollow toy boat rests on top of the waves."
             elif is_lifecycle:
                 if "frog" in q_lower or "tadpole" in q_lower:
-                    return "🧩 Micro-step: A baby swimming frog with a tail is called a Tadpole!"
-                return "🧩 Micro-step: A caterpillar builds a protective shell called a Chrysalis before turning into a butterfly!"
+                    return "🧩 Parallel Example: An eagle starts inside a speckled egg, hatches into an eaglet with soft down, and grows strong flying wings."
+                return "🧩 Parallel Example: An oak tree starts as a tiny acorn in soil, sprouts green shoots, and grows into a tall tree that drops new seeds."
             elif is_day_night:
-                return "🧩 Micro-step: Day and night happen because Earth is smoothly spinning (rotating) in space!"
+                return "🧩 Parallel Example: Imagine shining a flashlight at a toy globe. One side is bright while the other side is in darkness, until you turn the globe around."
             elif is_rain:
-                return "🧩 Micro-step: Clouds are made of floating water droplets, which fall as rain when heavy!"
+                return "🧩 Parallel Example: When steam from a hot shower hits a cold glass window, tiny water drops gather together and trickle down the pane."
             elif is_sound:
-                return "🧩 Micro-step: Fast back-and-forth movement that makes sound is called a Vibration!"
+                return "🧩 Parallel Example: Pluck a rubber band stretched between your fingers. It shakes quickly back and forth, creating a buzzing hum you can hear!"
             elif is_math and len(numbers) >= 2:
                 a, b = numbers[0], numbers[1]
-                if "-" in question or any(w in q_lower for w in ["left", "remain", "gave", "ate", "lost"]):
-                    half_b = max(1, b // 2)
-                    rem_b = b - half_b
-                    return f"🧩 Micro-step: First, take away {half_b} from {a} (that makes {a - half_b}). Now take away the remaining {rem_b}!"
-                elif "+" in question or any(w in q_lower for w in ["total", "altogether", "both"]):
-                    return f"🧩 Micro-step: Start counting up from {a}, and take {b} steps forward!"
-            return f"🧩 Micro-step: Re-read our clue: '{step.clue}' and apply it step-by-step!"
+                target_val = None
+                if step.expected_answer:
+                    try:
+                        target_val = int(str(step.expected_answer).strip())
+                    except ValueError:
+                        pass
+                forbidden = {a, b}
+                if target_val is not None:
+                    forbidden.add(target_val)
+
+                if "-" in question or any(w in q_lower for w in ["left", "remain", "gave", "ate", "lost", "minus"]):
+                    pa, pb = a + 4, b + 2
+                    while (pa - pb) in forbidden or pa in forbidden or pb in forbidden:
+                        pa += 1
+                    return (
+                        f"🧩 Parallel Example (different problem):\n"
+                        f"If a student had {pa} crayons and shared {pb} with a friend:\n"
+                        f"{pa} - {pb} = {pa - pb} crayons remaining.\n"
+                        f"Now use this same take-away thinking on your problem!"
+                    )
+                elif "+" in question or any(w in q_lower for w in ["total", "altogether", "both", "plus", "sum"]):
+                    pa, pb = a + 3, b + 2
+                    while (pa + pb) in forbidden or pa in forbidden or pb in forbidden:
+                        pa += 1
+                    return (
+                        f"🧩 Parallel Example (different problem):\n"
+                        f"If you collected {pa} red leaves and {pb} yellow leaves:\n"
+                        f"{pa} + {pb} = {pa + pb} leaves in total.\n"
+                        f"Now use this same combining thinking on your problem!"
+                    )
+                elif any(w in q_lower for w in ["times", "multipl", "product", "each", "groups of", "*", "×"]):
+                    pa, pb = max(2, a + 1), max(2, b + 1)
+                    while (pa * pb) in forbidden or pa in forbidden or pb in forbidden:
+                        pa += 1
+                    return (
+                        f"🧩 Parallel Example (different problem):\n"
+                        f"If there are {pa} baskets with {pb} apples in each:\n"
+                        f"{pa} × {pb} = {pa * pb} apples altogether.\n"
+                        f"Now use this same multiplication thinking on your problem!"
+                    )
+                elif any(w in q_lower for w in ["divid", "split", "share equally", "/", "÷"]):
+                    pb = max(2, b + 1)
+                    pa = pb * 3
+                    while (pa // pb) in forbidden or pa in forbidden or pb in forbidden:
+                        pa += pb
+                    return (
+                        f"🧩 Parallel Example (different problem):\n"
+                        f"If {pa} stickers are shared equally among {pb} friends:\n"
+                        f"{pa} ÷ {pb} = {pa // pb} stickers each.\n"
+                        f"Now use this same sharing thinking on your problem!"
+                    )
+            return f"🧩 Parallel Example: Think about our clue: '{step.clue}' and apply it to a similar situation step-by-step!"
 
         return None

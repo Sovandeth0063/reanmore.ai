@@ -33,6 +33,7 @@ from app.services.socratic.validate_answer import (
     VALIDATION_PARTIAL,
     VALIDATION_INCORRECT,
 )
+from app.services.telemetry.gap_recorder import log_gap_event
 
 logger = logging.getLogger("orchestrator.socratic.graph")
 
@@ -60,22 +61,24 @@ def _get_widget_from_state(state: TutorState) -> Optional[StepWidgetPayload]:
 def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
     """
     Elementary answer equivalence checker supporting numbers, fractions, word names,
-    unit stripping, science conceptual synonyms, and Khmer-English cross-language equivalence.
+    unit stripping, and Khmer-English cross-language equivalence.
+    Equivalence strictly delegates to SymPy CAS / safe_math for math and
+    validate_student_answer rubric for science.
     """
     if not student_attempt or not expected_answer:
         return False
 
-    # Khmer digit conversion map
+    # Khmer digit conversion map (KEEP)
     khmer_digits = str.maketrans("០១២៣៤៥៦៧៨៩", "0123456789")
 
     s_clean = student_attempt.strip().lower().translate(khmer_digits)
     e_clean = expected_answer.strip().lower().translate(khmer_digits)
 
-    # 1. Exact match
+    # 1. Exact match (KEEP)
     if s_clean == e_clean:
         return True
 
-    # 2. Khmer & English Affirmative / Negative Cross-Language Matching
+    # 2. Khmer & English Affirmative / Negative Cross-Language Matching (KEEP)
     affirmative_synonyms = {
         "yes", "true", "correct", "y", "t", "has",
         "បាទ", "ចាស", "មាន", "ពិតជាមាន", "ត្រូវ", "ពិតមែន", "បាទ/ចាស", "បាទមាន", "ចាសមាន", "ពិត"
@@ -91,21 +94,17 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
     if any(s_clean == word or s_clean.startswith(word) for word in negative_synonyms) and any(e_clean == word or e_clean.startswith(word) for word in negative_synonyms):
         return True
 
-    # 3. Khmer Multiple Choice Letters (ក -> a, ខ -> b, គ -> c, ឃ -> d)
+    # 3. Khmer Multiple Choice Letters (ក -> a, ខ -> b, គ -> c, ឃ -> d) (KEEP)
     khmer_letter_map = {"ក": "a", "ខ": "b", "គ": "c", "ឃ": "d"}
     s_mapped = khmer_letter_map.get(s_clean, s_clean)
     e_mapped = khmer_letter_map.get(e_clean, e_clean)
     if s_mapped == e_mapped:
         return True
 
-    # 4. Bounded full-word keyword match in expected (avoiding sub-word substrings like "is" in "photosynthesis")
-    import re
-    common_stopwords = {"the", "a", "an", "is", "it", "to", "of", "and", "in", "by", "for", "that", "its", "into", "on", "at", "no", "yes"}
-    if len(s_clean) >= 3 and s_clean not in common_stopwords:
-        if re.search(rf'\b{re.escape(s_clean)}\b', e_clean):
-            return True
-
+    # 4. Input normalization: word_to_num mapping (KEEP)
     from typing import Optional
+    import re
+    from app.services.socratic.safe_math import safe_eval_ast
 
     word_to_num = {
         "zero": 0.0, "one": 1.0, "two": 2.0, "three": 3.0, "four": 4.0,
@@ -121,7 +120,15 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
         if t in word_to_num:
             return word_to_num[t]
         t = re.sub(r'^(about|approx|around|=|\s)+', '', t)
-        t = re.sub(r'\s*(cookies|apples|candies|cm|m|km|kg|g|dollars|\$|units|hours|mins|seconds).*$', '', t).strip()
+        t = re.sub(r'\s*(cookies|apples|candies|cm|m|km|kg|g|dollars|\$|units|hours|mins|seconds|នាក់|គ្រាប់|ដើម).*$', '', t).strip()
+        if t in word_to_num:
+            return word_to_num[t]
+        try:
+            val_frac = safe_eval_ast(t)
+            if val_frac is not None:
+                return float(val_frac)
+        except Exception:
+            pass
         if "/" in t:
             parts = t.split("/")
             if len(parts) == 2:
@@ -140,37 +147,34 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
                 pass
         return None
 
+    # Math equivalence via safe_math AST / CAS
     s_num = parse_val(s_clean)
     e_num = parse_val(e_clean)
     if s_num is not None and e_num is not None:
-        if abs(s_num - e_num) < 0.01:
+        if abs(s_num - e_num) < 0.001:
             return True
 
-    # 5. Science Conceptual Synonyms (Bilingual English & Khmer)
-    synonyms = [
-        {"evaporation", "evaporate", "evaporates", "vaporization", "liquid to gas", "steam", "liquid turns into gas", "រំហួត", "រំហួតទឹក", "ក្លាយជាចំហាយ"},
-        {"condensation", "condense", "condenses", "gas to liquid", "water droplets", "កំណក", "កំណកទឹក"},
-        {"photosynthesis", "sunlight and water", "making food", "glucose", "plants make food", "រស្មីសំយោគ", "បង្កើតអាហារ"},
-        {"gravity", "gravitational force", "pull of earth", "pulls down", "gravity pulls it down", "ទំនាញផែនដី", "កម្លាំងទំនាញ"},
-        {"mitochondria", "powerhouse of the cell", "cellular energy", "atp", "powerhouse"},
-        {"backbone", "vertebrate", "vertebrates", "has backbone", "ឆ្អឹងកង", "ឆ្អឹងខ្នង", "សត្វមានឆ្អឹងកង"},
-        {"invertebrate", "invertebrates", "no backbone", "without backbone", "ឥតឆ្អឹងកង", "សត្វឥតឆ្អឹងកង", "គ្មានឆ្អឹងខ្នង"},
-        {"feathers", "feather", "រោម", "រោមស្លាប"},
-        {"wings", "wing", "ស្លាប"},
-        {"pincers", "pincer", "claws", "claw", "ដង្កៀប", "ក្រញ៉ាំ"},
-        {"hump", "hump on back", "បូក", "បូកនៅលើខ្នង", "បូកខ្នង"},
-        {"producer", "producers", "makes own food", "អ្នកផលិត", "រុក្ខជាតិ"},
-        {"consumer", "consumers", "eats others", "អ្នកស៊ី", "អ្នកប្រើប្រាស់", "សត្វ"},
-        {"herbivore", "plant eater", "eats plants", "អ្នកស៊ីរុក្ខជាតិ", "សត្វស៊ីរុក្ខជាតិ"},
-        {"carnivore", "predator", "meat eater", "eats meat", "eats animals", "អ្នកស៊ីសាច់", "សត្វស៊ីសាច់"},
-        {"leaves", "leaf", "plant leaves", "ស្លឹក", "ស្លឹកឈើ", "ផ្នែកស្លឹក"},
-        {"rabbit", "ទន្សាយ"},
-        {"cabbage", "ស្ពៃ", "ស្ពៃក្តោប"},
-        {"owl", "owl and eagle", "eagle", "b and d", "b, d", "b and c", "b, c", "សត្វទីទុយ", "ឥន្ទ្រី"}
-    ]
-    for syn_group in synonyms:
-        if any(s in s_clean for s in syn_group) and any(e in e_clean for e in syn_group):
+    # SymPy CAS symbolic algebraic equivalence check (e.g. algebraic expressions)
+    try:
+        from sympy import sympify
+        s_sym = sympify(s_clean)
+        e_sym = sympify(e_clean)
+        if s_sym == e_sym or (s_sym - e_sym) == 0:
             return True
+    except Exception:
+        pass
+
+    # Science equivalence delegates strictly to validate_student_answer rubric (NO canned synonym dictionaries)
+    try:
+        val_outcome = validate_student_answer(
+            student_attempt=s_clean,
+            expected_answer=e_clean,
+            subject="science"
+        )
+        if val_outcome and val_outcome.is_correct:
+            return True
+    except Exception as e:
+        logger.warning(f"Science rubric validation failed: {e}")
 
     return False
 
@@ -340,21 +344,127 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
 
 def initial_problem_node(state: TutorState) -> Dict[str, Any]:
     """
-    Decomposes the homework problem into 2–4 Socratic step cards using the
-    exercise_planning prompt (zero answer leakage, isomorphic parallel examples,
-    3-tier progressive hints).  Falls back to the legacy two-step pipeline when
-    the LLM is unavailable.
+    Decomposes the homework problem into 2–4 Socratic step cards.
+    Phase 1A: Checks the deterministic Skill Template Library first (100% mathematical
+    accuracy, answer-safe visual specs, distinct parallel examples, zero marginal cost).
+    Falls back to LLM exercise_planning and legacy prompts when unhandled by skill templates.
     """
     problem = state.get("problem_text") or state.get("raw_user_input", "Solve the homework problem.")
     grade_level = state.get("grade_level", "grade_1_3")
     session_id = state.get("session_id", "default_session")
     subject = (state.get("subject") or "math").upper()
 
+    # 0. DETERMINISTIC SKILL TEMPLATE LIBRARY (Phase 1A - Spec Section 7)
+    if subject == "MATH":
+        from app.services.socratic.math_engine.cas import parse_binary_arithmetic
+        from app.services.socratic.parse_verifier import verify_and_parse_word_problem
+        from app.services.socratic.skills import skill_registry
+
+        parsed_prob = parse_binary_arithmetic(problem)
+        if not parsed_prob:
+            parse_res = verify_and_parse_word_problem(problem, grade_level=grade_level)
+            if parse_res.is_valid and parse_res.needs_confirmation and parse_res.confirmation_prompt:
+                return {
+                    "problem_text": problem,
+                    "clarification_needed": True,
+                    "clarification_question": parse_res.confirmation_prompt,
+                    "feedback_message": parse_res.confirmation_prompt,
+                    "is_problem_complete": False,
+                    "is_problem_solved": False,
+                }
+            elif parse_res.is_valid and parse_res.parsed_problem:
+                parsed_prob = parse_res.parsed_problem
+            else:
+                log_gap_event(
+                    gap_type="content",
+                    gap_code="UNPARSED_WORD_PROBLEM",
+                    severity=2,
+                    user_id=state.get("user_id"),
+                    session_id=session_id,
+                    problem_id=state.get("problem_id"),
+                    grade_tier=grade_level,
+                    subject="math",
+                    details={"raw_problem": problem, "issues": getattr(parse_res, "issues", [])}
+                )
+
+        if parsed_prob:
+            matched_skill = skill_registry.match(parsed_prob)
+            if matched_skill:
+                logger.info(f"[SkillTemplate] Matched deterministic skill: {matched_skill.skill_id}")
+                templates = matched_skill.build_steps(parsed_prob)
+                if templates and len(templates) >= 2:
+                    coerced_steps = []
+                    for t in templates:
+                        coerced_steps.append(SocraticStep(
+                            step_number=t.step_number,
+                            title=t.title,
+                            status="in_progress" if t.step_number == 1 else "pending",
+                            mission=t.mission,
+                            clue=t.clue,
+                            helpful_example=t.helpful_example,
+                            your_turn=t.your_turn,
+                            expected_answer=t.expected_answer,
+                            concept=t.concept,
+                            hints=t.hints,
+                            current_hint_level=0,
+                            visual_data=t.visual_spec
+                        ))
+                    widget = StepWidgetPayload(
+                        total_steps=len(coerced_steps),
+                        current_step_index=0,
+                        completed_steps=[],
+                        visual_data=coerced_steps[0].visual_data if coerced_steps else None,
+                        steps=coerced_steps
+                    )
+                    return {
+                        "problem_text": problem,
+                        "total_steps_count": len(coerced_steps),
+                        "step_widget": widget.model_dump(),
+                        "current_step_index": 0,
+                        "active_hint": None,
+                        "current_hint_tier": 0,
+                        "feedback_message": "🚀 Let's solve this together, step-by-step! Here is Step 1:",
+                        "is_problem_complete": False,
+                        "is_problem_solved": False,
+                        "clarification_needed": False
+                    }
+            else:
+                log_gap_event(
+                    gap_type="content",
+                    gap_code="NO_SKILL_MATCH",
+                    severity=2,
+                    user_id=state.get("user_id"),
+                    session_id=session_id,
+                    problem_id=state.get("problem_id"),
+                    grade_tier=grade_level,
+                    subject="math",
+                    details={"parsed_problem": parsed_prob, "raw_problem": problem}
+                )
+
+    # 0B. CURRICULUM SCIENCE RAG (Phase 3)
+    retrieved_science_context = ""
+    curriculum_citations = []
+    if subject == "SCIENCE":
+        try:
+            from app.services.rag.retriever import get_science_retriever
+            retriever = get_science_retriever()
+            hits, retrieved_science_context, is_grounded = retriever.retrieve_grounded_context(
+                query=problem,
+                grade_band=grade_level,
+                session_id=session_id
+            )
+            if hits and is_grounded:
+                curriculum_citations = [h.get("source") for h in hits if h.get("source")]
+                logger.info(f"[ScienceRAG] Grounded in {len(hits)} textbook passages (top: {hits[0].get('title')})")
+        except Exception as rag_err:
+            logger.warning(f"[ScienceRAG] Retrieval failed: {rag_err}")
+
     # PRIMARY PATH — unified exercise_planning prompt (full card + hints, no answer leakage)
     widget_dict = controller.plan_exercise_socratic_widget(
         problem_text=problem,
         grade_level=grade_level,
-        session_id=session_id
+        session_id=session_id,
+        exercise_context=retrieved_science_context or None
     )
     if widget_dict and widget_dict.get("steps") and len(widget_dict["steps"]) >= 2:
         logger.info(f"exercise_planning produced {widget_dict['total_steps']}-step widget via LLM.")
@@ -395,7 +505,9 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                 "feedback_message": "🚀 Let's solve this together, step-by-step! Here is Step 1:",
                 "is_problem_complete": False,
                 "is_problem_solved": False,
-                "clarification_needed": False
+                "clarification_needed": False,
+                "retrieved_context": retrieved_science_context,
+                "curriculum_citations": curriculum_citations
             }
         except Exception as coerce_err:
             logger.warning(f"SocraticStep coercion failed after exercise_planning: {coerce_err}. Falling back.")
@@ -426,12 +538,20 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
 
         step_hints = card_content.get("hints")
         if not step_hints or len(step_hints) != 3:
-            step_title_label = s.get("title", f"Step {step_num}")
-            step_hints = [
-                f"💡 Focus on the key idea in '{step_title_label}' and identify what the question is asking.",
-                f"🍎 Picture the parallel example and apply the same operation step-by-step!",
-                f"📐 Break the calculation into two smaller sub-steps without solving either yet."
-            ]
+            clue_text = card_content.get("clue") or s.get("clue") or "Look closely at the question!"
+            ex_text = card_content.get("helpful_example") or "Picture real objects in front of you!"
+            if subject == "science":
+                step_hints = [
+                    f"💡 Helpful Clue: {clue_text}",
+                    f"🍎 Real-World Example: {ex_text}",
+                    "✨ Give it your best try! What word or idea fits our clue best?"
+                ]
+            else:
+                step_hints = [
+                    f"💡 Helpful Clue: {clue_text}",
+                    f"🍎 Parallel Example: {ex_text}",
+                    "🔢 Count step-by-step or draw it on scratch paper to see the answer!"
+                ]
 
         v_data = synthesize_visual_data_for_step(problem, s, subject)
         socratic_steps.append(SocraticStep(
@@ -468,7 +588,9 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
         "feedback_message": "🚀 Let's solve this together, step-by-step! Here is Step 1:",
         "is_problem_complete": False,
         "is_problem_solved": False,
-        "clarification_needed": False
+        "clarification_needed": False,
+        "retrieved_context": retrieved_science_context,
+        "curriculum_citations": curriculum_citations
     }
 
 
@@ -604,6 +726,40 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
             "hints_used": new_tier
         })
 
+        # Check for error streaks (>= 3 consecutive wrong attempts on this step)
+        step_mistakes = [h for h in history if h.get("step_number") == active_step.step_number and not h.get("is_correct")]
+        if len(step_mistakes) >= 3:
+            log_gap_event(
+                gap_type="learner",
+                gap_code="STEP_ERROR_STREAK",
+                severity=2,
+                user_id=state.get("user_id"),
+                session_id=state.get("session_id"),
+                problem_id=state.get("problem_id"),
+                grade_tier=grade_level,
+                subject=state.get("subject", "math"),
+                step_index=active_step.step_number,
+                details={
+                    "step_title": active_step.title,
+                    "concept": active_step.concept,
+                    "attempts": [h.get("student_attempt") for h in step_mistakes[-3:]],
+                }
+            )
+            concept_str = (active_step.concept or "").lower()
+            if "regroup" in concept_str or "borrow" in concept_str:
+                log_gap_event(
+                    gap_type="learner",
+                    gap_code="MISCONCEPTION_REGROUP",
+                    severity=2,
+                    user_id=state.get("user_id"),
+                    session_id=state.get("session_id"),
+                    problem_id=state.get("problem_id"),
+                    grade_tier=grade_level,
+                    subject=state.get("subject", "math"),
+                    step_index=active_step.step_number,
+                    details={"concept": active_step.concept, "attempt": attempt}
+                )
+
         # Compute frustration score after recording attempt
         frustration = compute_frustration_score(
             attempt_history=history,
@@ -686,6 +842,18 @@ def clarify_node(state: TutorState) -> Dict[str, Any]:
     widget = _get_widget_from_state(state)
     grade_level = state.get("grade_level", "grade_1_3")
 
+    log_gap_event(
+        gap_type="content",
+        gap_code="PARSE_UNCONFIRMED",
+        severity=1,
+        user_id=state.get("user_id"),
+        session_id=state.get("session_id"),
+        problem_id=state.get("problem_id"),
+        grade_tier=grade_level,
+        subject=state.get("subject", "math"),
+        details={"raw_query": raw_query}
+    )
+
     clarification_res = clarifier.build_clarification_response(
         raw_query=raw_query,
         widget=widget,
@@ -727,6 +895,17 @@ def guardrails_node(state: TutorState) -> Dict[str, Any]:
     # 1. Safety & PII check
     safety_res = safety_filter.evaluate(raw_input)
     if not safety_res.is_safe:
+        # If Tier 2 crisis detected (Child abuse, Self-harm, Immediate danger), dispatch escalation alert
+        if getattr(safety_res, "escalate", False) or safety_res.severity_tier >= 2:
+            try:
+                from app.services.guardrails.escalation import dispatch_escalation_alert
+                dispatch_escalation_alert(
+                    safety_result=safety_res,
+                    session_id=state.get("session_id", "sess_default"),
+                )
+            except Exception as esc_err:
+                logger.error(f"[Guardrails] Failed to dispatch crisis escalation: {esc_err}")
+
         return {
             "is_safe": False,
             "safety_violation": safety_res.categories_detected[0].value if safety_res.categories_detected else "UNSAFE",
@@ -819,6 +998,13 @@ def deflect_node(state: TutorState) -> Dict[str, Any]:
 def compile_response_node(state: TutorState) -> Dict[str, Any]:
     """
     Compiles final SocraticResponse with synchronized Markdown and JSON widget.
+    Enforces Output Leak Guard (Spec Section 1, 2.3, 9, 10):
+    - Deterministically scans every outgoing student message (feedback_message,
+      active_hint, formatted_markdown) for expected answer leaks.
+    - Zero leaks allowed across Hint Tiers 1-3.
+    - Disclosure allowed ONLY if is_step_solved is True OR is_reveal_state is explicitly True.
+    - Multi-Step Praise Shield: Prevents revealing future unsolved steps or final answers in praise.
+    - Quarantines any detected leak with safe pedagogical guidance.
     """
     widget = _get_widget_from_state(state)
     session_id = state.get("session_id", "default_session")
@@ -826,6 +1012,94 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
     active_hint = state.get("active_hint")
     is_complete = state.get("is_problem_complete", False) or state.get("is_problem_solved", False)
 
+    from app.services.guardrails.leak_guard import check_tutor_response_leak
+
+    # 1. Output Leak Guard scan on outgoing feedback and hints
+    leak_detected = False
+    is_step_solved = False
+    is_reveal_state = bool(state.get("is_reveal_state", False))
+    current_hint_tier = state.get("current_hint_tier", 0)
+    attempts_count = len(state.get("attempt_history", []))
+    unsolved_targets: List[str] = []
+    final_answer: Optional[str] = None
+    target_answer = ""
+    active_step = None
+    problem_text = state.get("problem_text")
+
+    if widget and state.get("is_safe") is not False:
+        active_step = widget.get_active_step()
+        target_answer = active_step.expected_answer if active_step else ""
+        is_step_solved = bool(
+            state.get("validation_outcome") == VALIDATION_CORRECT
+            or (active_step and (active_step.status == "completed" or (active_step.step_number - 1) in widget.completed_steps))
+        )
+
+        # Build list of unsolved future steps & final answer
+        final_answer = widget.steps[-1].expected_answer if widget.steps else None
+        for s in widget.steps:
+            is_s_completed = (s.status == "completed" or (s.step_number - 1) in widget.completed_steps)
+            if not is_s_completed and s.expected_answer and s != active_step:
+                unsolved_targets.append(s.expected_answer)
+
+        # Scan feedback_message
+        if feedback and target_answer:
+            is_leak, sanitized_fb, reason = check_tutor_response_leak(
+                tutor_reply=feedback,
+                target_answer=target_answer,
+                is_step_solved=is_step_solved,
+                is_reveal_state=is_reveal_state,
+                current_hint_tier=current_hint_tier,
+                step_number=active_step.step_number if active_step else None,
+                attempts_count=attempts_count,
+                unsolved_step_values=unsolved_targets,
+                final_answer=final_answer,
+                problem_text=problem_text
+            )
+            if is_leak:
+                logger.warning(f"[OutputLeakGuard] Intercepted feedback leak: {reason}. Quarantining.")
+                leak_detected = True
+                feedback = sanitized_fb
+
+        # Scan active_hint
+        if active_hint and target_answer:
+            is_leak_hint, sanitized_hint, reason_hint = check_tutor_response_leak(
+                tutor_reply=active_hint,
+                target_answer=target_answer,
+                is_step_solved=is_step_solved,
+                is_reveal_state=is_reveal_state,
+                current_hint_tier=current_hint_tier,
+                step_number=active_step.step_number if active_step else None,
+                attempts_count=attempts_count,
+                unsolved_step_values=unsolved_targets,
+                final_answer=final_answer,
+                problem_text=problem_text
+            )
+            if is_leak_hint:
+                logger.warning(f"[OutputLeakGuard] Intercepted hint leak: {reason_hint}. Quarantining.")
+                leak_detected = True
+                active_hint = sanitized_hint
+
+        # Scan visual_data for active step
+        if active_step and active_step.visual_data:
+            try:
+                from app.services.visuals import VisualSpec, check_visual_spec_leak
+                v_spec = VisualSpec.model_validate(active_step.visual_data)
+                v_leak, sanitized_v_spec, v_reason = check_visual_spec_leak(
+                    spec=v_spec,
+                    target_answer=target_answer,
+                    unsolved_targets=unsolved_targets
+                )
+                if v_leak:
+                    logger.warning(f"[VisualLeakGuard] Intercepted visual leak: {v_reason}. Sanitizing.")
+                    leak_detected = True
+                    active_step.visual_data = sanitized_v_spec.model_dump()
+                    widget.visual_data = sanitized_v_spec.model_dump()
+                else:
+                    widget.visual_data = active_step.visual_data
+            except Exception as e:
+                logger.debug(f"Visual spec leak check skipped: {e}")
+
+    # 2. Compile synchronized Markdown presentation
     if state.get("is_safe") is False:
         formatted_md = feedback or "Let's use kind and friendly words here!"
     elif widget:
@@ -840,9 +1114,35 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
     else:
         formatted_md = feedback or "Welcome! Please enter a homework question."
 
-    return {
-        "formatted_markdown": formatted_md
+    # 3. Final fail-safe barrier on compiled Markdown output
+    if widget and formatted_md and state.get("is_safe") is not False:
+        if target_answer and not is_step_solved and not is_reveal_state:
+            is_md_leak, sanitized_md, md_reason = check_tutor_response_leak(
+                tutor_reply=formatted_md,
+                target_answer=target_answer,
+                is_step_solved=False,
+                is_reveal_state=False,
+                current_hint_tier=current_hint_tier,
+                step_number=active_step.step_number if active_step else None,
+                attempts_count=attempts_count,
+                unsolved_step_values=unsolved_targets,
+                final_answer=final_answer,
+                problem_text=problem_text
+            )
+            if is_md_leak:
+                logger.warning(f"[OutputLeakGuard] Intercepted markdown leak: {md_reason}. Sanitizing.")
+                leak_detected = True
+                formatted_md = sanitized_md
+
+    updates: Dict[str, Any] = {
+        "formatted_markdown": formatted_md,
+        "feedback_message": feedback,
+        "active_hint": active_hint,
     }
+    if leak_detected:
+        updates["leak_quarantined"] = True
+
+    return updates
 
 
 # -------------------------------------------------------------------------

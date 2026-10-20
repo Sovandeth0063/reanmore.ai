@@ -6,10 +6,8 @@ import { ChatView } from './components/ChatView';
 import { ProfileView } from './components/ProfileView';
 import { HomeworkScanner } from './components/HomeworkScanner';
 import { LoginModal } from './components/LoginModal';
-import { LLMControllerModal } from './components/LLMControllerModal';
 import { ForestBackground } from './components/ForestBackground';
 import { markSessionAbandoned } from './utils/reportUtils';
-import { enrichProblemFromCase, getHardcodedProblemsBySubject } from './services/hardcodedTutorProvider';
 import { AuthService } from './services/authService';
 import { sessionApi } from './api';
 
@@ -76,9 +74,9 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile>(() => {
     const acc = AuthService.getCurrentUser();
     return acc ? acc.profile : {
-      name: 'សុជា (Sochea)',
-      grade: 2,
-      subject: 'science',
+      name: 'Sochea',
+      grade: 4,
+      subject: 'math',
       language: 'en',
       role: 'student',
     };
@@ -86,13 +84,12 @@ export default function App() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authRequiredRole, setAuthRequiredRole] = useState<UserRole | undefined>(undefined);
-  const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = AuthService.subscribe((account) => {
       setCurrentUser(account);
       if (account) {
-        setProfile(account.profile);
+        setProfile({ ...account.profile, language: 'en' });
       }
     });
     return unsubscribe;
@@ -128,9 +125,9 @@ export default function App() {
         if (target?.worksheetQueue?.problems?.length) {
           const activeIdx = target.worksheetQueue.activeIndex || 0;
           const prob = target.worksheetQueue.problems[activeIdx] || target.problem || target.worksheetQueue.problems[0];
-          if (prob) return enrichProblemFromCase(prob, 2);
+          if (prob) return prob;
         } else if (target?.problem) {
-          return enrichProblemFromCase(target.problem, 2);
+          return target.problem;
         }
       }
     } catch {}
@@ -221,10 +218,10 @@ export default function App() {
               setWorksheetQueue(targetSession.worksheetQueue);
               const activeIdx = targetSession.worksheetQueue.activeIndex || 0;
               const activeProb = targetSession.worksheetQueue.problems[activeIdx] || targetSession.problem || targetSession.worksheetQueue.problems[0];
-              setActiveProblem(enrichProblemFromCase(activeProb, profile.grade));
+              setActiveProblem(activeProb);
             } else if (targetSession.problem) {
               setWorksheetQueue(null);
-              setActiveProblem(enrichProblemFromCase(targetSession.problem, profile.grade));
+              setActiveProblem(targetSession.problem);
             } else {
               setWorksheetQueue(null);
               setActiveProblem(undefined);
@@ -243,8 +240,7 @@ export default function App() {
           problemStatementEng: exId,
           steps: [],
         };
-        const enriched = enrichProblemFromCase(rawProblem, profile.grade);
-        setActiveProblem(enriched);
+        setActiveProblem(rawProblem);
         setActiveTab('chat');
       }
     };
@@ -300,8 +296,9 @@ export default function App() {
   const activeSession = sessions.find(s => s.id === activeSessionId) ?? sessions[0];
 
   const handleUpdateProfile = (updated: Partial<UserProfile>) => {
-    AuthService.updateProfile(updated);
-    setProfile((prev: UserProfile) => ({ ...prev, ...updated }));
+    const sanitized = { ...updated, language: 'en' as const };
+    AuthService.updateProfile(sanitized);
+    setProfile((prev: UserProfile) => ({ ...prev, ...sanitized }));
   };
 
   const handleOpenAuth = (requiredRole?: UserRole) => {
@@ -313,10 +310,10 @@ export default function App() {
     AuthService.logout();
     setCurrentUser(null);
     setProfile({
-      name: 'ភ្ញៀវ (Guest)',
+      name: 'Guest',
       grade: 4,
       subject: 'math',
-      language: profile.language || 'en',
+      language: 'en',
       role: 'student',
     });
     if (activeTab === 'report') {
@@ -414,13 +411,13 @@ export default function App() {
     // Only route to curriculum practice queue if problem is an empty subject placeholder
     const isSubjectOnlyPlaceholder = problem && !problem.problemStatementEng && !problem.problemStatementKhmer && (!problem.steps || problem.steps.length === 0);
     if (isSubjectOnlyPlaceholder && (problem.subject === 'math' || problem.subject === 'science')) {
-      const { problems, imageUri } = getHardcodedProblemsBySubject(problem.subject, profile.grade);
-      if (problems.length > 0) {
-        handleHomeworkScanned(problems, 0, imageUri);
+      const sampleProblems = MOCK_PROBLEMS.filter(p => p.subject === problem.subject);
+      if (sampleProblems.length > 0) {
+        handleHomeworkScanned(sampleProblems, 0, sampleProblems[0]?.imageUri);
         return;
       }
     }
-    const enriched = problem ? enrichProblemFromCase(problem, profile.grade) : undefined;
+    const enriched = problem;
     setActiveProblem(enriched);
     setInitialChatQuery(initialQuery);
     setWorksheetQueue(null);
@@ -434,12 +431,11 @@ export default function App() {
 
     // Auto-detect grade from scanned homework and sync to profile
     const detectedGrade = problems.find(p => p.grade && p.grade >= 1 && p.grade <= 6)?.grade;
-    const effectiveGrade = (detectedGrade || profile.grade) as Grade;
     if (detectedGrade && detectedGrade !== profile.grade) {
       setProfile(prev => ({ ...prev, grade: detectedGrade as Grade }));
     }
 
-    const enrichedProblems = problems.map(p => enrichProblemFromCase(p, effectiveGrade));
+    const enrichedProblems = problems;
     const initialProblem = enrichedProblems[initialIndex] || enrichedProblems[0];
     setActiveProblem(initialProblem);
     setInitialChatQuery(undefined);
@@ -471,9 +467,7 @@ export default function App() {
       if (!prev) return prev;
       const rawProblem = prev.problems[index];
       if (!rawProblem) return prev;
-      const problem = (rawProblem.has_steps && rawProblem.steps && rawProblem.steps.length > 0)
-        ? rawProblem
-        : enrichProblemFromCase(rawProblem, profile.grade);
+      const problem = rawProblem;
       setActiveProblem(problem);
       navigateTo('chat', activeSessionId, problem.id);
 
@@ -506,9 +500,7 @@ export default function App() {
       const newIndex = nextIndex !== -1 ? nextIndex : prev.activeIndex;
       if (nextIndex !== -1) {
         const rawNext = prev.problems[nextIndex];
-        const nextProb = (rawNext.has_steps && rawNext.steps && rawNext.steps.length > 0)
-          ? rawNext
-          : enrichProblemFromCase(rawNext, profile.grade);
+        const nextProb = rawNext;
         setActiveProblem(nextProb);
         navigateTo('chat', activeSessionId, nextProb.id);
       }
@@ -537,10 +529,10 @@ export default function App() {
       if (session.worksheetQueue && session.worksheetQueue.problems.length > 0) {
         setWorksheetQueue(session.worksheetQueue);
         const activeProb = session.worksheetQueue.problems[session.worksheetQueue.activeIndex] || session.problem || session.worksheetQueue.problems[0];
-        setActiveProblem(enrichProblemFromCase(activeProb, profile.grade));
+        setActiveProblem(activeProb);
       } else if (session.problem) {
         setWorksheetQueue(null);
-        setActiveProblem(enrichProblemFromCase(session.problem, profile.grade));
+        setActiveProblem(session.problem);
       } else {
         setWorksheetQueue(null);
         setActiveProblem(undefined);
@@ -582,7 +574,6 @@ export default function App() {
         onSelectTab={(tab) => navigateTo(tab)}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
-        onOpenLLMController={() => setIsLLMModalOpen(true)}
       />
 
       <main className={`relative z-10 flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-1.5 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8'}`}>
@@ -662,13 +653,6 @@ export default function App() {
         }}
         language={profile.language}
         requiredRole={authRequiredRole}
-      />
-
-      {/* Dynamic LLM Controller Modal */}
-      <LLMControllerModal
-        isOpen={isLLMModalOpen}
-        onClose={() => setIsLLMModalOpen(false)}
-        language={profile.language}
       />
     </div>
   );

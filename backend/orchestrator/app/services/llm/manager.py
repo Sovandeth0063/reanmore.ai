@@ -6,6 +6,7 @@ Description: Central LLM Gateway & Management Service.
 """
 
 import os
+import asyncio
 import logging
 from typing import Optional, Dict, Any, List
 
@@ -28,6 +29,12 @@ class LLMManager:
         self._providers: Dict[str, BaseLLMProvider] = {}
         self.primary_provider_name: str = getattr(settings, "LLM_PRIMARY_PROVIDER", "gemini").lower()
         self.fallback_provider_name: Optional[str] = getattr(settings, "LLM_FALLBACK_PROVIDER", "ollama")
+        
+        # Concurrency & Latency Guardrails (Spec Section 5.3, 12.2)
+        self._semaphore = asyncio.Semaphore(getattr(settings, "LLM_MAX_INFLIGHT", 1))
+        self._total_turn_timeout = float(getattr(settings, "LLM_TOTAL_TURN_TIMEOUT_SEC", 15.0))
+        self._first_token_timeout = float(getattr(settings, "LLM_FIRST_TOKEN_TIMEOUT_SEC", 6.0))
+        self._num_predict = int(getattr(settings, "LLM_NUM_PREDICT", 220))
 
         self._initialize_default_providers()
 
@@ -82,9 +89,6 @@ class LLMManager:
         # 2. Fallback (e.g. Ollama)
         if fallback_name in self._providers and fallback_name != primary_name:
             candidates.append(self._providers[fallback_name])
-        # 3. Mock safety net
-        if "mock" in self._providers and "mock" not in (primary_name, fallback_name):
-            candidates.append(self._providers["mock"])
             
         return candidates
 
@@ -140,36 +144,57 @@ class LLMManager:
         provider_name: Optional[str] = None
     ) -> LLMResponse:
         """
-        Asynchronously generates text with cascading fallback support.
-        If temperature is None, each provider applies its own configured temperature.
+        Asynchronously generates text with bounded semaphore admission control (INFLIGHT=1),
+        first-token/turn timeout, and single-model retry before cascading.
         """
         candidates = self._get_provider_cascade(provider_name)
         if not candidates:
-            raise RuntimeError(f"No LLM providers available.")
+            raise RuntimeError("No LLM providers available.")
 
-        last_error = None
-        for i, provider in enumerate(candidates):
-            if not provider.is_available():
-                logger.warning(f"Provider [{provider.name}] is not available. Skipping.")
-                continue
+        eff_max_tokens = max_tokens or self._num_predict
 
-            try:
-                if i > 0:
-                    logger.warning(f"Cascading async LLM execution to [{provider.name}].")
-                return await provider.generate_text_async(
-                    prompt=prompt,
-                    system_instruction=system_instruction,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    model_tier=model_tier
-                )
-            except Exception as e:
-                logger.error(f"Provider [{provider.name}] async execution error: {e}")
-                last_error = e
+        async with self._semaphore:
+            last_error = None
+            for i, provider in enumerate(candidates):
+                if not provider.is_available():
+                    logger.warning(f"Provider [{provider.name}] is not available. Skipping.")
+                    continue
 
-        if last_error:
-            raise last_error
-        raise RuntimeError("All candidate LLM providers failed or were unavailable.")
+                # Single-model retry loop (1 initial attempt + 1 retry)
+                for attempt in range(1, 3):
+                    try:
+                        if i > 0 or attempt > 1:
+                            logger.warning(f"Executing async LLM [{provider.name}] (attempt {attempt}/2)...")
+                        return await asyncio.wait_for(
+                            provider.generate_text_async(
+                                prompt=prompt,
+                                system_instruction=system_instruction,
+                                temperature=temperature,
+                                max_tokens=eff_max_tokens,
+                                model_tier=model_tier
+                            ),
+                            timeout=self._total_turn_timeout
+                        )
+                    except (asyncio.TimeoutError, Exception) as e:
+                        logger.error(f"Provider [{provider.name}] attempt {attempt} failed: {e}")
+                        last_error = e
+                        if isinstance(e, asyncio.TimeoutError):
+                            try:
+                                from app.services.telemetry.gap_recorder import log_gap_event
+                                log_gap_event(
+                                    gap_type="system",
+                                    gap_code="LLM_TIMEOUT",
+                                    severity=3,
+                                    details={"provider": provider.name, "attempt": attempt, "timeout_seconds": self._total_turn_timeout}
+                                )
+                            except Exception:
+                                pass
+                        if attempt == 1:
+                            await asyncio.sleep(0.3)
+
+            if last_error:
+                raise last_error
+            raise RuntimeError("All candidate LLM providers failed or were unavailable.")
 
 
 class LLMController(LLMManager):

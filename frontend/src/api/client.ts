@@ -219,7 +219,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     'X-Request-Budget-Ms': Math.max(0, timeoutMs - 2000).toString(),
     ...(sessionId ? { 'X-Session-ID': sessionId } : {}),
     ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(token || (typeof window !== 'undefined' && localStorage.getItem('reanmore_auth_token_v1'))
+      ? { 'Authorization': `Bearer ${token || localStorage.getItem('reanmore_auth_token_v1')}` }
+      : {}),
     ...(headers as Record<string, string>),
   };
 

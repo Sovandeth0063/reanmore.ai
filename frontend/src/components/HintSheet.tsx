@@ -18,7 +18,7 @@ export const HintSheet: React.FC<HintSheetProps> = ({
   onClose
 }) => {
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1);
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const resolved = resolveStepHints(step, language);
   const rawStep = step as any;
   const stepNumber = step?.stepNumber || rawStep?.step_number || 1;

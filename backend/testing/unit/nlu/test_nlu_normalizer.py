@@ -66,12 +66,18 @@ class TestNormalizerBilingual:
     """Test language detection and Khmenglish transliterations."""
 
     def test_detect_khmer_script(self):
-        text = "តើមានផ្លែប៉ោមក bao nhiêu?"
-        assert detect_language(text) == "khmer"
+        from unittest.mock import patch
+        from app.core.config import settings
+        with patch.object(settings, "ENABLE_KHMER_LANGUAGE", True):
+            text = "តើមានផ្លែប៉ោមក bao nhiêu?"
+            assert detect_language(text) == "khmer"
 
     def test_detect_khmenglish(self):
-        text = "som subtrak 4 pi 12"
-        assert detect_language(text) == "khmenglish"
+        from unittest.mock import patch
+        from app.core.config import settings
+        with patch.object(settings, "ENABLE_KHMER_LANGUAGE", True):
+            text = "som subtrak 4 pi 12"
+            assert detect_language(text) == "khmenglish"
 
     def test_detect_english(self):
         text = "How do plants make food?"

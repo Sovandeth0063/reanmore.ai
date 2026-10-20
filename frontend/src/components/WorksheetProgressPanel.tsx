@@ -21,7 +21,7 @@ export const WorksheetProgressPanel: React.FC<WorksheetProgressPanelProps> = ({
   onSelectExercise,
   onViewAllChats,
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const completedSet = new Set(completedIds);
   const doneCount = completedIds.length;
   const total = problems.length;

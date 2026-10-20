@@ -14,10 +14,10 @@ interface ExplanationCardProps {
 export const ExplanationCard: React.FC<ExplanationCardProps> = ({
   step,
   isOpen,
-  language = 'km',
+  language = 'en',
   onClose
 }) => {
-  const isKhmer = language === 'km';
+  const isKhmer = false;
   const [activeTab, setActiveTab] = useState<'simple' | 'analogy'>('simple');
   const resolved = resolveStepHints(step, language);
   const rawStep = step as any;

@@ -143,14 +143,10 @@ def solve_chemistry_ai(expression: str, grade_level: str = "grade_1_3") -> dict:
     """
     if not GEMINI_API_KEY:
         return {
-            "solution": "Matter changes state with temperature",
-            "steps": [
-                f"Look at what happens to the material in: '{expression}'",
-                "See if heating or cooling causes a change",
-                "Identify if it is a Solid, Liquid, or Gas!"
-            ],
-            "success": True,
-            "error": None
+            "solution": None,
+            "steps": [],
+            "success": False,
+            "error": "Chemistry AI solver unavailable: GEMINI_API_KEY is not configured in Science Service."
         }
 
     try:

@@ -81,14 +81,45 @@ def test_hint_engine_three_tiers(hint_engine, sample_step):
     assert "🎨" in hint_2 or "🍎" in hint_2
     assert "8" not in hint_2  # Zero answer leakage
 
-    # Tier 3: Micro-Breakdown
+    # Tier 3: Worked Parallel Example
     tier_3, hint_3 = hint_engine.escalate_hint(sample_step, grade_level="grade_1_3")
     assert tier_3 == 3
-    assert "🧩" in hint_3 or "micro-step" in hint_3.lower()
+    assert "🧩" in hint_3 or "parallel" in hint_3.lower() or "micro-step" in hint_3.lower()
+    assert "8" not in hint_3  # Zero answer leakage in Tier 3
 
     # Capped at Tier 3
     tier_4, hint_4 = hint_engine.escalate_hint(sample_step, grade_level="grade_1_3")
     assert tier_4 == 3
+
+
+def test_hint_engine_zero_leakage_across_science_topics(hint_engine):
+    topics = [
+        ("What process happens when water boils into steam?", "Evaporation", "boil water into steam"),
+        ("What happens to an ice cube on a hot day?", "Melting", "ice cube melts on hot table"),
+        ("What force pulls an apple down to Earth?", "Gravity", "apple falls downward"),
+        ("How do green plants use sunlight to make food?", "Photosynthesis", "plant uses sunlight to make food"),
+        ("What baby animal hatches from a frog egg?", "Tadpole", "tadpole grows in pond"),
+        ("What action occurs between opposite magnetic poles?", "Attract", "opposite poles stick together"),
+    ]
+
+    for question, expected, mission in topics:
+        for tier in (1, 2, 3):
+            step = SocraticStep(
+                step_number=1,
+                title=mission,
+                status="in_progress",
+                mission=mission,
+                clue=f"Think about {mission}",
+                helpful_example="Think of a similar situation in daily life.",
+                your_turn=question,
+                expected_answer=expected,
+                concept="science"
+            )
+            hint = hint_engine.generate_hint(step, tier=tier, grade_level="grade_1_3")
+            assert expected.lower() not in hint.lower(), (
+                f"Leak detected in Tier {tier} for expected '{expected}': {hint}"
+            )
+
 
 
 def test_clarifier_preserves_context(sample_step):
