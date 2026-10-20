@@ -431,6 +431,22 @@ async def get_student_telemetry_stats() -> Dict[str, Any]:
             }
 
 
+async def get_student_by_name(student_name: str) -> Optional[StudentProfile]:
+    """Finds a student profile by student name / username (case-insensitive)."""
+    async with AsyncSessionLocal() as session:
+        try:
+            stmt = (
+                select(StudentProfile)
+                .where(func.lower(StudentProfile.student_name) == student_name.lower().strip())
+                .order_by(StudentProfile.last_login_at.desc().nullslast(), StudentProfile.created_at.desc())
+            )
+            res = await session.execute(stmt)
+            return res.scalars().first()
+        except Exception as e:
+            logger.error(f"Database: get_student_by_name failed: {e}")
+            return None
+
+
 async def get_student_by_class_and_name(class_code: str, student_name: str) -> Optional[StudentProfile]:
     """Finds a student profile by class code and student name (case-insensitive)."""
     async with AsyncSessionLocal() as session:

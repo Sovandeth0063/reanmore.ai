@@ -5,34 +5,7 @@ const CURRENT_USER_KEY = 'reanmore_auth_current_user_v1';
 const ACCOUNTS_KEY = 'reanmore_auth_accounts_v1';
 const TOKEN_KEY = 'reanmore_auth_token_v1';
 
-export const DEFAULT_ACCOUNTS: UserAccount[] = [
-  {
-    id: 'account_student_sochea',
-    username: 'sochea',
-    role: 'student',
-    pin: '1234',
-    profile: {
-      name: 'Sochea',
-      grade: 4,
-      subject: 'math',
-      language: 'en',
-      role: 'student',
-    },
-  },
-  {
-    id: 'account_parent_guardian',
-    username: 'parent',
-    role: 'parent',
-    pin: '9999',
-    profile: {
-      name: 'Parent',
-      grade: 4,
-      subject: 'math',
-      language: 'en',
-      role: 'parent',
-    },
-  },
-];
+export const DEFAULT_ACCOUNTS: UserAccount[] = [];
 
 export class AuthService {
   private static listeners: Array<(account: UserAccount | null) => void> = [];
@@ -85,15 +58,13 @@ export class AuthService {
             profile: {
               ...acc.profile,
               language: 'en' as const,
-              name: getDisplayName(acc.profile?.name || '', false) || acc.profile?.name || 'Sochea',
+              name: getDisplayName(acc.profile?.name || '', false) || acc.profile?.name || 'Learner',
             },
           }));
         }
       }
     } catch {}
-    // Seed default accounts
-    this.saveAccounts(DEFAULT_ACCOUNTS);
-    return DEFAULT_ACCOUNTS;
+    return [];
   }
 
   static saveAccounts(accounts: UserAccount[]): void {
@@ -118,20 +89,9 @@ export class AuthService {
             profile: {
               ...parsed.profile,
               language: 'en' as const,
-              name: getDisplayName(parsed.profile?.name || '', false) || parsed.profile?.name || 'Sochea',
+              name: getDisplayName(parsed.profile?.name || '', false) || parsed.profile?.name || 'Learner',
             },
           };
-        }
-      }
-      // If never visited/booted before, seed default user (sochea) once
-      const hasBooted = localStorage.getItem('reanmore_auth_has_booted_v1');
-      if (!hasBooted) {
-        localStorage.setItem('reanmore_auth_has_booted_v1', 'true');
-        const accounts = this.getAccounts();
-        const defaultUser = accounts[0] || null;
-        if (defaultUser) {
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(defaultUser));
-          return defaultUser;
         }
       }
     } catch {}
@@ -200,18 +160,18 @@ export class AuthService {
   }
 
   static async loginRemote(
-    classCode: string,
     studentName: string,
-    pin: string
+    pin: string,
+    classCode: string = 'MAIN'
   ): Promise<{ success: boolean; account?: UserAccount | undefined; errorKhmer?: string | undefined; errorEng?: string | undefined }> {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          class_code: classCode.trim().toUpperCase(),
           student_name: studentName.trim().toLowerCase(),
           pin: pin.trim(),
+          class_code: (classCode || 'MAIN').trim().toUpperCase(),
         }),
       });
 
@@ -228,17 +188,88 @@ export class AuthService {
         this.setToken(data.token);
       }
 
+      const accounts = this.getAccounts();
+      const existing = accounts.find((a) => a.username.toLowerCase() === data.student_name.toLowerCase());
+
       const account: UserAccount = {
         id: data.user_id,
         username: data.student_name,
         role: data.role as UserRole,
         pin: pin.trim(),
         profile: {
-          name: data.student_name,
+          name: existing?.profile.name || data.student_name,
           grade: (data.grade_level || 4) as any,
           subject: 'math',
-          language: (data.language || 'km') as any,
+          language: (data.language || 'en') as any,
           role: data.role as UserRole,
+          avatarUrl: existing?.profile.avatarUrl || '👦',
+        },
+      };
+
+      const existingIdx = accounts.findIndex((a) => a.id === account.id || a.username === account.username);
+      if (existingIdx !== -1) {
+        accounts[existingIdx] = account;
+      } else {
+        accounts.push(account);
+      }
+      this.saveAccounts(accounts);
+      this.setCurrentUser(account);
+
+      return { success: true, account };
+    } catch (err) {
+      console.warn('Remote login failed, falling back to local accounts:', err);
+      return this.login(studentName, pin);
+    }
+  }
+
+  static async registerRemote(
+    studentName: string,
+    pin: string,
+    gradeLevel: number = 4,
+    role: UserRole = 'student',
+    language: string = 'en',
+    avatarUrl: string = '👦',
+    classCode: string = 'MAIN'
+  ): Promise<{ success: boolean; account?: UserAccount | undefined; errorKhmer?: string | undefined; errorEng?: string | undefined }> {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_name: studentName.trim(),
+          pin: pin.trim(),
+          grade_level: gradeLevel,
+          role,
+          language,
+          class_code: (classCode || 'MAIN').trim().toUpperCase(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          errorKhmer: data.detail || 'ការចុះឈ្មោះបរាជ័យ (Registration failed)',
+          errorEng: data.detail || 'Registration failed',
+        };
+      }
+
+      if (data.token) {
+        this.setToken(data.token);
+      }
+
+      const account: UserAccount = {
+        id: data.user_id,
+        username: data.student_name,
+        role: data.role as UserRole,
+        pin: pin.trim(),
+        profile: {
+          name: studentName.trim(),
+          grade: (data.grade_level || gradeLevel) as any,
+          subject: 'math',
+          language: (data.language || 'en') as any,
+          role: data.role as UserRole,
+          avatarUrl: avatarUrl || '👦',
         },
       };
 
@@ -254,8 +285,20 @@ export class AuthService {
 
       return { success: true, account };
     } catch (err) {
-      console.warn('Remote login failed, falling back to local accounts:', err);
-      return this.login(studentName, pin);
+      console.warn('Remote register failed, falling back to local account:', err);
+      return this.createAccount(
+        studentName,
+        role,
+        {
+          name: studentName,
+          grade: gradeLevel as any,
+          subject: 'math',
+          language: language as any,
+          role,
+          avatarUrl,
+        },
+        pin
+      );
     }
   }
 

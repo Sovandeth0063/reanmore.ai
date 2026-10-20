@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { UserAccount, UserRole, Language } from '../types';
 import { AuthService } from '../services/authService';
 import { getDisplayName } from '../utils/language';
-import { User, Shield, KeyRound, UserPlus, LogIn, X, Check, AlertCircle } from 'lucide-react';
+import {
+  User,
+  UserPlus,
+  LogIn,
+  X,
+  AlertCircle,
+  ArrowLeft,
+  ChevronRight,
+  Sparkles,
+  Check,
+  Delete,
+} from 'lucide-react';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (account: UserAccount) => void;
   language?: Language | undefined;
-  requiredRole?: UserRole | undefined; // If opening specifically for Parent mode verification
+  requiredRole?: UserRole | undefined; // Used for Parent Report mode verification
   initialMode?: 'select' | 'login' | 'create' | undefined;
 }
+
+const AVATAR_OPTIONS = ['👦', '👧', '🦁', '🐰', '🦊', '🐼', '🚀', '🌟', '🎨', '🔬'];
 
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
@@ -19,594 +32,661 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onSuccess,
   language = 'en',
   requiredRole,
-  initialMode = 'select',
+  initialMode,
 }) => {
-  const isKhmer = false;
   const accounts = AuthService.getAccounts();
   const current = AuthService.getCurrentUser();
 
-  const [mode, setMode] = useState<'select' | 'login' | 'create'>(
-    requiredRole === 'parent' ? 'login' : initialMode
-  );
-  const [selectedAccount, setSelectedAccount] = useState<UserAccount | null>(() => {
-    if (requiredRole === 'parent') {
-      return accounts.find((a) => a.role === 'parent') || null;
-    }
-    return null;
+  // Navigation tab: 'register' vs 'login'
+  const [activeTab, setActiveTab] = useState<'register' | 'login'>(() => {
+    if (requiredRole === 'parent') return 'login';
+    if (initialMode === 'create') return 'register';
+    if (accounts.length === 0) return 'register';
+    return 'login';
   });
 
-  const [pinInput, setPinInput] = useState(() => {
-    if (requiredRole === 'parent') {
-      const parentAcc = accounts.find((a) => a.role === 'parent');
-      return parentAcc?.pin || '9999';
-    }
-    return '';
-  });
-  const [usernameInput, setUsernameInput] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newUsername, setNewUsername] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>(requiredRole || 'student');
-  const [newGrade, setNewGrade] = useState<number>(4);
-  const [newPin, setNewPin] = useState('');
+  // Selected profile for PIN pad mode (when tapping a saved profile)
+  const [selectedAccount, setSelectedAccount] = useState<UserAccount | null>(null);
+
+  // Toggle for typing a username manually on the login tab
+  const [isTypingLogin, setIsTypingLogin] = useState(false);
+
+  // PIN entry states
+  const [pinInput, setPinInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  // Manual Login fields
+  const [loginUsername, setLoginUsername] = useState('');
+  const [manualPin, setManualPin] = useState('');
 
-  const handleAccountClick = async (acc: UserAccount, quickLogin = false) => {
+  // Register fields
+  const [regName, setRegName] = useState('');
+  const [regAvatar, setRegAvatar] = useState('👦');
+  const [regGrade, setRegGrade] = useState<number>(4);
+  const [regPin, setRegPin] = useState('');
+
+  // Reset state on open/close
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setPinInput('');
+      setManualPin('');
+      const currentAccounts = AuthService.getAccounts();
+
+      if (requiredRole === 'parent') {
+        const parentAcc = currentAccounts.find((a) => a.role === 'parent');
+        setSelectedAccount(parentAcc || null);
+        setActiveTab('login');
+      } else {
+        setSelectedAccount(null);
+        setIsTypingLogin(false);
+        if (initialMode === 'create' || currentAccounts.length === 0) {
+          setActiveTab('register');
+        } else {
+          setActiveTab('login');
+        }
+      }
+    }
+  }, [isOpen, requiredRole, initialMode]);
+
+  // Execute PIN Login for selected account
+  const executePinLogin = useCallback(
+    async (pinToTest: string) => {
+      if (!selectedAccount) return;
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await AuthService.loginRemote(selectedAccount.username, pinToTest);
+        if (res.success && res.account) {
+          onSuccess(res.account);
+          onClose();
+        } else {
+          setError(res.errorEng || 'Incorrect PIN. Please try again.');
+          setPinInput('');
+        }
+      } catch {
+        setError('Connection error. Please try again.');
+        setPinInput('');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [selectedAccount, onSuccess, onClose]
+  );
+
+  // Handle keypad digit tap
+  const handleDigitPress = (digit: string) => {
+    if (pinInput.length >= 4) return;
+    const nextPin = pinInput + digit;
+    setPinInput(nextPin);
     setError(null);
-    setSelectedAccount(acc);
-    setPinInput(acc.pin || '');
 
-    if (quickLogin || !acc.pin) {
-      const res = await AuthService.loginRemote('GRADE4A', acc.username, acc.pin || '1234');
+    // Auto-submit on 4th digit
+    if (nextPin.length === 4) {
+      executePinLogin(nextPin);
+    }
+  };
+
+  const handleBackspace = () => {
+    setPinInput((prev) => prev.slice(0, -1));
+    setError(null);
+  };
+
+  const handleClearPin = () => {
+    setPinInput('');
+    setError(null);
+  };
+
+  // Keyboard listener for PIN mode
+  useEffect(() => {
+    if (!isOpen || !selectedAccount) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handleDigitPress(e.key);
+      } else if (e.key === 'Backspace') {
+        handleBackspace();
+      } else if (e.key === 'Escape') {
+        setSelectedAccount(null);
+        setPinInput('');
+        setError(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedAccount, pinInput]);
+
+  // Handle Manual Login Submit
+  const handleManualLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginUsername.trim()) {
+      setError('Please enter your name or username.');
+      return;
+    }
+    if (!manualPin.trim() || manualPin.trim().length < 4) {
+      setError('Please enter your 4-digit PIN.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await AuthService.loginRemote(loginUsername.trim(), manualPin.trim());
       if (res.success && res.account) {
         onSuccess(res.account);
         onClose();
+      } else {
+        setError(res.errorEng || 'Account not found or incorrect PIN. Please try again.');
       }
-    } else {
-      setMode('login');
+    } catch {
+      setError('Network error. Logging into offline profile.');
+      const localRes = AuthService.login(loginUsername.trim(), manualPin.trim());
+      if (localRes.success && localRes.account) {
+        onSuccess(localRes.account);
+        onClose();
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handlePinSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!selectedAccount) return;
-
-    setError(null);
-    const res = await AuthService.loginRemote('GRADE4A', selectedAccount.username, pinInput);
-    if (res.success && res.account) {
-      onSuccess(res.account);
-      onClose();
-    } else {
-      setError(isKhmer ? res.errorKhmer || 'លេខ PIN មិនត្រឹមត្រូវទេ' : res.errorEng || 'Incorrect PIN');
-    }
-  };
-
-  const handleCustomLogin = async (e: React.FormEvent) => {
+  // Handle Register Submit
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!usernameInput.trim()) {
-      setError(isKhmer ? 'សូមបញ្ចូលឈ្មោះអ្នកប្រើ' : 'Please enter a username');
+    if (!regName.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    if (!regPin.trim() || regPin.trim().length < 4) {
+      setError('Please choose a 4-digit PIN to protect your profile.');
       return;
     }
 
-    const res = await AuthService.loginRemote('GRADE4A', usernameInput, pinInput || '1234');
-    if (res.success && res.account) {
-      onSuccess(res.account);
-      onClose();
-    } else {
-      setError(isKhmer ? res.errorKhmer || 'ការចូលបរាជ័យ' : res.errorEng || 'Login failed');
-    }
-  };
-
-  const handleCreateAccount = (e: React.FormEvent) => {
-    e.preventDefault();
+    setIsLoading(true);
     setError(null);
 
-    if (!newUsername.trim() || !newName.trim()) {
-      setError(isKhmer ? 'សូមបំពេញព័ត៌មានទាំងអស់' : 'Please fill all required fields');
-      return;
-    }
-
-    const res = AuthService.createAccount(
-      newUsername,
-      newRole,
-      {
-        name: newName.trim(),
-        grade: (newRole === 'student' ? newGrade : 4) as any,
-        subject: 'math',
+    try {
+      const res = await AuthService.registerRemote(
+        regName.trim(),
+        regPin.trim(),
+        regGrade,
+        requiredRole === 'parent' ? 'parent' : 'student',
         language,
-        role: newRole,
-      },
-      newPin || undefined
-    );
+        regAvatar
+      );
 
-    if (res.success && res.account) {
-      onSuccess(res.account);
-      onClose();
-    } else {
-      setError(isKhmer ? res.errorKhmer || 'មិនអាចបង្កើតគណនីបានទេ' : res.errorEng || 'Failed to create account');
+      if (res.success && res.account) {
+        onSuccess(res.account);
+        onClose();
+      } else {
+        setError(res.errorEng || 'Registration failed. Please try a different name.');
+      }
+    } catch {
+      setError('Could not connect to database. Profile created locally.');
+      const localRes = AuthService.createAccount(
+        regName.trim().toLowerCase().replace(/\s+/g, '_'),
+        'student',
+        {
+          name: regName.trim(),
+          grade: regGrade as any,
+          subject: 'math',
+          language,
+          role: 'student',
+          avatarUrl: regAvatar,
+        },
+        regPin.trim()
+      );
+      if (localRes.success && localRes.account) {
+        onSuccess(localRes.account);
+        onClose();
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-md bg-white rounded-3xl border-3 border-[#1B4332] shadow-[6px_6px_0px_#1B4332] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-emerald-950/15 border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header Banner */}
-        <div className="bg-[#1B4332] text-white px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#40916C] border-2 border-white/30 flex items-center justify-center">
-              {requiredRole === 'parent' ? (
-                <Shield className="w-5 h-5 text-white" />
-              ) : (
-                <User className="w-5 h-5 text-white" />
-              )}
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 text-white px-6 py-5 relative select-none">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner">
+                {requiredRole === 'parent' ? '🛡️' : '🎓'}
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-black tracking-tight leading-snug">
+                  {requiredRole === 'parent'
+                    ? 'Parent Verification'
+                    : selectedAccount
+                    ? 'Learner Sign-In'
+                    : activeTab === 'register'
+                    ? 'Create Learner Profile'
+                    : 'Welcome Back!'}
+                </h2>
+                <p className="text-xs text-white/85 font-medium">
+                  {requiredRole === 'parent'
+                    ? 'Enter parent PIN code to access reports'
+                    : selectedAccount
+                    ? `Logging in as ${selectedAccount.profile.name}`
+                    : activeTab === 'register'
+                    ? 'Join ReanMore to explore Math & Science'
+                    : 'Choose your profile or enter your PIN'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black tracking-wide leading-tight">
-                {requiredRole === 'parent'
-                  ? isKhmer
-                    ? 'ការផ្ទៀងផ្ទាត់អាណាព្យាបាល'
-                    : 'Parent Verification'
-                  : mode === 'create'
-                  ? isKhmer
-                    ? 'បង្កើតគណនីថ្មី'
-                    : 'Create New Account'
-                  : mode === 'login'
-                  ? isKhmer
-                    ? 'ចូលគណនី'
-                    : 'Log In'
-                  : isKhmer
-                  ? 'ជ្រើសរើស ឬចូលគណនី'
-                  : 'Select or Log In'}
-              </h2>
-              <p className="text-xs text-white/80 font-medium">
-                {requiredRole === 'parent'
-                  ? isKhmer
-                    ? 'សូមបញ្ចូលកូដ PIN អាណាព្យាបាល (PIN: 9999)'
-                    : 'Enter Parent PIN code (PIN: 9999)'
-                  : isKhmer
-                  ? 'ReanMore AI Homework Tutor'
-                  : 'ReanMore AI Homework Tutor'}
-              </p>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-            title={isKhmer ? 'បិទ' : 'Close'}
-          >
-            <X className="w-5 h-5" />
-          </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-all cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Error message */}
+        {/* Global Error Banner */}
         {error && (
-          <div className="mx-5 mt-4 p-3 bg-red-50 border-2 border-red-300 rounded-xl flex items-center gap-2 text-red-700 text-xs sm:text-sm font-bold animate-shake">
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2.5 text-red-700 text-xs sm:text-sm font-semibold animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="p-5">
-          {/* MODE 1: SELECT EXISTING ACCOUNT */}
-          {mode === 'select' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs sm:text-sm font-black text-gray-800">
-                  {isKhmer ? 'ជ្រើសរើសគណនីរបស់អ្នក៖' : 'Choose your account:'}
-                </p>
-                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                  {isKhmer ? 'គណនីគំរូសាកល្បង' : 'Demo Accounts'}
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto">
+          {/* ========================================================================= */}
+          {/* SCREEN A: PIN ENTRY KEYPAD SCREEN (When a profile is selected)           */}
+          {/* ========================================================================= */}
+          {selectedAccount && (
+            <div className="flex flex-col items-center space-y-5 animate-fadeIn">
+              {/* Profile Card Header */}
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-sm mb-2">
+                  {selectedAccount.profile.avatarUrl || '👦'}
+                </div>
+                <h3 className="font-black text-slate-800 text-lg">
+                  {getDisplayName(selectedAccount.profile.name, false)}
+                </h3>
+                <span className="text-xs text-slate-500 font-medium">
+                  Grade {selectedAccount.profile.grade} Learner
                 </span>
               </div>
 
-              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                {accounts.map((acc) => {
-                  const isCurrent = current?.id === acc.id;
-                  const isParent = acc.role === 'parent';
-
+              {/* 4 Visual PIN Indicator Dots */}
+              <div className="flex items-center justify-center gap-4 py-2">
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = pinInput.length > index;
                   return (
                     <div
-                      key={acc.id}
-                      className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${
-                        isCurrent
-                          ? 'bg-[#E8F5E9] border-[#2D6A4F] shadow-[3px_3px_0px_#2D6A4F]'
-                          : 'bg-white border-[#1B4332]/30 hover:border-[#1B4332] shadow-[2px_2px_0px_rgba(0,0,0,0.08)]'
+                      key={index}
+                      className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                        isFilled
+                          ? 'bg-emerald-500 border-2 border-emerald-500 scale-125 shadow-md shadow-emerald-500/30'
+                          : 'bg-slate-100 border-2 border-slate-300'
                       }`}
-                    >
-                      {/* Account Info Clickable */}
-                      <button
-                        type="button"
-                        onClick={() => handleAccountClick(acc, false)}
-                        className="flex items-center gap-3 flex-1 text-left cursor-pointer min-w-0"
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black text-base shrink-0 ${
-                            isParent
-                              ? 'bg-amber-100 border-amber-500 text-amber-800'
-                              : 'bg-emerald-100 border-emerald-500 text-emerald-800'
-                          }`}
-                        >
-                          {isParent ? '👩‍👧' : '👦'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-sm text-gray-900 truncate">
-                              {getDisplayName(acc.profile.name, false)}
-                            </span>
-                            {isCurrent && (
-                              <span className="px-1.5 py-0.5 rounded-full bg-[#2D6A4F] text-white text-[10px] font-bold shrink-0">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-500 font-medium">
-                              {isParent
-                                ? isKhmer
-                                  ? 'អាណាព្យាបាល'
-                                  : 'Parent'
-                                : isKhmer
-                                ? `ថ្នាក់ទី ${acc.profile.grade}`
-                                : `Grade ${acc.profile.grade}`}
-                            </span>
-                            {acc.pin && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 font-mono text-[11px] font-black">
-                                <KeyRound className="w-3 h-3 text-amber-700" />
-                                PIN: {acc.pin}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Quick Login Button */}
-                      <div className="shrink-0 pl-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAccountClick(acc, true)}
-                          title={isKhmer ? 'ចូលភ្លាមៗដោយមិនបាច់វាយ PIN' : 'Instant Login without typing PIN'}
-                          className="py-1.5 px-3 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-xs border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] transition-transform active:scale-95 cursor-pointer flex items-center gap-1"
-                        >
-                          <LogIn className="w-3.5 h-3.5" />
-                          <span>{isKhmer ? 'ចូលភ្លាមៗ' : 'Login'}</span>
-                        </button>
-                      </div>
-                    </div>
+                    />
                   );
                 })}
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-2 flex flex-col gap-2">
+              {/* Tactile On-Screen Number Pad */}
+              <div className="w-full max-w-[280px] grid grid-cols-3 gap-2.5 pt-1">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                  <button
+                    key={digit}
+                    type="button"
+                    onClick={() => handleDigitPress(digit)}
+                    disabled={isLoading}
+                    className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-emerald-50 active:bg-emerald-100 border border-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 select-none"
+                  >
+                    {digit}
+                  </button>
+                ))}
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setError(null);
-                    setMode('create');
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] transition-all cursor-pointer"
+                  onClick={handleClearPin}
+                  disabled={isLoading || pinInput.length === 0}
+                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-rose-50 border border-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-40 select-none"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{isKhmer ? 'បង្កើតគណនីថ្មី' : 'Create New Account'}</span>
+                  Clear
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setError(null);
-                    setSelectedAccount(null);
-                    setMode('login');
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 px-4 text-xs font-bold text-gray-600 hover:text-gray-900 hover:underline cursor-pointer"
+                  onClick={() => handleDigitPress('0')}
+                  disabled={isLoading}
+                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-emerald-50 active:bg-emerald-100 border border-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 select-none"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>{isKhmer ? 'ចូលដោយវាយឈ្មោះ និងលេខកូដ PIN' : 'Log in by typing username & PIN'}</span>
+                  0
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBackspace}
+                  disabled={isLoading || pinInput.length === 0}
+                  className="h-13 sm:h-14 rounded-2xl bg-slate-50 hover:bg-amber-50 border border-slate-200 text-slate-600 font-bold flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-40 select-none"
+                  title="Backspace"
+                >
+                  <Delete className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="w-full flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAccount(null);
+                    setPinInput('');
+                    setError(null);
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Switch Profile</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* MODE 2: ENTER PIN OR LOGIN CREDENTIALS */}
-          {mode === 'login' && (
-            <div className="space-y-4">
-              {selectedAccount ? (
-                <div>
-                  <div className="flex items-center gap-3 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-2xl mb-3">
-                    <div className="text-2xl">{selectedAccount.role === 'parent' ? '👩‍👧' : '👦'}</div>
-                    <div className="flex-1">
-                      <div className="font-black text-sm text-gray-900">{selectedAccount.profile.name}</div>
-                      <div className="text-xs text-gray-500 font-medium">
-                        {selectedAccount.role === 'parent'
-                          ? isKhmer
-                            ? 'គណនីអាណាព្យាបាល'
-                            : 'Parent Account'
-                          : isKhmer
-                          ? `សិស្ស ថ្នាក់ទី ${selectedAccount.profile.grade}`
-                          : `Student Grade ${selectedAccount.profile.grade}`}
-                      </div>
-                    </div>
-                  </div>
+          {/* ========================================================================= */}
+          {/* SCREEN B: MAIN TABS (Register vs Log In)                                   */}
+          {/* ========================================================================= */}
+          {!selectedAccount && (
+            <div className="space-y-5 animate-fadeIn">
+              {/* Segmented Tab Control: Register vs Log In */}
+              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('register');
+                    setError(null);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                    activeTab === 'register'
+                      ? 'bg-white text-emerald-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Register</span>
+                </button>
 
-                  {/* Prominent Hardcoded PIN Display & Auto-fill */}
-                  {selectedAccount.pin && (
-                    <div className="flex items-center justify-between p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl mb-3">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-amber-700 shrink-0" />
-                        <div>
-                          <div className="text-xs font-black text-amber-900">
-                            {isKhmer ? 'លេខ PIN គំរូសាកល្បង៖' : 'Demo PIN Code:'}
-                          </div>
-                          <div className="text-[10px] text-amber-700">
-                            {isKhmer ? 'លេខកូដសម្ងាត់ដែលបានកំណត់' : 'Preset mock PIN'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="px-2.5 py-1 bg-white border-2 border-amber-400 rounded-xl font-mono text-sm font-black text-amber-900 shadow-sm">
-                          {selectedAccount.pin}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setPinInput(selectedAccount.pin || '')}
-                          className="px-2.5 py-1 text-xs font-black text-white bg-[#2D6A4F] hover:bg-[#1B4332] rounded-xl border border-[#1B4332] cursor-pointer shadow-[1px_1px_0px_#1B4332]"
-                        >
-                          {isKhmer ? 'បំពេញ PIN' : 'Auto-Fill'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setError(null);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                    activeTab === 'login'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Log In</span>
+                </button>
+              </div>
 
-                  <form onSubmit={handlePinSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1.5">
-                        {isKhmer ? 'លេខកូដសម្ងាត់ (PIN ៤ ខ្ទង់)' : '4-Digit PIN Code'}
-                      </label>
-                      <div className="relative">
-                        <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          type="password"
-                          maxLength={6}
-                          autoFocus
-                          value={pinInput}
-                          onChange={(e) => setPinInput(e.target.value)}
-                          placeholder="••••"
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-center text-lg font-black tracking-widest text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#40916C]"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setError(null);
-                          setMode('select');
-                        }}
-                        className="flex-1 py-2.5 px-4 rounded-xl border-2 border-gray-300 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm cursor-pointer"
-                      >
-                        {isKhmer ? 'ត្រឡប់ក្រោយ' : 'Back'}
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-[2] py-2.5 px-4 rounded-xl bg-[#40916C] hover:bg-[#2D6A4F] text-white font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>{isKhmer ? 'ចូលគណនី' : 'Confirm Log In'}</span>
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                <form onSubmit={handleCustomLogin} className="space-y-3.5">
-                  {/* Demo account click chips */}
-                  <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2">
-                    <div className="text-xs font-black text-emerald-900">
-                      {isKhmer ? 'ចុចលើគណនីគំរូដើម្បីបំពេញស្វ័យប្រវត្តិ៖' : 'Click a demo account to auto-fill:'}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUsernameInput('sochea');
-                          setPinInput('1234');
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-emerald-100 rounded-xl border-2 border-emerald-500 font-black text-xs text-emerald-900 shadow-[1px_1px_0px_#2D6A4F] cursor-pointer"
-                      >
-                        <span>👦 sochea</span>
-                        <span className="font-mono text-[10px] bg-emerald-100 px-1 py-0.5 rounded text-emerald-800">PIN: 1234</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUsernameInput('parent');
-                          setPinInput('9999');
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-amber-100 rounded-xl border-2 border-amber-500 font-black text-xs text-amber-900 shadow-[1px_1px_0px_#78350F] cursor-pointer"
-                      >
-                        <span>👩‍👧 parent</span>
-                        <span className="font-mono text-[10px] bg-amber-100 px-1 py-0.5 rounded text-amber-800">PIN: 9999</span>
-                      </button>
-                    </div>
-                  </div>
-
+              {/* ───────────────────────────────────────────────────────────── */}
+              {/* TAB 1: REGISTER NEW LEARNER                                  */}
+              {/* ───────────────────────────────────────────────────────────── */}
+              {activeTab === 'register' && (
+                <form onSubmit={handleRegister} className="space-y-4">
+                  {/* Name Input */}
                   <div>
-                    <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                      {isKhmer ? 'ឈ្មោះអ្នកប្រើ (Username)' : 'Username'}
+                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                      Learner Name
                     </label>
                     <input
                       type="text"
-                      autoFocus
-                      value={usernameInput}
-                      onChange={(e) => setUsernameInput(e.target.value)}
-                      placeholder="sochea / parent"
-                      className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
+                      required
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="e.g. Dara, Sophea, Pich"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
                   </div>
 
+                  {/* Character Avatar Picker */}
                   <div>
-                    <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                      {isKhmer ? 'លេខកូដសម្ងាត់ (PIN ៤ ខ្ទង់)' : 'PIN Code (4 digits)'}
+                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                      Choose Your Mascot
                     </label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {AVATAR_OPTIONS.map((emoji) => {
+                        const isSelected = regAvatar === emoji;
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setRegAvatar(emoji)}
+                            className={`h-12 rounded-2xl flex items-center justify-center text-2xl transition-all cursor-pointer relative ${
+                              isSelected
+                                ? 'bg-emerald-100/70 border-2 border-emerald-500 scale-105 shadow-sm'
+                                : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:scale-102'
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            {isSelected && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Grade Level Selector */}
+                  <div>
+                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                      Select Grade Level
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3, 4, 5, 6].map((grade) => {
+                        const isSelected = regGrade === grade;
+                        return (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => setRegGrade(grade)}
+                            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20'
+                                : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            Grade {grade}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 4-digit PIN */}
+                  <div>
+                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
+                      Create 4-Digit PIN
+                    </label>
+                    <p className="text-[11px] text-slate-400 mb-1.5 font-medium">
+                      Keep your progress safe. You'll use this to sign in later.
+                    </p>
                     <input
                       type="password"
-                      value={pinInput}
-                      onChange={(e) => setPinInput(e.target.value)}
-                      placeholder="1234 / 9999"
-                      className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
+                      maxLength={6}
+                      required
+                      value={regPin}
+                      onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 1234"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg font-black tracking-widest text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
                   </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setMode('select');
-                      }}
-                      className="flex-1 py-2.5 px-4 rounded-xl border-2 border-gray-300 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm cursor-pointer"
-                    >
-                      {isKhmer ? 'ត្រឡប់ក្រោយ' : 'Back'}
-                    </button>
+                  {/* Register Submit Button */}
+                  <div className="pt-2">
                     <button
                       type="submit"
-                      className="flex-[2] py-2.5 px-4 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] cursor-pointer flex items-center justify-center gap-1.5"
+                      disabled={isLoading}
+                      className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      <LogIn className="w-4 h-4" />
-                      <span>{isKhmer ? 'ចូលគណនី' : 'Log In'}</span>
+                      <UserPlus className="w-4 h-4" />
+                      <span>{isLoading ? 'Creating Account...' : 'Start Learning 🚀'}</span>
                     </button>
                   </div>
                 </form>
               )}
-            </div>
-          )}
 
-          {/* MODE 3: CREATE NEW ACCOUNT */}
-          {mode === 'create' && (
-            <form onSubmit={handleCreateAccount} className="space-y-3.5">
-              {/* Role Selector */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                  {isKhmer ? 'តួនាទីគណនី' : 'Account Role'}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewRole('student')}
-                    className={`py-2 px-3 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                      newRole === 'student'
-                        ? 'bg-emerald-100 border-[#2D6A4F] text-[#1B4332] shadow-[2px_2px_0px_#2D6A4F]'
-                        : 'bg-white border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <span>👦</span>
-                    <span>{isKhmer ? 'សិស្ស' : 'Student'}</span>
-                  </button>
+              {/* ───────────────────────────────────────────────────────────── */}
+              {/* TAB 2: LOG IN                                                 */}
+              {/* ───────────────────────────────────────────────────────────── */}
+              {activeTab === 'login' && (
+                <div className="space-y-4">
+                  {/* If user has saved profiles on this device AND is not typing manually */}
+                  {accounts.length > 0 && !isTypingLogin ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-slate-600 uppercase tracking-wider">
+                          Select Your Profile
+                        </p>
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Tap to enter PIN
+                        </span>
+                      </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setNewRole('parent')}
-                    className={`py-2 px-3 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                      newRole === 'parent'
-                        ? 'bg-amber-100 border-amber-600 text-amber-900 shadow-[2px_2px_0px_#B45309]'
-                        : 'bg-white border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <span>👩‍👧</span>
-                    <span>{isKhmer ? 'អាណាព្យាបាល' : 'Parent'}</span>
-                  </button>
-                </div>
-              </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {accounts.map((acc) => {
+                          const isCurrent = current?.id === acc.id;
+                          return (
+                            <div
+                              key={acc.id}
+                              onClick={() => {
+                                setSelectedAccount(acc);
+                                setPinInput('');
+                                setError(null);
+                              }}
+                              className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer group select-none ${
+                                isCurrent
+                                  ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-500/20'
+                                  : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50/70 shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border border-emerald-200 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                                  {acc.profile.avatarUrl || '👦'}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-slate-900 text-sm truncate">
+                                      {getDisplayName(acc.profile.name, false)}
+                                    </span>
+                                    {isCurrent && (
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shrink-0">
+                                        Active
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-slate-500 font-medium">
+                                    Grade {acc.profile.grade} Learner
+                                  </span>
+                                </div>
+                              </div>
 
-              {/* Display Name */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                  {isKhmer ? 'ឈ្មោះបង្ហាញ' : 'Display Name'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder={newRole === 'student' ? 'វុឌ្ឍី (Vuthy)' : 'អ្នកម្តាយ (Mom)'}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
-                />
-              </div>
+                              <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0">
+                                <span className="text-xs font-bold hidden sm:inline">Enter PIN</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
 
-              {/* Username */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                  {isKhmer ? 'ឈ្មោះអ្នកប្រើ (Login Username)' : 'Username'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="vuthy123"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
-                />
-              </div>
+                      {/* Manual Login Switcher */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsTypingLogin(true);
+                          setError(null);
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs border border-slate-200 transition-colors cursor-pointer text-center"
+                      >
+                        Log in by typing name & PIN
+                      </button>
+                    </div>
+                  ) : (
+                    /* Manual Name + PIN Login Form */
+                    <form onSubmit={handleManualLogin} className="space-y-4">
+                      {accounts.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsTypingLogin(false);
+                            setError(null);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer mb-2"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          <span>Back to saved profiles</span>
+                        </button>
+                      )}
 
-              {/* Grade (if student) */}
-              {newRole === 'student' && (
-                <div>
-                  <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                    {isKhmer ? 'កម្រិតថ្នាក់' : 'Grade Level'}
-                  </label>
-                  <select
-                    value={newGrade}
-                    onChange={(e) => setNewGrade(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
-                  >
-                    <option value={1}>{isKhmer ? 'ថ្នាក់ទី ១' : 'Grade 1'}</option>
-                    <option value={2}>{isKhmer ? 'ថ្នាក់ទី ២' : 'Grade 2'}</option>
-                    <option value={3}>{isKhmer ? 'ថ្នាក់ទី ៣' : 'Grade 3'}</option>
-                    <option value={4}>{isKhmer ? 'ថ្នាក់ទី ៤' : 'Grade 4'}</option>
-                    <option value={5}>{isKhmer ? 'ថ្នាក់ទី ៥' : 'Grade 5'}</option>
-                    <option value={6}>{isKhmer ? 'ថ្នាក់ទី ៦' : 'Grade 6'}</option>
-                  </select>
+                      <div>
+                        <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                          Learner Name or Username
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={loginUsername}
+                          onChange={(e) => setLoginUsername(e.target.value)}
+                          placeholder="e.g. Dara"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                          4-Digit PIN
+                        </label>
+                        <input
+                          type="password"
+                          maxLength={6}
+                          required
+                          value={manualPin}
+                          onChange={(e) => setManualPin(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg font-black tracking-widest text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                        />
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          <LogIn className="w-4 h-4" />
+                          <span>{isLoading ? 'Signing In...' : 'Log In'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               )}
-
-              {/* Optional PIN */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1">
-                  {isKhmer ? 'លេខកូដសម្ងាត់ PIN (៤ ខ្ទង់ - ស្រេចចិត្ត)' : 'PIN Code (4 digits - optional)'}
-                </label>
-                <input
-                  type="password"
-                  maxLength={6}
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="1234"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-[#1B4332] rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setMode('select');
-                  }}
-                  className="flex-1 py-2.5 px-4 rounded-xl border-2 border-gray-300 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm cursor-pointer"
-                >
-                  {isKhmer ? 'ត្រឡប់ក្រោយ' : 'Back'}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-[2] py-2.5 px-4 rounded-xl bg-[#40916C] hover:bg-[#2D6A4F] text-white font-black text-xs sm:text-sm border-2 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{isKhmer ? 'បង្កើតគណនី' : 'Save & Log In'}</span>
-                </button>
-              </div>
-            </form>
+            </div>
           )}
         </div>
       </div>

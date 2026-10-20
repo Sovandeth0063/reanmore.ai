@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.core.logging import logger
 from app.infrastructure.database import (
+    get_student_by_name,
     get_student_by_class_and_name,
     get_student_by_id,
     create_student_profile,
@@ -30,18 +31,27 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 # ── Pydantic Request & Response Schemas ──
 
 class LoginRequest(BaseModel):
-    class_code: str = Field(..., description="Class code (e.g. 'GRADE4A', 'GRADE2A')")
-    student_name: str = Field(..., description="Student username or name (e.g. 'sochea', 'teacher')")
+    student_name: str = Field(..., description="Student username or name (e.g. 'dara')")
     pin: str = Field(..., min_length=4, max_length=6, description="4-digit PIN (e.g. '1234')")
+    class_code: Optional[str] = Field(default="MAIN", description="Optional class code (defaults to 'MAIN')")
+
+
+class RegisterRequest(BaseModel):
+    student_name: str = Field(..., min_length=2, max_length=50, description="Student name / username")
+    pin: str = Field(..., min_length=4, max_length=6, description="4-digit PIN")
+    grade_level: int = Field(default=4, ge=1, le=6, description="Elementary Grade Level (1-6)")
+    role: str = Field(default="student", description="Role ('student', 'parent')")
+    language: str = Field(default="en", description="Language preference ('en' or 'km')")
+    class_code: Optional[str] = Field(default="MAIN", description="Class code (defaults to 'MAIN')")
 
 
 class RegisterStudentRequest(BaseModel):
-    class_code: str = Field(..., description="Class code to enroll student into")
     student_name: str = Field(..., description="Student name / username")
     pin: str = Field(..., min_length=4, max_length=6, description="4-digit PIN")
-    role: str = Field(default="student", description="Role ('student', 'teacher', 'admin', 'parent')")
-    grade_level: int = Field(default=2, ge=1, le=6, description="Elementary Grade Level (1-6)")
-    language: str = Field(default="km", description="Language preference ('km' or 'en')")
+    class_code: Optional[str] = Field(default="MAIN", description="Class code to enroll student into")
+    role: str = Field(default="student", description="Role ('student', 'parent')")
+    grade_level: int = Field(default=4, ge=1, le=6, description="Elementary Grade Level (1-6)")
+    language: str = Field(default="en", description="Language preference ('km' or 'en')")
 
 
 class LoginResponse(BaseModel):
@@ -61,48 +71,6 @@ class UserMeResponse(BaseModel):
     grade_level: int
     class_code: str
     language: str
-
-
-# ── In-Memory Default Demo Accounts (for offline / test fallback) ──
-
-FALLBACK_DEMO_ACCOUNTS: Dict[str, Dict[str, Any]] = {
-    "GRADE4A:SOCHEA": {
-        "user_id": "account_student_sochea",
-        "class_code": "GRADE4A",
-        "student_name": "sochea",
-        "pin": "1234",
-        "role": "student",
-        "grade_level": 4,
-        "language": "en",
-    },
-    "GRADE4A:TEACHER": {
-        "user_id": "account_teacher_lokkru",
-        "class_code": "GRADE4A",
-        "student_name": "teacher",
-        "pin": "9999",
-        "role": "teacher",
-        "grade_level": 4,
-        "language": "km",
-    },
-    "GRADE2A:BOPHA": {
-        "user_id": "account_student_bopha",
-        "class_code": "GRADE2A",
-        "student_name": "bopha",
-        "pin": "1111",
-        "role": "student",
-        "grade_level": 2,
-        "language": "km",
-    },
-    "ADMIN:ADMIN": {
-        "user_id": "account_admin_master",
-        "class_code": "ADMIN",
-        "student_name": "admin",
-        "pin": "0000",
-        "role": "admin",
-        "grade_level": 4,
-        "language": "en",
-    },
-}
 
 
 # ── Dependency: get_current_user ──
@@ -166,60 +134,141 @@ def require_role(allowed_roles: List[str]):
 
 # ── Endpoints ──
 
+@auth_router.post("/register", response_model=LoginResponse)
+async def register(req: RegisterRequest):
+    """
+    Public self-registration endpoint for students and parents.
+    Enrolls student directly into the PostgreSQL database, hashes 4-digit PIN,
+    and issues a signed 30-day JWT.
+    """
+    clean_name = req.student_name.strip()
+    clean_username = clean_name.lower().replace(" ", "_")
+    clean_pin = req.pin.strip()
+    clean_class = (req.class_code or "MAIN").strip().upper()
+
+    # Check if student name already exists in database
+    existing = await get_student_by_name(clean_username)
+    if existing:
+        # If the PIN matches the existing user's PIN, log them in seamlessly
+        if verify_pin(clean_pin, existing.pin_hash):
+            user_id = existing.user_id
+            await update_student_last_login(user_id)
+            token = create_access_token(
+                {
+                    "sub": user_id,
+                    "user_id": user_id,
+                    "student_name": existing.student_name,
+                    "class_code": existing.class_code,
+                    "role": existing.role,
+                    "grade_level": existing.grade_level,
+                    "language": existing.language,
+                },
+                settings.AUTH_SECRET_KEY,
+                expires_in_seconds=86400 * settings.AUTH_TOKEN_EXPIRE_DAYS,
+            )
+            return LoginResponse(
+                token=token,
+                user_id=user_id,
+                student_name=existing.student_name,
+                role=existing.role,
+                grade_level=existing.grade_level,
+                class_code=existing.class_code,
+                language=existing.language,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ឈ្មោះនេះមានរួចហើយ សូមជ្រើសរើសឈ្មោះផ្សេង (This username is already taken. Please choose another name).",
+            )
+
+    user_id = f"student_{uuid.uuid4().hex[:10]}"
+    pin_hashed = hash_pin(clean_pin)
+
+    created = await create_student_profile(
+        user_id=user_id,
+        class_code=clean_class,
+        student_name=clean_username,
+        pin_hash=pin_hashed,
+        role=req.role,
+        grade_level=req.grade_level,
+        language=req.language,
+    )
+
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed in database. Please try again.",
+        )
+
+    token = create_access_token(
+        {
+            "sub": user_id,
+            "user_id": user_id,
+            "student_name": clean_username,
+            "class_code": clean_class,
+            "role": req.role,
+            "grade_level": req.grade_level,
+            "language": req.language,
+        },
+        settings.AUTH_SECRET_KEY,
+        expires_in_seconds=86400 * settings.AUTH_TOKEN_EXPIRE_DAYS,
+    )
+
+    logger.info(f"Auth: Successfully registered new user {user_id} ({clean_username}) grade={req.grade_level}")
+
+    return LoginResponse(
+        token=token,
+        user_id=user_id,
+        student_name=clean_username,
+        role=req.role,
+        grade_level=req.grade_level,
+        class_code=clean_class,
+        language=req.language,
+    )
+
+
 @auth_router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest):
     """
-    Authenticates a student, teacher, or admin via Class Code + 4-digit PIN.
+    Authenticates a student or parent via Username/Name + 4-digit PIN.
+    No class code or staff code required.
     Issues signed JWT access token valid for 30 days.
     """
-    clean_class = req.class_code.strip().upper()
-    clean_name = req.student_name.strip().lower()
+    clean_name = req.student_name.strip().lower().replace(" ", "_")
     clean_pin = req.pin.strip()
+    clean_class = (req.class_code or "MAIN").strip().upper()
 
-    # 1. Attempt lookup in Postgres database
-    student = await get_student_by_class_and_name(clean_class, clean_name)
+    # 1. Lookup in Postgres database by student username
+    student = await get_student_by_name(clean_name)
+    if not student and clean_class:
+        student = await get_student_by_class_and_name(clean_class, clean_name)
 
-    if student:
-        if not verify_pin(clean_pin, student.pin_hash):
-            logger.warning(f"Auth: Invalid PIN attempt for {clean_class}/{clean_name}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="PIN មិនត្រឹមត្រូវឡើយ (Incorrect PIN. Please try again).",
-            )
-        
-        user_id = student.user_id
-        role = student.role
-        grade_level = student.grade_level
-        language = student.language
-        await update_student_last_login(user_id)
-    else:
-        # 2. Check offline demo accounts fallback
-        lookup_key = f"{clean_class}:{clean_name.upper()}"
-        fallback = FALLBACK_DEMO_ACCOUNTS.get(lookup_key)
-        if fallback:
-            if fallback["pin"] != clean_pin:
-                logger.warning(f"Auth: Invalid PIN attempt for {clean_class}/{clean_name}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="PIN មិនត្រឹមត្រូវឡើយ (Incorrect PIN. Please try again).",
-                )
-            user_id = fallback["user_id"]
-            role = fallback["role"]
-            grade_level = fallback["grade_level"]
-            language = fallback["language"]
-        else:
-            logger.warning(f"Auth: Student not found for {clean_class}/{clean_name}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="រកមិនឃើញសិស្ស ឬថ្នាក់នេះឡើយ (Student or Class Code not found).",
-            )
+    if not student:
+        logger.warning(f"Auth: User not found for '{clean_name}'")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="រកមិនឃើញគណនីនេះឡើយ សូមចុះឈ្មោះជាមុនសិន (Account not found. Please register first).",
+        )
 
-    # 3. Create signed JWT access token
+    if not verify_pin(clean_pin, student.pin_hash):
+        logger.warning(f"Auth: Invalid PIN attempt for '{clean_name}'")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="PIN មិនត្រឹមត្រូវឡើយ (Incorrect PIN. Please try again).",
+        )
+
+    user_id = student.user_id
+    role = student.role
+    grade_level = student.grade_level
+    language = student.language
+    await update_student_last_login(user_id)
+
+    # 2. Create signed JWT access token
     payload = {
         "sub": user_id,
         "user_id": user_id,
-        "student_name": clean_name,
-        "class_code": clean_class,
+        "student_name": student.student_name,
+        "class_code": student.class_code,
         "role": role,
         "grade_level": grade_level,
         "language": language,
@@ -230,15 +279,15 @@ async def login(req: LoginRequest):
         expires_in_seconds=86400 * settings.AUTH_TOKEN_EXPIRE_DAYS,
     )
 
-    logger.info(f"Auth: Successful login for {user_id} ({clean_class}/{clean_name}) with role={role}")
+    logger.info(f"Auth: Successful login for {user_id} ({student.student_name}) role={role}")
 
     return LoginResponse(
         token=token,
         user_id=user_id,
-        student_name=clean_name,
+        student_name=student.student_name,
         role=role,
         grade_level=grade_level,
-        class_code=clean_class,
+        class_code=student.class_code,
         language=language,
     )
 
@@ -267,7 +316,7 @@ async def register_student(
     Registers a new student profile under a class code.
     Restricted to authenticated Teachers and Admins.
     """
-    clean_class = req.class_code.strip().upper()
+    clean_class = (req.class_code or "MAIN").strip().upper()
     clean_name = req.student_name.strip().lower()
     clean_pin = req.pin.strip()
 
