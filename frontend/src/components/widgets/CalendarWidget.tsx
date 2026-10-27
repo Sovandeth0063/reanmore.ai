@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CalendarWidget.tsx
  * Renders an August 2026 calendar for time/date exercises.
  * Interactive (highlight target date) without revealing final answer.
@@ -25,7 +25,7 @@ export function CalendarWidget({ startDate, allowCircle }: Props) {
 
   return (
     <div className="w-full bg-white/70 rounded-2xl border-2 border-amber-200 p-3 mb-3">
-      <div className="text-xs font-bold text-amber-700 mb-2 text-center">📅 {MONTH_NAME}</div>
+      <div className="text-xs font-bold text-amber-700 mb-2 text-center uppercase tracking-wide">{MONTH_NAME}</div>
       <div className="grid grid-cols-7 gap-0.5">
         {DAYS.map(d => (
           <div key={d} className="text-center text-[10px] font-black text-amber-700 py-0.5">{d}</div>
@@ -56,7 +56,7 @@ export function CalendarWidget({ startDate, allowCircle }: Props) {
       )}
       {startDate && (
         <p className="text-xs text-blue-600 mt-1 text-center">
-          🔵 Starting date: <strong>{startDate}</strong>
+          Starting date: <strong>{startDate}</strong>
         </p>
       )}
     </div>

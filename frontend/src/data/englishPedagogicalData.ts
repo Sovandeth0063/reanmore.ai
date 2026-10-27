@@ -42,7 +42,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Add two friendly numbers together first, then add the third number.",
       "Look for numbers that can easily make a 10, or start with the biggest numbers.",
-      "Example: 3 + 4 + 5 ➡️ (3 + 4 = 7), then 7 + 5 = 12! ⭐"
+      "Example: 3 + 4 + 5 → (3 + 4 = 7), then 7 + 5 = 12! "
     ],
     explainEng: {
       messageEng: "You can group numbers in any order! 4 + 6 makes 10 quickly, and 10 + 5 makes 15!",
@@ -54,7 +54,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
         socraticPromptEng: "What do you get when you combine 4 and 5 together?",
         hint1Eng: "Start from the bigger number 5, then count on 4 more.",
         hint2Eng: "Hold 5 in your mind and tap 4 fingers forward: 6, 7, 8...",
-        hint3Eng: "Think of 4 green apples 🍏🍏🍏🍏 + 5 red apples 🍎🍎🍎🍎🍎 = 9 apples!",
+        hint3Eng: "Think of 4 green apples  + 5 red apples  = 9 apples!",
         explainEng: "Adding from the larger number is fastest: 5 + 4 = 9.",
         analogyEng: "Picture 4 toy blocks and add 5 more blocks to build a stack of 9.",
         acceptableAnswers: ["9", "nine"]
@@ -88,7 +88,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Search for number pairs that add up to 10 first!",
       "Combine the remaining numbers, then add them to 10.",
-      "Example: 6 + 4 + 3 + 5 ➡️ (6+4=10) and (3+5=8) ➡️ 10+8 = 18! ⭐"
+      "Example: 6 + 4 + 3 + 5 → (6+4=10) and (3+5=8) → 10+8 = 18! "
     ],
     explainEng: {
       messageEng: "Making groups of 10 makes long addition fast and super fun!",
@@ -120,7 +120,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
         socraticPromptEng: "Start with 5 and count on 2 more!",
         hint1Eng: "Start with the bigger number 5 and add 2.",
         hint2Eng: "Count 2 forward from 5: 6...",
-        hint3Eng: "Example: 2 + 4 = 6, so 2 + 5 is 1 more: 7! ⭐",
+        hint3Eng: "Example: 2 + 4 = 6, so 2 + 5 is 1 more: 7! ",
         explainEng: "5 + 2 is simple: jump 2 steps past 5 to reach 7.",
         analogyEng: "A bunny sits on step 5 and hops forward 2 steps to step 7.",
         acceptableAnswers: ["7", "seven"]
@@ -143,7 +143,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Add 8 + 1 first, then add the remaining number.",
       "Adding 1 just means moving to the very next counting number!",
-      "Example: 7 + 1 + 3 ➡️ 8 + 3 = 11! ⭐"
+      "Example: 7 + 1 + 3 → 8 + 3 = 11! "
     ],
     explainEng: {
       messageEng: "You can also think: 8 needs 2 from 4 to make 10, leaving 2 + 1 = 3, so 10 + 3 = 13!",
@@ -178,7 +178,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Look for a pair of numbers that makes 10 first!",
       "9 needs only 1 more to make 10.",
-      "Example: 9 + 1 = 10, and 2 + 3 = 5, so 10 + 5 = 15! ⭐"
+      "Example: 9 + 1 = 10, and 2 + 3 = 5, so 10 + 5 = 15! "
     ],
     explainEng: {
       messageEng: "Pairing 9 and 1 makes 10 right away. Then 2 + 3 = 5, making the grand total 15!",
@@ -233,7 +233,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "You can make 10 with 6 + 4, or double 6 to get 12 first!",
       "Look for friends of 10: 6 + 4 = 10.",
-      "Example: (6 + 4 = 10) + 6 = 16! ⭐"
+      "Example: (6 + 4 = 10) + 6 = 16! "
     ],
     explainEng: {
       messageEng: "6 + 4 makes 10 right away, and adding the other 6 makes 16!",
@@ -282,7 +282,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think about counting by tens from 30 to 100.",
       "How many tens do you need to add to 3 tens to make 10 tens?",
-      "Example: 3 tens + 7 tens = 10 tens (100), so the answer is 70! ⭐"
+      "Example: 3 tens + 7 tens = 10 tens (100), so the answer is 70! "
     ],
     explainEng: {
       messageEng: "100 is 10 tens. Since you already have 3 tens (30), you need 7 more tens, which is 70!",
@@ -327,7 +327,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Count up by tens from 20 to 100.",
       "2 tens plus how many tens make 10 tens?",
-      "Example: 20 + 80 = 100! ⭐"
+      "Example: 20 + 80 = 100! "
     ],
     explainEng: {
       messageEng: "100 is 10 tens. If you already have 2 tens (20), you need 8 more tens (80)!",
@@ -372,7 +372,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Jump to the nearest ten first: 35 + 5 = 40.",
       "Then jump from 40 to 100: 40 + 60 = 100.",
-      "Add the two jumps together: 5 + 60 = 65! ⭐"
+      "Add the two jumps together: 5 + 60 = 65! "
     ],
     explainEng: {
       messageEng: "Using friendly jumps makes missing numbers easy: 5 jumps to 40, and 60 jumps to 100. 5 + 60 = 65!",
@@ -417,7 +417,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Jump from 48 to 50 first: that is 2.",
       "Then jump from 50 to 100: that is 50.",
-      "Combine your jumps: 2 + 50 = 52! ⭐"
+      "Combine your jumps: 2 + 50 = 52! "
     ],
     explainEng: {
       messageEng: "48 + 2 = 50, and 50 + 50 = 100. Adding 2 and 50 gives 52!",
@@ -462,7 +462,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Jump from 67 to 70: that is 3.",
       "Jump from 70 to 100: that is 30.",
-      "Combine the jumps: 3 + 30 = 33! ⭐"
+      "Combine the jumps: 3 + 30 = 33! "
     ],
     explainEng: {
       messageEng: "67 + 3 = 70, and 70 + 30 = 100. Put 3 and 30 together to get 33!",
@@ -507,7 +507,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Jump from 54 to 60: that is 6.",
       "Jump from 60 to 100: that is 40.",
-      "Combine the jumps: 6 + 40 = 46! ⭐"
+      "Combine the jumps: 6 + 40 = 46! "
     ],
     explainEng: {
       messageEng: "54 + 6 = 60, and 60 + 40 = 100. 6 + 40 = 46!",
@@ -556,7 +556,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Read digits from left to right: hundreds, tens, ones.",
       "Adding or subtracting 10 changes the tens place!",
-      "Example: For 146, hundreds is 1, tens is 4, ones is 6. 10 more is 156, 10 less is 136! ⭐"
+      "Example: For 146, hundreds is 1, tens is 4, ones is 6. 10 more is 156, 10 less is 136! "
     ],
     explainEng: {
       messageEng: "146 has 1 hundred, 4 tens, and 6 ones. Adding 1 ten makes 156, and taking away 1 ten makes 136.",
@@ -599,7 +599,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
         hint1Eng: "Only the tens digit changes: 4 tens becomes 5 tens.",
         hint2Eng: "Add 10 to 146: keep the hundreds and ones, increase the tens.",
         hint3Eng: "Hundreds stays 1, ones stays 6, tens becomes 5: 156!",
-        explainEng: "Adding 10 increases the tens place by 1: 146 ➡️ 156.",
+        explainEng: "Adding 10 increases the tens place by 1: 146 → 156.",
         analogyEng: "Add 1 stack of 10 cookies to your 4 stacks, making 5 stacks: 156 total!",
         acceptableAnswers: ["156", "tens", "the tens digit", "tens digit"]
       },
@@ -609,7 +609,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
         hint1Eng: "Only the tens digit changes: 4 tens minus 1 ten is 3 tens.",
         hint2Eng: "Subtract 10 from 146: keep hundreds and ones, reduce the tens.",
         hint3Eng: "Hundreds stays 1, ones stays 6, tens becomes 3: 136!",
-        explainEng: "Subtracting 10 decreases the tens place by 1: 146 ➡️ 136.",
+        explainEng: "Subtracting 10 decreases the tens place by 1: 146 → 136.",
         analogyEng: "Eat 1 stack of 10 cookies, leaving 3 stacks: 136 total!",
         acceptableAnswers: ["136", "tens", "the tens digit", "tens digit"]
       }
@@ -621,7 +621,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "In 308, 0 means there are zero tens.",
       "10 more than 308 is 318. 10 less than 308 is 298!",
-      "Example: 300 + 8 = 308. Adding 10 makes 318! ⭐"
+      "Example: 300 + 8 = 308. Adding 10 makes 318! "
     ],
     explainEng: {
       messageEng: "When adding 10 to 308, the 0 tens becomes 1 ten: 318. When subtracting 10 from 308, we borrow from 300 to get 298!",
@@ -686,7 +686,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "235 = 2 hundreds, 3 tens, and 5 ones.",
       "10 more is 245. 10 less is 225!",
-      "Example: 3 tens + 1 ten = 4 tens (245). 3 tens - 1 ten = 2 tens (225)! ⭐"
+      "Example: 3 tens + 1 ten = 4 tens (245). 3 tens - 1 ten = 2 tens (225)! "
     ],
     explainEng: {
       messageEng: "In 235, adding 10 changes 3 tens to 4 tens (245). Taking away 10 changes 3 tens to 2 tens (225).",
@@ -751,7 +751,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "472 = 4 hundreds, 7 tens, and 2 ones.",
       "10 more is 482. 10 less is 462!",
-      "Example: 7 tens + 1 ten = 8 tens (482). 7 tens - 1 ten = 6 tens (462)! ⭐"
+      "Example: 7 tens + 1 ten = 8 tens (482). 7 tens - 1 ten = 6 tens (462)! "
     ],
     explainEng: {
       messageEng: "In 472, the tens digit is 7. 10 more increases 7 tens to 8 tens (482), and 10 less decreases it to 6 tens (462).",
@@ -816,7 +816,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "9 is super close to 10!",
       "Add 10 first (35 + 10 = 45), then subtract 1 to adjust.",
-      "45 - 1 = 44! ⭐"
+      "45 - 1 = 44! "
     ],
     explainEng: {
       messageEng: "Adding 9 is the same as adding 10 and then subtracting 1. 35 + 10 = 45, and 45 - 1 = 44!",
@@ -872,7 +872,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "9 is close to 10!",
       "Subtract 10 first (74 - 10 = 64), then add 1 back because you took away too much.",
-      "64 + 1 = 65! ⭐"
+      "64 + 1 = 65! "
     ],
     explainEng: {
       messageEng: "Subtracting 9 is like subtracting 10, then giving 1 back. 74 - 10 = 64, and 64 + 1 = 65!",
@@ -928,7 +928,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Break 11 into 10 + 1.",
       "Add 10 first: 58 + 10 = 68.",
-      "Then add 1: 68 + 1 = 69! ⭐"
+      "Then add 1: 68 + 1 = 69! "
     ],
     explainEng: {
       messageEng: "11 is just 10 plus 1. Add 10 to 58 to get 68, then add 1 to get 69!",
@@ -973,7 +973,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Break 11 into 10 + 1.",
       "Subtract 10 first: 52 - 10 = 42.",
-      "Then subtract 1: 42 - 1 = 41! ⭐"
+      "Then subtract 1: 42 - 1 = 41! "
     ],
     explainEng: {
       messageEng: "Subtract 10 first to get 42, then subtract the last 1 to get 41!",
@@ -1018,7 +1018,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "30 is 3 groups of ten.",
       "Add the tens together: 2 tens + 3 tens = 5 tens (50).",
-      "Add the 7 ones: 50 + 7 = 57! ⭐"
+      "Add the 7 ones: 50 + 7 = 57! "
     ],
     explainEng: {
       messageEng: "Adding 30 only changes the tens place: 2 tens + 3 tens = 5 tens, and the 7 ones stay the same, giving 57!",
@@ -1063,7 +1063,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "20 is 2 groups of ten.",
       "Subtract 2 tens from 9 tens: 9 tens - 2 tens = 7 tens (70).",
-      "Keep the 1 one: 70 + 1 = 71! ⭐"
+      "Keep the 1 one: 70 + 1 = 71! "
     ],
     explainEng: {
       messageEng: "Subtracting 20 only changes the tens place: 9 tens minus 2 tens leaves 7 tens, so 91 becomes 71!",
@@ -1112,7 +1112,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Look at the name of the month at the top of the calendar.",
       "Find the very last date number printed in the month.",
-      "August ends on 31, so there are 31 days! ⭐"
+      "August ends on 31, so there are 31 days! "
     ],
     explainEng: {
       messageEng: "A calendar page lists every day from 1 to the end. The last number tells you the total days in the month!",
@@ -1157,7 +1157,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Find the number 14 on the calendar grid.",
       "Trace your finger straight up to the column heading.",
-      "14 August is in the Friday column! ⭐"
+      "14 August is in the Friday column! "
     ],
     explainEng: {
       messageEng: "To find the weekday for any date, find the number on the calendar and follow the column straight up to the day name!",
@@ -1205,7 +1205,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "One week has exactly 7 days.",
       "Add 7 days to August 8: 8 + 7 = 15.",
-      "One week after 8 August is 15 August! ⭐"
+      "One week after 8 August is 15 August! "
     ],
     explainEng: {
       messageEng: "Since a week has 7 days, you can add 7 to the date, or just move down one row in the same column on the calendar!",
@@ -1250,7 +1250,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Look near the bottom right of the calendar grid.",
       "31 is the very last day of August.",
-      "Find the number 31 and tap or circle it! ⭐"
+      "Find the number 31 and tap or circle it! "
     ],
     explainEng: {
       messageEng: "August ends on date 31. Look at the last numbered box on the calendar!",
@@ -1295,7 +1295,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Count the days of the week: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday.",
       "There are 7 days in every full week.",
-      "1 week = 7 days! ⭐"
+      "1 week = 7 days! "
     ],
     explainEng: {
       messageEng: "Every single week on the calendar has exactly 7 days: 5 school days and 2 weekend days!",
@@ -1330,7 +1330,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A fortnight is an old word for 'fourteen nights' (14 days).",
       "Since 1 week is 7 days, 14 days is 2 weeks!",
-      "1 fortnight = 2 weeks! ⭐"
+      "1 fortnight = 2 weeks! "
     ],
     explainEng: {
       messageEng: "A fortnight means two full weeks: 7 days + 7 days = 14 days = 2 weeks.",
@@ -1365,7 +1365,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Count the months: January, February, March, April, May, June, July, August, September, October, November, December.",
       "There are 12 months in one full year.",
-      "1 year = 12 months! ⭐"
+      "1 year = 12 months! "
     ],
     explainEng: {
       messageEng: "From January to December, there are 12 months in every single year!",
@@ -1400,7 +1400,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A normal, regular year is called a common year.",
       "It has 365 days.",
-      "A common year = 365 days! ⭐"
+      "A common year = 365 days! "
     ],
     explainEng: {
       messageEng: "In a normal year, Earth takes about 365 days to circle the Sun once!",
@@ -1436,7 +1436,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Every 4 years, we add 1 extra day to February.",
       "365 + 1 = 366 days.",
-      "A leap year = 366 days! ⭐"
+      "A leap year = 366 days! "
     ],
     explainEng: {
       messageEng: "Because the Earth takes 365 and 1/4 days to travel around the Sun, every 4 years we add 1 full leap day: 366 days!",
@@ -1472,7 +1472,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "February is the shortest month of the year.",
       "In a normal year, February has 28 days.",
-      "In a leap year, it has 29 days! ⭐"
+      "In a leap year, it has 29 days! "
     ],
     explainEng: {
       messageEng: "February usually has 28 days, except during a leap year when it gets 29 days!",
@@ -1522,7 +1522,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A flamingo is a tall pink wading bird.",
       "Birds are vertebrates with feathers and wings.",
-      "Flamingos do NOT have camel humps or lobster pincers! ⭐"
+      "Flamingos do NOT have camel humps or lobster pincers! "
     ],
     explainEng: {
       messageEng: "Flamingos are birds! They have backbones, feathers, and wings for flying, but no humps or claws.",
@@ -1592,7 +1592,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A lobster lives on the ocean floor.",
       "It has a hard external shell instead of an internal backbone.",
-      "It has large front pincers to grab food! ⭐"
+      "It has large front pincers to grab food! "
     ],
     explainEng: {
       messageEng: "Lobsters are invertebrates! They do not have backbones, feathers, or wings, but they have powerful pincers.",
@@ -1662,7 +1662,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A camel is a large desert mammal.",
       "It has a backbone (vertebrate) and a famous mound on its back.",
-      "It has NO feathers, pincers, or wings! ⭐"
+      "It has NO feathers, pincers, or wings! "
     ],
     explainEng: {
       messageEng: "Camels are vertebrates with fur and back humps that store fat for desert journeys!",
@@ -1732,7 +1732,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A giraffe is the tallest mammal on land.",
       "It has a long vertebrate neck and spotted fur coat.",
-      "It does NOT have feathers, humps, pincers, or wings! ⭐"
+      "It does NOT have feathers, humps, pincers, or wings! "
     ],
     explainEng: {
       messageEng: "Giraffes have backbones, but they have no feathers, wings, humps, or claws!",
@@ -1802,7 +1802,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A slug is a soft-bodied creature.",
       "It has NO bones inside: it is an invertebrate.",
-      "A slug has NO feathers, humps, pincers, or wings (all crosses)! ⭐"
+      "A slug has NO feathers, humps, pincers, or wings (all crosses)! "
     ],
     explainEng: {
       messageEng: "Slugs are soft invertebrates. None of the special features in the table belong to a slug!",
@@ -1872,7 +1872,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "A moth is a flying insect.",
       "Insects do NOT have backbones (they are invertebrates).",
-      "Moths have large wings, but NO feathers, humps, or pincers! ⭐"
+      "Moths have large wings, but NO feathers, humps, or pincers! "
     ],
     explainEng: {
       messageEng: "Moths have wings for flying, but they are insects without bones, feathers, humps, or claws!",
@@ -1946,7 +1946,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think about what covers an eagle or flamingo's body.",
       "Birds are the ONLY animal group with feathers.",
-      "Feathers help them stay warm and fly! ⭐"
+      "Feathers help them stay warm and fly! "
     ],
     explainEng: {
       messageEng: "All birds have feathers, beaks, and wings. Feathers are unique to birds!",
@@ -1983,7 +1983,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think of animals like elephants, dogs, cats, and humans.",
       "Mammals have hair or fur, and mothers give milk to their babies.",
-      "Feature: Hair or fur! ⭐"
+      "Feature: Hair or fur! "
     ],
     explainEng: {
       messageEng: "Mammals have hair or fur covering their bodies and nurse their young with milk!",
@@ -2020,7 +2020,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think of a frog or salamander.",
       "They can live both in water and on land.",
-      "They have smooth, moist skin with NO scales or feathers! ⭐"
+      "They have smooth, moist skin with NO scales or feathers! "
     ],
     explainEng: {
       messageEng: "Amphibians like frogs have smooth, moist skin that helps them breathe both in water and on land!",
@@ -2068,7 +2068,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think of snakes, lizards, crocodiles, and turtles.",
       "Reptiles have dry skin covered in tough waterproof scales.",
-      "Feature: Scales! ⭐"
+      "Feature: Scales! "
     ],
     explainEng: {
       messageEng: "Reptiles have dry skin covered with protective scales that prevent them from drying out!",
@@ -2105,7 +2105,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Fish live in water all their lives.",
       "They have fins to swim and gills to breathe underwater.",
-      "Feature: Gills (or live in water)! ⭐"
+      "Feature: Gills (or live in water)! "
     ],
     explainEng: {
       messageEng: "Fish live underwater and use gills to absorb oxygen directly from the water!",
@@ -2142,7 +2142,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Animals with a backbone are called vertebrates.",
       "Put 'in-' at the beginning for animals without a backbone.",
-      "Answer: Invertebrates! ⭐"
+      "Answer: Invertebrates! "
     ],
     explainEng: {
       messageEng: "Animals without backbones are called invertebrates. Most animals on Earth (like insects, spiders, and worms) are invertebrates!",
@@ -2194,7 +2194,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Look at the green, flat parts of the plant catching sunlight.",
       "Plants use their leaves for photosynthesis.",
-      "Answer: Leaf (or Leaves)! ⭐"
+      "Answer: Leaf (or Leaves)! "
     ],
     explainEng: {
       messageEng: "Leaves contain green chlorophyll that absorbs sunlight to make food for the plant!",
@@ -2242,7 +2242,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Look at the choices: Owl (A), Cabbage (B), Rabbit (C), Eagle (D).",
       "Owls and eagles eat small animals. Rabbits eat plants!",
-      "Answer: Rabbit (C)! ⭐"
+      "Answer: Rabbit (C)! "
     ],
     explainEng: {
       messageEng: "Rabbits are herbivores that love eating green plants like cabbage and carrots!",
@@ -2290,7 +2290,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Living things that make their own food are green plants.",
       "Cabbage (B) is a plant that uses sunlight to make food.",
-      "Answer: B (Cabbage)! ⭐"
+      "Answer: B (Cabbage)! "
     ],
     explainEng: {
       messageEng: "Plants are producers because they produce their own food from sunlight, water, and air!",
@@ -2338,7 +2338,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Predators hunt other animals for food.",
       "The owl (A) and eagle (D) are hunters that eat mice and rabbits.",
-      "Answer: A and D (Owl and Eagle)! ⭐"
+      "Answer: A and D (Owl and Eagle)! "
     ],
     explainEng: {
       messageEng: "Owls and eagles are carnivores/predators that hunt and eat other animals like rabbits and rodents!",
@@ -2386,7 +2386,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Consumers cannot make their own food; they must eat other living things.",
       "All the animals (Owl A, Rabbit C, Eagle D) are consumers!",
-      "Answer: A, C and D! ⭐"
+      "Answer: A, C and D! "
     ],
     explainEng: {
       messageEng: "Living things that eat other organisms are called consumers. Animals are consumers; plants are producers!",
@@ -2445,7 +2445,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Think about the word 'produce' which means to make.",
       "Living things that produce their own food are called producers.",
-      "Scientific word: Producers! ⭐"
+      "Scientific word: Producers! "
     ],
     explainEng: {
       messageEng: "In science, green plants that produce food using solar energy are called 'producers'!",
@@ -2497,7 +2497,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "You have two of them on your face.",
       "You close them when you sleep and blink with them.",
-      "Sense organ: Eyes (sense of sight)! ⭐"
+      "Sense organ: Eyes (sense of sight)! "
     ],
     explainEng: {
       messageEng: "Our eyes let us see colors, rainbows, and words in books. Our sense is called sight!",
@@ -2534,7 +2534,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "You have one on each side of your head.",
       "They catch sound waves so you can hear.",
-      "Body part: Ears (sense of hearing)! ⭐"
+      "Body part: Ears (sense of hearing)! "
     ],
     explainEng: {
       messageEng: "Our ears catch sound vibrations and send them to our brain so we can hear songs, speech, and laughter!",
@@ -2571,7 +2571,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "It sits right in the middle of your face.",
       "It has two nostrils to breathe and smell.",
-      "Body part: Nose (sense of smell)! ⭐"
+      "Body part: Nose (sense of smell)! "
     ],
     explainEng: {
       messageEng: "Our nose detects pleasant scents like flowers and warns us of bad smells like smoke!",
@@ -2608,7 +2608,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "It is pink, soft, and inside your mouth.",
       "It is covered in tiny taste buds.",
-      "Organ: Tongue (sense of taste)! ⭐"
+      "Organ: Tongue (sense of taste)! "
     ],
     explainEng: {
       messageEng: "Our tongue is covered in thousands of tiny taste buds that detect sweet, sour, salty, and bitter flavors!",
@@ -2645,7 +2645,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "It covers you from head to toe.",
       "Your fingertips use it to feel textures.",
-      "Sense organ: Skin (sense of touch)! ⭐"
+      "Sense organ: Skin (sense of touch)! "
     ],
     explainEng: {
       messageEng: "Our skin is the largest organ in our body. It gives us our sense of touch to feel temperatures and textures!",
@@ -2682,7 +2682,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Living things breathe, eat, drink, and grow bigger.",
       "A kitten grows into a cat; a stone stays the same forever.",
-      "Answer: Kitten! ⭐"
+      "Answer: Kitten! "
     ],
     explainEng: {
       messageEng: "Living things (like plants and animals) need food and water to grow. Non-living things (like stones and toys) do not grow!",
@@ -2734,7 +2734,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Plants need sunlight, water, air, and soil.",
       "Without water and sun, plants wilt and cannot make food.",
-      "Answer: Water and sunlight! ⭐"
+      "Answer: Water and sunlight! "
     ],
     explainEng: {
       messageEng: "Plants need water from the soil and sunlight from the sky to grow strong and make food through photosynthesis!",
@@ -2771,7 +2771,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Roots spread out in the dark soil underneath the plant.",
       "They drink water and anchor the plant in place.",
-      "Answer: Roots! ⭐"
+      "Answer: Roots! "
     ],
     explainEng: {
       messageEng: "Roots grow underground to anchor the plant securely in the dirt and absorb water and nutrients!",
@@ -2808,7 +2808,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Fish have fins and gills made for swimming.",
       "They live in ponds, lakes, rivers, and oceans.",
-      "Natural habitat: In water! ⭐"
+      "Natural habitat: In water! "
     ],
     explainEng: {
       messageEng: "A habitat is a living thing's natural home. Fish have gills and fins that require a water habitat!",
@@ -2845,7 +2845,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "An ice cube is a solid that keeps its shape.",
       "When warmed by heat or sunlight, it turns into liquid water.",
-      "Process name: Melting! ⭐"
+      "Process name: Melting! "
     ],
     explainEng: {
       messageEng: "Heat causes solid ice to melt into liquid water. This change of state is called melting!",
@@ -2893,7 +2893,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "The three main states of matter are solid, liquid, and gas.",
       "Drinking water flows and takes the shape of its glass.",
-      "State of matter: Liquid! ⭐"
+      "State of matter: Liquid! "
     ],
     explainEng: {
       messageEng: "Liquids can pour, splash, and flow. Water from the tap is a liquid!",
@@ -2930,7 +2930,7 @@ export const HARDCODED_ENGLISH_PEDAGOGY: Record<string, CaseEnglishData> = {
     hintsEng: [
       "Cows graze on pasture grass; rabbits eat carrots and leaves.",
       "Animals that eat ONLY plants are called herbivores.",
-      "Answer: Herbivores! ⭐"
+      "Answer: Herbivores! "
     ],
     explainEng: {
       messageEng: "Animals that eat only grass, plants, and fruits are herbivores. 'Herb' means plant!",

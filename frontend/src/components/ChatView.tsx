@@ -1,272 +1,31 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatMessage, HomeworkProblem, UserProfile, TunsayState, ChatSession, WorksheetQueue } from '../types';
-import { TunsayAvatar } from './TunsayAvatar';
-import { StepTrail } from './StepTrail';
-import { StepCard } from './StepCard';
+import {
+  ChatMessage,
+  HomeworkProblem,
+  UserProfile,
+  TunsayState,
+  ChatSession,
+  WorksheetQueue,
+  StepItem,
+} from '../types';
 import { HintSheet } from './HintSheet';
 import { ExplanationCard } from './ExplanationCard';
-import { StepChatBubble } from './StepChatBubble';
 import { AllStepsDrawer } from './AllStepsDrawer';
-import { WorksheetExerciseBar } from './WorksheetExerciseBar';
-import { WorksheetProgressPanel } from './WorksheetProgressPanel';
-import { ExerciseCelebrationBanner } from './ExerciseCelebrationBanner';
-import { StepItem } from '../types';
+import { MathKeypad } from './MathKeypad';
 import { askTunsayTutor } from '../services/geminiService';
 import { tutorApi } from '../api';
 import { fastValidateStepAnswer } from '../services/answerValidationService';
-import { MathKeypad } from './MathKeypad';
-import { Send, Camera, User, GraduationCap, ArrowLeft, Plus, Trash2, MessageSquare, Sparkles, Layers, Menu, X, RotateCcw, Calculator } from 'lucide-react';
+import { updateActivity, findActiveActivity } from '../utils/reportUtils';
 import {
-  updateActivity,
-  findActiveActivity,
-} from '../utils/reportUtils';
-
-// Helper: Render inline markdown (bold, italic, code) and newlines
-function renderFormattedInline(text: string): React.ReactNode {
-  if (!text) return null;
-
-  // Split by **bold**, *italic*, or `code` tokens
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-
-  return parts.map((part, idx) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
-      return (
-        <strong key={idx} className="font-black text-inherit">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
-      return (
-        <em key={idx} className="italic font-bold">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
-      return (
-        <code key={idx} className="px-1.5 py-0.5 bg-emerald-100 text-[#1B4332] rounded font-mono text-xs font-black border border-emerald-300">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-
-    // Handle line breaks within text
-    if (part.includes('\n')) {
-      const subLines = part.split('\n');
-      return (
-        <React.Fragment key={idx}>
-          {subLines.map((sub, sIdx) => (
-            <React.Fragment key={sIdx}>
-              {sIdx > 0 && <br />}
-              {sub}
-            </React.Fragment>
-          ))}
-        </React.Fragment>
-      );
-    }
-
-    return part;
-  });
-}
-
-// Helper: Render numbered steps and formatted paragraphs with visual badges
-function formatMessageText(text: string): React.ReactNode[] {
-  if (!text) return [];
-  const paragraphs = text.split(/\n\s*\n/);
-  return paragraphs.map((para, i) => {
-    const trimmed = para.trim();
-    if (!trimmed) return null;
-
-    const stepMatch = trimmed.match(/^(\d+)\.\s*/);
-    if (stepMatch) {
-      const num = stepMatch[1];
-      const content = trimmed.slice(stepMatch[0].length);
-      return (
-        <div key={i} className="flex items-start gap-2 mb-2.5 last:mb-0">
-          <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 bg-[#1B4332] text-white rounded-lg text-xs font-black shrink-0 mt-0.5 shadow-[1px_1px_0px_#1B4332]">
-            {num}
-          </span>
-          <span className="leading-relaxed">{renderFormattedInline(content)}</span>
-        </div>
-      );
-    }
-    return (
-      <div key={i} className="mb-2 last:mb-0 leading-relaxed">
-        {renderFormattedInline(trimmed)}
-      </div>
-    );
-  }).filter(Boolean) as React.ReactNode[];
-}
-
-interface ExtractedStepWidget {
-  widget: any;
-  activeStep: StepItem;
-  activeIdx: number;
-  totalSteps: number;
-  completedSteps: number[];
-  introText?: string;
-}
-
-/**
- * Extracts structured StepWidgetPayload from a ChatMessage.
- * Supports both direct `msg.stepWidget` payload and regex fallback parsing
- * for messages containing the 4-part Socratic card pattern.
- */
-function extractStepWidgetFromMessage(msg: ChatMessage): ExtractedStepWidget | null {
-  if (msg.stepWidget && msg.stepWidget.steps && msg.stepWidget.steps.length > 0) {
-    const w = msg.stepWidget;
-    const activeIdx = Math.max(0, Math.min(w.current_step_index ?? 0, w.steps.length - 1));
-    const activeStep = w.steps[activeIdx];
-    const totalSteps = w.total_steps || w.steps.length;
-    const completedSteps = w.completed_steps || [];
-    return {
-      widget: w,
-      activeStep,
-      activeIdx,
-      totalSteps,
-      completedSteps,
-    };
-  }
-
-  const rawText = msg.textEng || msg.textKhmer || '';
-  const missionRegex = /(?:🎯\s*)?\*{0,2}(?:Our Mission|បេសកកម្មរបស់យើង)\*{0,2}:?\s*([\s\S]*?)(?=(?:🔍\s*)?\*{0,2}(?:Clue|តម្រុយ)\*{0,2}:|$)/i;
-  const clueRegex = /(?:🔍\s*)?\*{0,2}(?:Clue|តម្រុយ)\*{0,2}:?\s*([\s\S]*?)(?=(?:💡\s*)?\*{0,2}(?:Helpful (?:Picture \/ )?Example|រូបភាព \/ ឧទាហរណ៍ជំនួយ)\*{0,2}:|$)/i;
-  const exampleRegex = /(?:💡\s*)?\*{0,2}(?:Helpful (?:Picture \/ )?Example|រូបភាព \/ ឧទាហរណ៍ជំនួយ)\*{0,2}:?\s*([\s\S]*?)(?=(?:✏️\s*)?\*{0,2}(?:Your Turn|វេនរបស់អ្នក)\*{0,2}:|$)/i;
-  const yourTurnRegex = /(?:✏️\s*)?\*{0,2}(?:Your Turn|វេនរបស់អ្នក)\*{0,2}:?\s*([\s\S]*?)$/i;
-
-  const missionMatch = rawText.match(missionRegex);
-  const yourTurnMatch = rawText.match(yourTurnRegex);
-
-  if (missionMatch && yourTurnMatch) {
-    const firstSectionIdx = rawText.search(/(?:🎯\s*)?\*{0,2}(?:Our Mission|បេសកកម្មរបស់យើង)\*{0,2}:/i);
-    let intro = '';
-    if (firstSectionIdx > 0) {
-      intro = rawText.slice(0, firstSectionIdx).replace(/---\s*$/g, '').trim();
-    }
-
-    const clueMatch = rawText.match(clueRegex);
-    const exampleMatch = rawText.match(exampleRegex);
-
-    const clean = (s?: string) => {
-      if (!s) return '';
-      return s
-        .replace(/\*\*(.*?)\*\*/g, '$1')
-        .replace(/\*(.*?)\*/g, '$1')
-        .replace(/^>\s?/gm, '')
-        .replace(/^#+\s?/gm, '')
-        .replace(/`([^`]+)`/g, '$1')
-        .trim();
-    };
-
-    const mission = clean(missionMatch[1]);
-    const clue = clean(clueMatch?.[1]);
-    const helpfulExample = clean(exampleMatch?.[1]);
-    const yourTurn = clean(yourTurnMatch[1]);
-
-    let stepNum = 1;
-    const numMatch = (intro || rawText).match(/(?:Step|ជំហាន)\s*(\d+)/i);
-    if (numMatch) {
-      stepNum = parseInt(numMatch[1], 10);
-    }
-
-    const synthesizedStep: StepItem = {
-      id: `step-${stepNum}`,
-      stepNumber: stepNum,
-      title: `Step ${stepNum}`,
-      status: 'in_progress',
-      mission,
-      clue,
-      helpfulExample,
-      yourTurn,
-      currentHintLevel: 0,
-      hints: [
-        clue,
-        helpfulExample,
-        `Think about: ${yourTurn}`
-      ],
-      questionEng: mission,
-      questionKhmer: mission,
-      inputFormat: 'text',
-      correctAnswer: '',
-      hint1: { khmer: clue, eng: clue },
-      hint2: { khmer: helpfulExample, eng: helpfulExample },
-      hint3: { titleKhmer: 'Example', titleEng: 'Example', exampleKhmer: helpfulExample, exampleEng: helpfulExample },
-      socraticPromptEng: yourTurn,
-      socraticPromptKhmer: yourTurn,
-      explainDifferently: { simpleKhmer: clue, simpleEng: clue, analogyTitle: '', analogyKhmer: '', analogyEng: '', analogyType: 'plants' },
-      totalSteps: Math.max(stepNum, 3)
-    };
-
-    const synthesizedWidget = {
-      total_steps: Math.max(stepNum, 3),
-      current_step_index: stepNum - 1,
-      completed_steps: [],
-      steps: [synthesizedStep]
-    };
-
-    return {
-      widget: synthesizedWidget,
-      activeStep: synthesizedStep,
-      activeIdx: 0,
-      totalSteps: Math.max(stepNum, 3),
-      completedSteps: [],
-      introText: intro
-    };
-  }
-
-  return null;
-}
-
-function mapWidgetToStepItems(widget: any): StepItem[] {
-  if (!widget || !Array.isArray(widget.steps)) return [];
-  const total = widget.total_steps || widget.steps.length;
-  return widget.steps.map((s: any, idx: number) => {
-    const stepNum = s.step_number || idx + 1;
-    const mission = s.mission || s.title || `Step ${stepNum}`;
-    const yourTurn = s.your_turn || mission;
-    const expectedAns = String(s.expected_answer || s.expectedAnswer || '').trim();
-    const isNum = /^-?\d+(\.\d+)?$/.test(expectedAns);
-    const options = s.options && Array.isArray(s.options) && s.options.length > 0 ? s.options : undefined;
-    const inputFormat = options ? 'mcq' : (isNum ? 'number' : 'text');
-    const hints = Array.isArray(s.hints) ? s.hints : [];
-    const clue = s.clue || hints[0] || 'Please review the question and hints carefully.';
-    const example = s.helpful_example || hints[1] || 'Try thinking one step at a time!';
-    return {
-      id: `step-${stepNum}`,
-      stepNumber: stepNum,
-      totalSteps: total,
-      questionKhmer: mission,
-      questionEng: mission,
-      socraticPromptKhmer: yourTurn,
-      socraticPromptEng: yourTurn,
-      inputFormat,
-      options,
-      correctAnswer: expectedAns,
-      expectedAnswer: expectedAns,
-      expected_answer: expectedAns,
-      mission,
-      title: s.title || `Step ${stepNum}`,
-      clue,
-      helpfulExample: example,
-      yourTurn,
-      hints: [hints[0] || clue, hints[1] || example, hints[2] || ''],
-      visualData: s.visual_data,
-      status: idx === 0 ? 'in_progress' : 'locked',
-      hint1: { khmer: clue, eng: clue },
-      hint2: { khmer: example, eng: example },
-      hint3: { titleKhmer: 'Help', titleEng: 'Help', exampleKhmer: hints[2] || '', exampleEng: hints[2] || '' },
-      explainDifferently: {
-        simpleKhmer: mission,
-        simpleEng: mission,
-        analogyTitle: s.title || 'Guidance',
-        analogyKhmer: example,
-        analogyEng: example,
-        analogyType: 'apples',
-      },
-    };
-  });
-}
+  mapWidgetToStepItems,
+  extractStepWidgetFromMessage,
+  thinkingTextsEng,
+  thinkingTextsKhmer,
+} from './chat/chatUtils';
+import { ChatHeader } from './chat/ChatHeader';
+import { ChatSidebar } from './chat/ChatSidebar';
+import { ChatMessageList } from './chat/ChatMessageList';
+import { ChatInputBar } from './chat/ChatInputBar';
 
 interface ChatViewProps {
   profile: UserProfile;
@@ -275,6 +34,7 @@ interface ChatViewProps {
   onClearInitialQuery?: () => void;
   sessions: ChatSession[];
   activeSessionId: string;
+  activeSession?: ChatSession | undefined;
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
   onDeleteSession: (sessionId: string) => void;
@@ -293,6 +53,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onClearInitialQuery,
   sessions,
   activeSessionId,
+  activeSession: activeSessionProp,
   onSelectSession,
   onNewSession,
   onDeleteSession,
@@ -304,8 +65,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onExerciseComplete,
 }) => {
   const isKhmer = false;
-  const activeSession = sessions.find(s => s.id === activeSessionId);
+  const activeSession = activeSessionProp ?? sessions.find((s) => s.id === activeSessionId);
   const messages = activeSession?.messages ?? [];
+  const latestMessagesRef = useRef<ChatMessage[]>(messages);
+  useEffect(() => {
+    latestMessagesRef.current = messages;
+  }, [messages]);
 
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(() => {
@@ -326,11 +91,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
     return [];
   });
-  const [problemStepProgress, setProblemStepProgress] = useState<Record<string, {
-    currentStepIndex: number;
-    maxUnlockedStepIndex: number;
-    completedStepIndices: number[];
-  }>>(() => activeSession?.problemStepProgress || {});
+  const [problemStepProgress, setProblemStepProgress] = useState<
+    Record<
+      string,
+      {
+        currentStepIndex: number;
+        maxUnlockedStepIndex: number;
+        completedStepIndices: number[];
+      }
+    >
+  >(() => activeSession?.problemStepProgress || {});
+
   const [celebratingProblemId, setCelebratingProblemId] = useState<string | null>(null);
   const celebrationShownRef = useRef<Set<string>>(new Set());
 
@@ -373,78 +144,98 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       hasWavedRef.current = false;
       setSayoStatus('idle');
-      const enriched = initialProblem;
-      setActiveProblem(enriched);
+      setActiveProblem(initialProblem);
       setCelebratingProblemId(null);
 
       const progressSource = isNewSession
-        ? (activeSession?.problemStepProgress || {})  // New session: only use saved session data, never stale local state
-        : (activeSession?.problemStepProgress || problemStepProgress);
-      if (enriched && enriched.id && progressSource[enriched.id]) {
-        setCurrentStepIndex(progressSource[enriched.id].currentStepIndex ?? 0);
-        setMaxUnlockedStepIndex(progressSource[enriched.id].maxUnlockedStepIndex ?? 0);
-        setCompletedStepIndices(progressSource[enriched.id].completedStepIndices || []);
+        ? activeSession?.problemStepProgress
+        : problemStepProgress;
+
+      if (initialProblem?.id && progressSource?.[initialProblem.id]) {
+        const saved = progressSource[initialProblem.id];
+        setCurrentStepIndex(saved.currentStepIndex ?? 0);
+        setMaxUnlockedStepIndex(saved.maxUnlockedStepIndex ?? 0);
+        setCompletedStepIndices(saved.completedStepIndices ?? []);
       } else {
         setCurrentStepIndex(0);
         setMaxUnlockedStepIndex(0);
         setCompletedStepIndices([]);
       }
-      // Always sync the local progress state to the active session when switching sessions
-      if (isNewSession) {
-        setProblemStepProgress(activeSession?.problemStepProgress || {});
-        celebrationShownRef.current.clear();
-      }
+    }
+  }, [activeSessionId, initialProblem, activeSession?.problemStepProgress, problemStepProgress]);
 
-      // Proactively decompose un-decomposed OCR or dynamic problems (Sprint 3.1: guard with has_steps)
-      if (
-        enriched &&
-        !enriched.has_steps &&
-        (enriched.problemStatementEng || enriched.problemStatementKhmer) &&
-        (!enriched.steps || enriched.steps.length === 0 || (enriched.steps.length === 1 && !enriched.steps[0].correctAnswer))
-      ) {
-        const queryText = enriched.problemStatementEng || enriched.problemStatementKhmer;
+  // Initial load check & exercise switch handler
+  useEffect(() => {
+    if (!initialProblem) {
+      if (worksheetQueue && worksheetQueue.problems.length > 1) {
+        setSidebarMode('worksheet');
+      } else {
+        setSidebarMode('chats');
+      }
+      return;
+    }
+
+    const enriched = initialProblem;
+    setActiveProblem(enriched);
+
+    const hasProblemMessages = messages.some(
+      (m) => m.problemId === enriched.id || m.problem?.id === enriched.id
+    );
+
+    // If this problem has no messages yet and no initialQuery is pending, dispatch to tutor automatically
+    if (!hasProblemMessages && !initialQuery) {
+      const promptText = (enriched.problemStatementEng || enriched.problemStatementKhmer || enriched.titleEng || '').trim();
+      if (promptText) {
+        const userMsg: ChatMessage = {
+          id: Date.now().toString(),
+          sender: 'user',
+          textEng: promptText,
+          problemId: enriched.id,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        const updatedWithUser = [...messages, userMsg];
+        onUpdateMessages(updatedWithUser);
         setIsSayoThinking(true);
-        askTunsayTutor(queryText, enriched, profile.language, activeSessionId).then((res) => {
+        lastInteractionRef.current = Date.now();
+
+        askTunsayTutor(promptText, enriched, profile.language, activeSessionId).then((res) => {
           if (!isMountedRef.current) return;
           setIsSayoThinking(false);
+
           if (res.stepWidget && Array.isArray(res.stepWidget.steps) && res.stepWidget.steps.length > 0) {
             const dynSteps = mapWidgetToStepItems(res.stepWidget);
             if (dynSteps.length > 0) {
-              setActiveProblem(prev => prev ? { ...prev, steps: dynSteps, has_steps: true } : prev);
-              // Sprint 3.1: Sync steps into worksheetQueue in-place so re-entry skips decomposition
-              if (worksheetQueue && Array.isArray(worksheetQueue.problems)) {
-                const targetIdx = worksheetQueue.problems.findIndex(p => p.id === enriched.id);
-                if (targetIdx !== -1) {
-                  worksheetQueue.problems[targetIdx] = {
-                    ...worksheetQueue.problems[targetIdx],
-                    steps: dynSteps,
-                    has_steps: true,
-                  };
-                }
-              }
+              setActiveProblem((prev) => (prev ? {
+                ...prev,
+                steps: dynSteps,
+                has_steps: true,
+                visualData: res.stepWidget.visual_data || res.stepWidget.visualData || dynSteps[0]?.visualData || prev.visualData
+              } : prev));
             }
           }
-          if (res.textEng || res.textKhmer || res.stepWidget) {
-            const tutorMsg: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              sender: 'sayo',
-              textKhmer: res.textKhmer,
-              textEng: res.textEng,
-              problemId: enriched.id,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              stepWidget: res.stepWidget,
-            };
-            onUpdateMessages([
-              {
-                id: 'init-msg',
-                sender: 'sayo',
-                textKhmer: `សួស្តី ${profile.name}! តោះដោះស្រាយលំហាត់នេះទាំងអស់គ្នាជាជំហានៗ!`,
-                textEng: `Hi ${profile.name}! Let's solve this problem step-by-step together!`,
-                problemId: enriched.id,
-                timestamp: 'Just now'
-              },
-              tutorMsg
-            ]);
+
+          const tutorMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'sayo',
+            textKhmer: res.textKhmer,
+            textEng: res.textEng,
+            problemId: enriched.id,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isSafetyRefusal: res.isSafetyRefusal ?? false,
+            stepWidget: res.stepWidget,
+          };
+          onUpdateMessages([...updatedWithUser, tutorMsg]);
+
+          const nextState = determineMascotStateFromResponse(tutorMsg.textEng || '');
+          if (
+            nextState === 'celebrating' ||
+            nextState === 'jumping' ||
+            nextState === 'encouraging' ||
+            nextState === 'happy'
+          ) {
+            transitionMascotState(nextState, 3000);
+          } else {
+            setSayoStatus(nextState);
           }
         }).catch(() => {
           if (isMountedRef.current) setIsSayoThinking(false);
@@ -457,17 +248,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
     } else {
       setSidebarMode('chats');
     }
-    if (mascotTimeoutRef.current) {
-      clearTimeout(mascotTimeoutRef.current);
-      mascotTimeoutRef.current = null;
-    }
   }, [activeSessionId, initialProblem?.id, profile.grade, worksheetQueue]);
 
-  // Cycle through Socratic thinking messages while AI is processing
+  // Cycle through thinking texts
   useEffect(() => {
     if (sayoStatus === 'thinking') {
       const interval = setInterval(() => {
-        setThinkingTextIdx((prev: number) => (prev + 1) % 4);
+        setThinkingTextIdx((prev) => (prev + 1) % 4);
       }, 1800);
       return () => clearInterval(interval);
     } else {
@@ -476,10 +263,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [sayoStatus]);
 
   const updateMessages = (newMsgs: ChatMessage[], progressMap?: Record<string, any>) => {
+    latestMessagesRef.current = newMsgs;
     onUpdateMessages(newMsgs, progressMap || problemStepProgress);
   };
 
-  // 💬 Mascot state helpers 💬
   const transitionMascotState = useCallback((state: TunsayState, autoReturnToIdleMs?: number) => {
     if (mascotTimeoutRef.current) {
       clearTimeout(mascotTimeoutRef.current);
@@ -495,39 +282,59 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const determineMascotStateFromResponse = (textEng: string): TunsayState => {
     const lower = textEng.toLowerCase();
-    if (lower.includes('not quite') || lower.includes('not exactly') || lower.includes('try again') || lower.includes('not quite right') || lower.includes('oops') || lower.includes('that\'s not')) {
+    if (
+      lower.includes('not quite') ||
+      lower.includes('not exactly') ||
+      lower.includes('try again') ||
+      lower.includes('not quite right') ||
+      lower.includes('oops')
+    ) {
       return 'encouraging';
     }
-    if (lower.includes('great') || lower.includes('excellent') || lower.includes('well done') || lower.includes('perfect') || lower.includes('amazing') || lower.includes('awesome') || lower.includes('brilliant')) {
+    if (
+      lower.includes('great') ||
+      lower.includes('excellent') ||
+      lower.includes('well done') ||
+      lower.includes('perfect') ||
+      lower.includes('amazing') ||
+      lower.includes('awesome')
+    ) {
       return 'celebrating';
     }
-    if (lower.includes('think') || lower.includes('let me') || lower.includes('hmm') || lower.includes("let's see")) {
+    if (lower.includes('think') || lower.includes('let me') || lower.includes("let's see")) {
       return 'thinking';
-    }
-    if (lower.includes('?') && (lower.includes('what') || lower.includes('how') || lower.includes('why') || lower.includes('can you') || lower.includes('do you think'))) {
-      return 'explaining';
     }
     return 'explaining';
   };
 
   const getMascotContextText = (state: TunsayState): string => {
     switch (state) {
-      case 'idle': return isKhmer ? idleTextKhmer : idleTextEng;
-      case 'waving': return isKhmer ? 'សួស្ដី! រៀបចំរៀនហើយឬ?' : 'Hi! Ready to learn?';
-      case 'thinking': return isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx];
-      case 'listening': return isKhmer ? 'ខ្ញុំកំពុងស្ដាប់អ្នក...' : "I'm listening...";
-      case 'explaining': return isKhmer ? 'នេះជារបៀបគិតអំពីវា...' : "Here's how to think about it...";
-      case 'encouraging': return isKhmer ? 'មិនអីទេ! តោះមើលវាតាមរបៀបផ្សេង' : "That's okay! Let's look at it another way.";
-      case 'happy': return isKhmer ? 'អ្នកធ្វើបានល្អ!' : "You're doing great!";
-      case 'celebrating': return isKhmer ? celebratoryTextKhmer : celebratoryTextEng;
-      case 'jumping': return isKhmer ? 'អស្ចារ្យណាស់!' : 'Woohoo! Amazing!';
-      case 'confused': return isKhmer ? 'ហ៊ឹម... តោះមើលទាំងអស់គ្នា' : "Hmm... let's look closer together";
-      case 'sleeping': return isKhmer ? 'ខ្ញុំសម្រាកខណៈអ្នកគិត...' : 'Resting while you think...';
-      default: return '';
+      case 'idle':
+        return isKhmer ? 'ReanMore រង់ចាំជួយ!' : 'Ready to help!';
+      case 'waving':
+        return isKhmer ? 'សួស្ដី! រៀបចំរៀនហើយឬ?' : 'Hi! Ready to learn?';
+      case 'thinking':
+        return isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx];
+      case 'listening':
+        return isKhmer ? 'ខ្ញុំកំពុងស្ដាប់អ្នក...' : "I'm listening...";
+      case 'explaining':
+        return isKhmer ? 'នេះជារបៀបគិតអំពីវា...' : "Here's how to think about it...";
+      case 'encouraging':
+        return isKhmer ? 'មិនអីទេ! តោះមើលវាតាមរបៀបផ្សេង' : "That's okay! Let's look at it another way.";
+      case 'happy':
+        return isKhmer ? 'អ្នកធ្វើបានល្អ!' : "You're doing great!";
+      case 'celebrating':
+        return isKhmer ? 'រួចរាល់ហើយ!' : 'Aha! Got it!';
+      case 'jumping':
+        return isKhmer ? 'អស្ចារ្យណាស់!' : 'Woohoo! Amazing!';
+      case 'sleeping':
+        return isKhmer ? 'ខ្ញុំសម្រាកខណៈអ្នកគិត...' : 'Resting while you think...';
+      default:
+        return '';
     }
   };
 
-  // Greeting wave on first load of a session
+  // Greeting wave on first load
   useEffect(() => {
     if (!hasWavedRef.current && messages.length <= 1) {
       hasWavedRef.current = true;
@@ -535,7 +342,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [messages.length, transitionMascotState]);
 
-  // Inactivity → sleeping
+  // Inactivity sleeping
   useEffect(() => {
     if (sayoStatus !== 'idle') return;
     const timer = setTimeout(() => {
@@ -544,45 +351,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return () => clearTimeout(timer);
   }, [sayoStatus]);
 
-  // AI processing
+  // Sayo thinking state sync
   useEffect(() => {
     if (isSayoThinking) {
       setSayoStatus('thinking');
     }
   }, [isSayoThinking]);
 
-  // 6. Socratic "Think Aloud" messages while processing
-  const thinkingTextsKhmer = [
-    'តើយើងដឹងអ្វីខ្លះជាដំបូងនៅក្នុងសំណួរនេះ?',
-    'តើសំណួរនេះសុំឡ្យយើងរកអ្វី?',
-    'តើយើងអាចបែងចែកវាជាជំហានតូចៗបានទេ?',
-    'ជិតរួចរាល់ហើយ! ខ្ញុំកំពុងរៀបចំពន្យល់'
-  ];
-  const thinkingTextsEng = [
-    'What do we know first in this question?',
-    'What is the question asking us to find?',
-    'Can we break this into smaller steps?',
-    'Almost ready! Preparing a helpful explanation'
-  ];
-  const celebratoryTextKhmer = 'រួចរាល់ហើយ!';
-  const celebratoryTextEng = 'Aha! Got it!';
-  const idleTextKhmer = 'ReanMore រង់ចាំជួយ!';
-  const idleTextEng = 'Ready to help!';
-
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [isExplainOpen, setIsExplainOpen] = useState(false);
   const [activeModalStep, setActiveModalStep] = useState<StepItem | null>(null);
 
-  // 💬 Socratic Stepper Solution Journey Drawer state 💬
   const [isAllStepsDrawerOpen, setIsAllStepsDrawerOpen] = useState(false);
   const [activeDrawerSteps, setActiveDrawerSteps] = useState<StepItem[]>([]);
   const [activeDrawerStepIdx, setActiveDrawerStepIdx] = useState(0);
   const [activeDrawerMsgId, setActiveDrawerMsgId] = useState<string | null>(null);
 
   const handleStepHint = (msgId: string) => {
-    const idx = messages.findIndex((m) => m.id === msgId);
+    const currentMsgs = latestMessagesRef.current;
+    const idx = currentMsgs.findIndex((m) => m.id === msgId);
     if (idx === -1) return;
-    const targetMsg = messages[idx];
+    const targetMsg = currentMsgs[idx];
     const parsed = extractStepWidgetFromMessage(targetMsg);
     if (!parsed) return;
 
@@ -608,7 +397,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         ...targetMsg,
         stepWidget: newWidget,
       };
-      const updated = [...messages];
+      const updated = [...currentMsgs];
       updated[idx] = newMsg;
 
       if (currentActivityRef.current) {
@@ -619,15 +408,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
           });
         }
       }
-
       updateMessages(updated);
     }
   };
 
   const handleStepNavigate = async (msgId: string, targetIdx: number) => {
-    const idx = messages.findIndex((m) => m.id === msgId);
+    const currentMsgs = latestMessagesRef.current;
+    const idx = currentMsgs.findIndex((m) => m.id === msgId);
     if (idx === -1) return;
-    const targetMsg = messages[idx];
+    const targetMsg = currentMsgs[idx];
     const parsed = extractStepWidgetFromMessage(targetMsg);
     if (!parsed) return;
 
@@ -638,11 +427,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
       ...widget,
       current_step_index: targetIdx,
     };
+    const targetStep = newWidget.steps[targetIdx];
+    if (targetStep) {
+      setActiveModalStep(targetStep);
+    }
     const newMsg: ChatMessage = {
       ...targetMsg,
       stepWidget: newWidget,
     };
-    const updated = [...messages];
+    const updated = [...currentMsgs];
     updated[idx] = newMsg;
     updateMessages(updated);
 
@@ -672,9 +465,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     studentAnswer: string,
     isCorrect: boolean
   ) => {
-    const idx = messages.findIndex((m) => m.id === msgId);
+    const currentMsgs = latestMessagesRef.current;
+    const idx = currentMsgs.findIndex((m) => m.id === msgId);
     if (idx === -1) return;
-    const targetMsg = messages[idx];
+    const targetMsg = currentMsgs[idx];
     const parsed = extractStepWidgetFromMessage(targetMsg);
     if (!parsed) return;
 
@@ -709,9 +503,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
       stepWidget: newWidget,
     };
 
-    const updated = [...messages];
+    const updated = [...currentMsgs];
     updated[idx] = newMsg;
     updateMessages(updated);
+
+    if (isCorrect && stepIndex + 1 < (widget.total_steps || widget.steps.length)) {
+      const nextStep = newWidget.steps[stepIndex + 1];
+      if (nextStep) {
+        setActiveModalStep(nextStep);
+      }
+    }
 
     if (isCorrect) {
       const isDone = newCompleted.length >= (widget.total_steps || widget.steps.length);
@@ -725,35 +526,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
       } else {
         transitionMascotState('jumping', 2000);
       }
-      /* Track activity */
-      if (currentActivityRef.current) {
-        const act = findActiveActivity(activeSessionId);
-        if (act) {
-          const nextSteps = (act.stepsCompleted || 0) + 1;
-          updateActivity(currentActivityRef.current, {
-            stepsCompleted: nextSteps,
-            status: isDone ? 'completed' : 'in_progress',
-          });
-          if (isDone) currentActivityRef.current = null;
-        }
-      }
     } else {
       transitionMascotState('encouraging', 2000);
     }
 
-    // Inform backend of step answer to keep session synchronized
     try {
       if (activeSessionId) {
         const idempKey = `ans_${activeSessionId}_${stepIndex + 1}_${Date.now()}`;
-        await tutorApi.submitStepAnswer({
-          session_id: activeSessionId,
-          step_number: stepIndex + 1,
-          student_answer: studentAnswer,
-          is_correct: isCorrect,
-        }, idempKey);
+        await tutorApi.submitStepAnswer(
+          {
+            session_id: activeSessionId,
+            step_number: stepIndex + 1,
+            student_answer: studentAnswer,
+            is_correct: isCorrect,
+          },
+          idempKey
+        );
       }
-    } catch (err) {
-      // Graceful offline fallback
+    } catch {
+      // offline fallback
     }
   };
 
@@ -761,11 +552,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const isMountedRef = useRef(true);
   useEffect(() => {
     isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-
-
+  // Handle initialQuery if passed
   useEffect(() => {
     if (!initialQuery?.trim()) return;
     const queryText = initialQuery.trim();
@@ -775,7 +567,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
       id: Date.now().toString(),
       sender: 'user',
       textEng: queryText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      problemId: activeProblem?.id,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const updatedWithUser = [...messages, userMsg];
@@ -787,11 +580,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
       if (!isMountedRef.current) return;
       setIsSayoThinking(false);
 
+      if (
+        sayoRes.stepWidget &&
+        Array.isArray(sayoRes.stepWidget.steps) &&
+        sayoRes.stepWidget.steps.length > 0
+      ) {
+        const dynSteps = mapWidgetToStepItems(sayoRes.stepWidget);
+        if (dynSteps.length > 0) {
+          setActiveProblem((prev) => (prev ? {
+            ...prev,
+            steps: dynSteps,
+            has_steps: true,
+            visualData: sayoRes.stepWidget.visual_data || sayoRes.stepWidget.visualData || dynSteps[0]?.visualData || prev.visualData
+          } : prev));
+        }
+      }
+
       const sayoMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'sayo',
         textKhmer: sayoRes.textKhmer,
         textEng: sayoRes.textEng,
+        problemId: activeProblem?.id,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isSafetyRefusal: sayoRes.isSafetyRefusal ?? false,
         stepWidget: sayoRes.stepWidget,
@@ -802,18 +612,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
         transitionMascotState('encouraging', 3000);
       } else {
         const nextState = determineMascotStateFromResponse(sayoMsg.textEng || '');
-        if (nextState === 'celebrating' || nextState === 'jumping' || nextState === 'encouraging' || nextState === 'happy') {
+        if (
+          nextState === 'celebrating' ||
+          nextState === 'jumping' ||
+          nextState === 'encouraging' ||
+          nextState === 'happy'
+        ) {
           transitionMascotState(nextState, 3000);
         } else {
           setSayoStatus(nextState);
         }
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
   const shouldAutoScrollToBottomRef = useRef(false);
-
   useEffect(() => {
     if (shouldAutoScrollToBottomRef.current) {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -825,7 +638,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const handleNewChat = () => {
     setActiveProblem(undefined);
-    // Reset ALL step-related state so every new session starts at Step 1
     setCurrentStepIndex(0);
     setMaxUnlockedStepIndex(0);
     setCompletedStepIndices([]);
@@ -835,36 +647,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
     onNewSession();
   };
 
-  const handleResetProgress = () => {
-    if (!activeProblem?.id) return;
-    // Reset all step state back to Step 1
-    setCurrentStepIndex(0);
-    setMaxUnlockedStepIndex(0);
-    setCompletedStepIndices([]);
-    setCelebratingProblemId(null);
-    celebrationShownRef.current.delete(activeProblem.id);
-    // Remove saved progress for this exercise from session
-    const updatedProgress = { ...problemStepProgress };
-    delete updatedProgress[activeProblem.id];
-    setProblemStepProgress(updatedProgress);
-    updateMessages(messages, updatedProgress);
-  };
-
-
   const isAdvancingStepRef = useRef(false);
 
   const handleStepAnswer = async (studentAnswer: string): Promise<boolean> => {
     if (!currentStep || isAdvancingStepRef.current) return false;
 
     const stepNum = currentStep.stepNumber || currentStepIndex + 1;
-
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
       textEng: `[Step ${stepNum}]: ${studentAnswer}`,
       textKhmer: `[ជំហានទី ${stepNum}]: ${studentAnswer}`,
       problemId: activeProblem?.id,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const updatedWithUser = [...messages, userMsg];
@@ -872,7 +667,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsSayoThinking(true);
     lastInteractionRef.current = Date.now();
 
-    // Fast deterministic validation (< 1ms)
     const fastResult = fastValidateStepAnswer(
       studentAnswer,
       currentStep,
@@ -886,32 +680,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
     let tutorReplyEng = fastResult.tutorReplyEng;
 
     if (fastResult.isDeterministic) {
-      // Numbers, arithmetic, MCQs, and binary choices are verified in 0ms!
       setIsSayoThinking(false);
     } else {
-      // Only for open-ended conceptual explanations: evaluate with LLM
-      const evalPrompt = `[Student Answer Evaluation for Step ${stepNum}: "${currentStep.questionEng || currentStep.questionKhmer}"]. The student answered: "${studentAnswer}". The target expected concept is: "${currentStep.correctAnswer}". Please determine if this answer is conceptually correct, nearly correct, or needs rethinking. Explain encouragingly in child-friendly words.`;
-      
+      const evalPrompt = `[Student Answer Evaluation for Step ${stepNum}: "${
+        currentStep.questionEng || currentStep.questionKhmer
+      }"]. The student answered: "${studentAnswer}". The target expected concept is: "${
+        currentStep.correctAnswer
+      }". Please determine if this answer is conceptually correct, nearly correct, or needs rethinking. Explain encouragingly in child-friendly words.`;
+
       try {
-        const sayoRes = await askTunsayTutor(evalPrompt, activeProblem, profile.language, activeSessionId);
+        const sayoRes = await askTunsayTutor(
+          evalPrompt,
+          activeProblem,
+          profile.language,
+          activeSessionId
+        );
         setIsSayoThinking(false);
 
         if (sayoRes?.textKhmer || sayoRes?.textEng) {
           tutorReplyKhmer = sayoRes.textKhmer || '';
           tutorReplyEng = sayoRes.textEng || '';
-
           const combined = (tutorReplyEng + ' ' + tutorReplyKhmer).toLowerCase();
-          const isAffirmative = combined.includes('correct') ||
+          const isAffirmative =
+            combined.includes('correct') ||
             combined.includes('spot on') ||
-            combined.includes('great job') ||
-            combined.includes('ត្រឹមត្រូវ') ||
-            combined.includes('ល្អណាស់') ||
-            combined.includes('ពូកែណាស់');
-          const isNegative = combined.includes('not quite') ||
+            combined.includes('great job');
+          const isNegative =
+            combined.includes('not quite') ||
             combined.includes('incorrect') ||
-            combined.includes('try again') ||
-            combined.includes('មិនទាន់ត្រឹមត្រូវ') ||
-            combined.includes('ព្យាយាមម្តងទៀត');
+            combined.includes('try again');
 
           if (isAffirmative && !isNegative) {
             isCorrect = true;
@@ -922,14 +719,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
     }
 
-    // Sync answer to backend in background
     if (activeSessionId) {
       const idempKey = `ans_chat_${activeSessionId}_${stepNum}_${Date.now()}`;
-      tutorApi.submitStepAnswer({
-        session_id: activeSessionId,
-        step_number: stepNum,
-        student_answer: studentAnswer,
-      }, idempKey).catch(() => {});
+      tutorApi
+        .submitStepAnswer(
+          {
+            session_id: activeSessionId,
+            step_number: stepNum,
+            student_answer: studentAnswer,
+          },
+          idempKey
+        )
+        .catch(() => {});
     }
 
     const tutorMsg: ChatMessage = {
@@ -938,7 +739,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       textKhmer: tutorReplyKhmer,
       textEng: tutorReplyEng,
       problemId: activeProblem?.id,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const updated = [...updatedWithUser, tutorMsg];
@@ -954,15 +755,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setCompletedStepIndices(updatedCompleted);
       setMaxUnlockedStepIndex(updatedMax);
 
-      const updatedProgress = activeProblem?.id ? {
-        ...problemStepProgress,
-        ...(activeSession?.problemStepProgress || {}),
-        [activeProblem.id]: {
-          currentStepIndex: nextIdx,
-          maxUnlockedStepIndex: updatedMax,
-          completedStepIndices: updatedCompleted,
-        }
-      } : problemStepProgress;
+      const updatedProgress = activeProblem?.id
+        ? {
+            ...problemStepProgress,
+            ...(activeSession?.problemStepProgress || {}),
+            [activeProblem.id]: {
+              currentStepIndex: nextIdx,
+              maxUnlockedStepIndex: updatedMax,
+              completedStepIndices: updatedCompleted,
+            },
+          }
+        : problemStepProgress;
 
       setProblemStepProgress(updatedProgress);
       updateMessages(updated, updatedProgress);
@@ -985,33 +788,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
         }, 800);
       }
       transitionMascotState('jumping', 2000);
-
-      /* Track: correct step */
-      if (currentActivityRef.current) {
-        const act = findActiveActivity(activeSessionId);
-        if (act) {
-          const nextSteps = act.stepsCompleted + 1;
-          const isDone = activeProblem ? nextSteps >= activeProblem.steps.length : false;
-          updateActivity(currentActivityRef.current, {
-            stepsCompleted: nextSteps,
-            status: isDone ? 'completed' : 'in_progress',
-          });
-          if (isDone) currentActivityRef.current = null;
-        }
-      }
     } else {
       updateMessages(updated);
       transitionMascotState('encouraging', 2500);
-
-      /* Track: wrong attempt */
-      if (currentActivityRef.current) {
-        const act = findActiveActivity(activeSessionId);
-        if (act) {
-          updateActivity(currentActivityRef.current, {
-            wrongAttempts: act.wrongAttempts + 1,
-          });
-        }
-      }
     }
 
     return isCorrect;
@@ -1024,41 +803,51 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputQuery('');
     shouldAutoScrollToBottomRef.current = true;
 
-    // Detect if input is a standalone binary math calculation or problem starter
-    const isBinaryMath = /^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$/.test(userText);
-    const isNewProblemPhrase = /^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference|new\s+problem|another\s+problem)\b/i.test(userText);
-    const expectedAns = String(currentStep?.correctAnswer || currentStep?.expectedAnswer || '').trim();
-    const isExpectedAnsMatch = expectedAns.length > 0 && userText.toLowerCase() === expectedAns.toLowerCase();
+    const isBinaryMath = /^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$/.test(
+      userText
+    );
+    const isNewProblemPhrase =
+      /^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference|new\s+problem|another\s+problem)\b/i.test(
+        userText
+      );
+    const expectedAns = String(
+      currentStep?.correctAnswer || currentStep?.expectedAnswer || ''
+    ).trim();
+    const isExpectedAnsMatch =
+      expectedAns.length > 0 && userText.toLowerCase() === expectedAns.toLowerCase();
 
-    const isExplicitNewProblem = (isBinaryMath && !isExpectedAnsMatch) || isNewProblemPhrase;
+    const isExplicitNewProblem =
+      (isBinaryMath && !isExpectedAnsMatch) || isNewProblemPhrase;
 
     let currentProblem = activeProblem;
 
     if (isExplicitNewProblem) {
-      // Clear previous problem so this new query initiates a fresh Socratic decomposition
       currentProblem = undefined;
       setActiveProblem(undefined);
       setCurrentStepIndex(0);
       setMaxUnlockedStepIndex(0);
       setCompletedStepIndices([]);
-    } else if (currentProblem && currentStep && !completedStepIndices.includes(currentStepIndex)) {
-      const isQuestionOrHelp = /(?:help|hint|explain|why|how|what|confused|stuck|\?)/i.test(userText);
+    } else if (
+      currentProblem &&
+      currentStep &&
+      !completedStepIndices.includes(currentStepIndex)
+    ) {
+      const isQuestionOrHelp = /(?:help|hint|explain|why|how|what|confused|stuck|\?)/i.test(
+        userText
+      );
       const isShortAnswer = userText.length <= 40;
       if (!isQuestionOrHelp && isShortAnswer) {
-        // Attempt to answer the active step and do not double-send to tutorApi
         await handleStepAnswer(userText);
         return;
       }
     }
-
-
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
       textEng: userText,
       problemId: currentProblem?.id,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const updatedWithUser = [...messages, userMsg];
@@ -1066,29 +855,39 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsSayoThinking(true);
     lastInteractionRef.current = Date.now();
 
-    const sayoRes = await askTunsayTutor(userText, currentProblem, profile.language, activeSessionId);
+    const sayoRes = await askTunsayTutor(
+      userText,
+      currentProblem,
+      profile.language,
+      activeSessionId
+    );
     if (!isMountedRef.current) return;
 
     setIsSayoThinking(false);
 
-    // If backend returned a structured step widget and current problem has no steps, upgrade problem dynamically
-    if (sayoRes.stepWidget && Array.isArray(sayoRes.stepWidget.steps) && sayoRes.stepWidget.steps.length > 0) {
+    // If backend returned a structured step widget and this was a fresh problem, save it
+    if (
+      sayoRes.stepWidget &&
+      Array.isArray(sayoRes.stepWidget.steps) &&
+      sayoRes.stepWidget.steps.length > 0
+    ) {
       if (!currentProblem || !currentProblem.steps || currentProblem.steps.length <= 1) {
         const dynSteps = mapWidgetToStepItems(sayoRes.stepWidget);
         if (dynSteps.length > 0) {
-          const updatedProblem: HomeworkProblem = currentProblem ? {
-            ...currentProblem,
-            steps: dynSteps,
-          } : {
-            id: `dyn-p-${Date.now()}`,
-            titleKhmer: sayoRes.stepWidget.steps[0]?.title || 'លំហាត់ថ្មី',
-            titleEng: sayoRes.stepWidget.steps[0]?.title || 'Homework Problem',
-            grade: profile.grade,
-            subject: profile.subject,
-            problemStatementKhmer: userText,
-            problemStatementEng: userText,
-            steps: dynSteps,
-          };
+          const vData = sayoRes.stepWidget.visual_data || sayoRes.stepWidget.visualData || dynSteps[0]?.visualData;
+          const updatedProblem: HomeworkProblem = currentProblem
+            ? { ...currentProblem, steps: dynSteps, visualData: vData || currentProblem.visualData }
+            : {
+                id: `dyn-p-${Date.now()}`,
+                titleKhmer: sayoRes.stepWidget.steps[0]?.title || 'លំហាត់ថ្មី',
+                titleEng: sayoRes.stepWidget.steps[0]?.title || 'Homework Problem',
+                grade: profile.grade,
+                subject: profile.subject,
+                problemStatementKhmer: userText,
+                problemStatementEng: userText,
+                steps: dynSteps,
+                visualData: vData,
+              };
           currentProblem = updatedProblem;
           setActiveProblem(updatedProblem);
         }
@@ -1114,7 +913,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
       transitionMascotState('encouraging', 3000);
     } else {
       const nextState = determineMascotStateFromResponse(sayoMsg.textEng || '');
-      if (nextState === 'celebrating' || nextState === 'jumping' || nextState === 'encouraging' || nextState === 'happy') {
+      if (
+        nextState === 'celebrating' ||
+        nextState === 'jumping' ||
+        nextState === 'encouraging' ||
+        nextState === 'happy'
+      ) {
         transitionMascotState(nextState, 3000);
       } else {
         setSayoStatus(nextState);
@@ -1122,592 +926,88 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // 💬 Session list helpers 💬
-  const getSessionPreview = (session: ChatSession): string => {
-    const lastMsg = session.messages[session.messages.length - 1];
-    if (!lastMsg) return '';
-    const text = lastMsg.sender === 'user'
-      ? (isKhmer ? lastMsg.textKhmer : lastMsg.textEng)
-      : (isKhmer ? lastMsg.textKhmer : lastMsg.textEng);
-    return (text || '').slice(0, 40) + ((text || '').length > 40 ? '...' : '');
+  const handleInputChange = (value: string) => {
+    setInputQuery(value);
+    lastInteractionRef.current = Date.now();
+    if (value.trim().length > 0 && sayoStatus !== 'thinking') {
+      setSayoStatus('listening');
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      setSayoStatus((prev) => (prev === 'listening' ? 'idle' : prev));
+    }, 1500);
   };
 
-  const formatSessionTime = (iso: string): string => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    } catch { return ''; }
+  const handleChipClick = (chip: string) => {
+    if (
+      chip.toLowerCase().includes('hint') ||
+      chip.toLowerCase().includes('clue') ||
+      chip.includes('តម្រុយ')
+    ) {
+      setActiveModalStep(currentStep || null);
+      setIsHintOpen(true);
+    } else {
+      setInputQuery(chip);
+    }
   };
 
-  const renderSidebarPanel = (isMobile = false) => (
-    <div className="flex-1 flex flex-col h-full overflow-hidden select-none relative">
-      {/* Decorative blobs */}
-      <div className="absolute -top-10 -left-10 w-28 h-28 bg-[#40916C]/20 rounded-full blur-sm pointer-events-none" />
-      <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#2D6A4F]/20 rounded-full blur-sm pointer-events-none" />
-
-      {/* Mascot area */}
-      <div className="flex flex-col items-center gap-2 pt-3 pb-2.5 px-3 relative z-10 shrink-0 border-b-2 border-[#1B4332]/15">
-        <div className="w-full max-w-[220px]">
-          {(() => {
-            const badges: Record<TunsayState, { text: string; style: string; icon: 'ping' | 'sparkle' | 'dot' | 'none' }> = {
-              thinking:    { text: isKhmer ? 'កំពុងគិត...' : 'Thinking...', style: 'bg-[#2D6A4F] text-white animate-pulse', icon: 'ping' },
-              celebrating: { text: isKhmer ? 'រួចរាល់!' : 'Done!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
-              jumping:     { text: isKhmer ? 'អស្ចារ្យ!' : 'Amazing!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
-              encouraging: { text: isKhmer ? 'កុំបារំរ!' : 'No worries!', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
-              listening:   { text: isKhmer ? 'ស្ដាប់...' : 'Listening...', style: 'bg-[#A7CDB4] text-[#1B4332] animate-pulse', icon: 'dot' },
-              explaining:  { text: isKhmer ? 'ពន្យល់...' : 'Explaining...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
-              waving:      { text: isKhmer ? 'សួស្ដី!' : 'Hello!', style: 'bg-[#A7CDB4] text-[#1B4332] animate-bounce', icon: 'dot' },
-              happy:       { text: isKhmer ? 'ល្អ!' : 'Yay!', style: 'bg-[#2D6A4F] text-white animate-bounce', icon: 'sparkle' },
-              confused:    { text: isKhmer ? 'ហ៊ឹម...' : 'Hmm...', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
-              sleeping:    { text: isKhmer ? 'សម្រាក...' : 'Resting...', style: 'bg-gray-200 text-gray-700', icon: 'none' },
-              idle:        { text: isKhmer ? 'ReanMore AI Tutor' : 'ReanMore AI Tutor', style: 'bg-[#A7CDB4] text-[#1B4332]', icon: 'dot' },
-            };
-            const b = badges[sayoStatus];
-            return (
-              <span className={`px-2.5 py-1 text-[11px] font-black rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] inline-flex items-center justify-center gap-1.5 uppercase tracking-wider w-full ${b.style}`}>
-                {b.icon === 'ping' && <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />}
-                {b.icon === 'sparkle' && <Sparkles className="w-3 h-3 text-white" />}
-                {b.icon === 'dot' && <span className="w-2 h-2 bg-[#2D6A4F] rounded-full border border-[#1B4332] shrink-0" />}
-                <span className="truncate">{b.text}</span>
-              </span>
-            );
-          })()}
-        </div>
-
-        <div className="flex flex-col items-center justify-center transition-all duration-300 transform w-full">
-          <div className={`transition-all duration-300 ${
-            sayoStatus === 'thinking' ? 'scale-105' : sayoStatus === 'celebrating' || sayoStatus === 'jumping' || sayoStatus === 'happy' ? 'scale-110 animate-bounce' : 'scale-100 hover:scale-105'
-          }`}>
-            <TunsayAvatar size={isMobile ? 'md' : 'lg'} state={sayoStatus} showBadge={false} />
-          </div>
-
-          <div className="mt-1.5 px-2.5 w-full max-w-[240px] bg-white rounded-xl p-2 border-2 sm:border-2.5 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] relative">
-            <div className="w-2.5 h-2.5 bg-white border-t-2 border-l-2 sm:border-t-2.5 sm:border-l-2.5 border-[#1B4332] rotate-45 absolute -top-1.5 left-1/2 -translate-x-1/2" />
-            <p className="font-heading font-black text-xs text-[#1B4332] leading-snug text-center transition-all duration-300 line-clamp-2">
-              {getMascotContextText(sayoStatus)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Session History List / Worksheet Progress Panel */}
-      {sidebarMode === 'worksheet' && worksheetQueue && worksheetQueue.problems.length > 1 ? (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <WorksheetProgressPanel
-            problems={worksheetQueue.problems}
-            activeIndex={worksheetQueue.activeIndex}
-            completedIds={worksheetQueue.completedIds}
-            language={profile.language}
-            {...(worksheetQueue.worksheetTitle ? { worksheetTitle: worksheetQueue.worksheetTitle } : {})}
-            onSelectExercise={(idx) => {
-              onSelectExercise?.(idx);
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
-            onViewAllChats={() => setSidebarMode('chats')}
-          />
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 sm:px-3 py-2.5 sm:py-3 space-y-2 relative z-10 overscroll-contain">
-          {/* Active Worksheet Quick Return Banner */}
-          {worksheetQueue && worksheetQueue.problems.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setSidebarMode('worksheet')}
-              className="w-full mb-2 px-2.5 py-1.5 bg-[#40916C]/15 hover:bg-[#40916C]/25 border-2 border-[#1B4332] rounded-xl flex items-center justify-between text-left transition-all shadow-[1.5px_1.5px_0px_#1B4332] cursor-pointer"
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Layers className="w-3.5 h-3.5 text-[#1B4332] shrink-0" />
-                <span className="text-[10px] sm:text-xs font-black text-[#1B4332] truncate">
-                  {isKhmer ? `ទំព័រលំហាត់ (${worksheetQueue.problems.length} លំហាត់)` : `Worksheet (${worksheetQueue.problems.length} Exercises)`}
-                </span>
-              </div>
-              <span className="text-[9px] font-black text-[#2D6A4F] bg-white px-1.5 py-0.5 rounded-md shrink-0 border border-[#1B4332]/20">
-                {isKhmer ? 'មើលលំហាត់ →' : 'View Page →'}
-              </span>
-            </button>
-          )}
-
-          <div className="flex items-center justify-between mb-1.5 px-0.5">
-            <p className="text-xs sm:text-sm font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5">
-              <span>{isKhmer ? 'ប្រវត្តិជជែក' : 'Recent Chats'}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-[#40916C]/20 text-[#1B4332] rounded-full font-bold">
-                {sessions.length}
-              </span>
-            </p>
-            <button
-              onClick={() => {
-                handleNewChat();
-                if (isMobile) setIsMobileSidebarOpen(false);
-              }}
-              className="text-xs font-black text-[#1B4332] bg-white hover:bg-[#A7CDB4] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
-              title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>{isKhmer ? 'ថ្មី' : 'New'}</span>
-            </button>
-          </div>
-
-          {sessions.map((session) => {
-            const isActive = session.id === activeSessionId;
-            const hasWorksheet = Boolean(session.worksheetQueue && session.worksheetQueue.problems && session.worksheetQueue.problems.length > 1);
-            const wsTotal = session.worksheetQueue?.problems?.length || 0;
-            const wsDone = session.worksheetQueue?.completedIds?.length || 0;
-
-            return (
-              <div
-                key={session.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  onSelectSession(session.id);
-                  if (hasWorksheet) {
-                    setSidebarMode('worksheet');
-                  }
-                  if (isMobile) setIsMobileSidebarOpen(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    onSelectSession(session.id);
-                    if (hasWorksheet) setSidebarMode('worksheet');
-                    if (isMobile) setIsMobileSidebarOpen(false);
-                  }
-                }}
-                className={`w-full text-left rounded-xl border-2 sm:border-2.5 p-2.5 sm:p-3 transition-all cursor-pointer group ${
-                  isActive
-                    ? 'bg-white border-[#1B4332] shadow-[2.5px_2.5px_0px_#1B4332] translate-x-0.5'
-                    : 'bg-white/80 hover:bg-white border-[#1B4332]/30 hover:border-[#1B4332] shadow-[1.5px_1.5px_0px_rgba(27,67,50,0.12)] hover:shadow-[2.5px_2.5px_0px_#1B4332]'
-                }`}
-              >
-                <div className="flex items-start gap-2 sm:gap-2.5">
-                  <div className={`p-1.5 rounded-lg border-2 shrink-0 mt-0.5 ${
-                    hasWorksheet
-                      ? 'bg-[#40916C] text-white border-[#1B4332]'
-                      : isActive
-                      ? 'bg-[#A7CDB4] text-[#1B4332] border-[#1B4332]'
-                      : 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332]/40 group-hover:border-[#1B4332]'
-                  }`}>
-                    {hasWorksheet ? (
-                      <Layers className="w-3.5 h-3.5 stroke-[2.5]" />
-                    ) : (
-                      <MessageSquare className="w-3.5 h-3.5 stroke-[2.5]" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-xs sm:text-sm font-black text-[#1B4332] truncate leading-tight">
-                        {isKhmer ? session.titleKhmer : session.title}
-                      </p>
-                      {hasWorksheet && (
-                        <span className="text-[9px] font-black bg-[#A7CDB4]/40 text-[#1B4332] px-1.5 py-0.5 rounded border border-[#1B4332]/30 shrink-0">
-                          {wsTotal} {isKhmer ? 'លំហាត់' : 'Ex'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] sm:text-xs font-bold text-[#1B4332]/75 truncate mt-0.5 leading-snug">
-                      {hasWorksheet && wsDone > 0 ? (
-                        <span className="text-[#2D6A4F] font-bold">
-                          ✓ {wsDone}/{wsTotal} {isKhmer ? 'រួចរាល់' : 'done'} • {getSessionPreview(session)}
-                        </span>
-                      ) : (
-                        getSessionPreview(session)
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-[9px] sm:text-[10px] font-black text-[#1B4332]/70 bg-[#A7CDB4]/30 px-1.5 py-0.5 rounded-md">
-                      {formatSessionTime(session.updatedAt)}
-                    </span>
-                    {sessions.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteSession(session.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[#1B4332]/40 hover:text-red-600 hover:scale-110 p-0.5 cursor-pointer"
-                        title={isKhmer ? 'លុប' : 'Delete'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="w-full pt-2.5 pb-2.5 px-3 border-t-2 border-[#1B4332]/20 relative z-10 shrink-0 bg-white/40">
-        <p className="text-[11px] sm:text-xs font-black text-[#1B4332] uppercase tracking-widest truncate text-center">
-          ReanMore WEG
-        </p>
-      </div>
-    </div>
-  );
+  const lastMsg = messages[messages.length - 1];
 
   return (
     <div className="w-full h-full flex-1 flex flex-row items-stretch gap-2.5 sm:gap-4 lg:gap-5 overflow-hidden">
-      {/* Desktop Left Panel: Mascot + Session History */}
-      <div
-        className="hidden lg:flex lg:w-[28%] lg:min-w-[260px] lg:max-w-[340px] shrink-0 h-full max-h-full bg-[#E8F5E9] rounded-2xl lg:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] lg:shadow-[6px_6px_0px_#1B4332] flex-col select-none z-10 relative overflow-hidden min-h-0"
-      >
-        {renderSidebarPanel(false)}
-      </div>
-
-      {/* Mobile Slide-Over Drawer (ChatGPT Mobile Inspired) */}
-      {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden animate-fadeIn">
-          {/* Backdrop overlay */}
-          <div
-            className="fixed inset-0 bg-[#1B4332]/60 backdrop-blur-xs transition-opacity cursor-pointer"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-          {/* Drawer container */}
-          <div className="relative w-[85%] max-w-[320px] h-full bg-[#E8F5E9] shadow-2xl flex flex-col border-r-3 border-[#1B4332] z-10 animate-slideInLeft overflow-hidden">
-            <div className="flex items-center justify-between p-3 bg-[#1B4332] text-white border-b-2 border-[#1B4332] shrink-0">
-              <div className="flex items-center gap-2">
-                <TunsayAvatar size="sm" state={sayoStatus} showBadge={false} />
-                <span className="font-black text-sm">{isKhmer ? 'ប្រវត្តិជជែក' : 'Recent Chats'}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMobileSidebarOpen(false)}
-                className="p-1.5 rounded-lg bg-[#40916C] hover:bg-white hover:text-[#1B4332] text-white transition-colors cursor-pointer border border-[#1B4332]"
-                title="Close"
-              >
-                <X className="w-4 h-4 stroke-[3]" />
-              </button>
-            </div>
-            {renderSidebarPanel(true)}
-          </div>
-        </div>
-      )}
+      {/* Sidebar: Mascot status & Session History */}
+      <ChatSidebar
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={onSelectSession}
+        onDeleteSession={onDeleteSession}
+        onNewChat={handleNewChat}
+        profile={profile}
+        sayoStatus={sayoStatus}
+        getMascotContextText={getMascotContextText}
+        sidebarMode={sidebarMode}
+        setSidebarMode={setSidebarMode}
+        worksheetQueue={worksheetQueue}
+        onSelectExercise={onSelectExercise}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+      />
 
       {/* Main Chat Frame */}
       <div className="flex-1 min-w-0 h-full flex flex-col bg-[#E8F5E9] rounded-xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden relative">
-        {/* Top Navigation Bar */}
-        <div className="shrink-0 z-20 px-2.5 sm:px-5 py-2 sm:py-2.5 bg-[#1B4332] border-b-2 sm:border-b-3 border-[#1B4332] flex items-center justify-between gap-1.5 sm:gap-3 shadow-[0_2px_0px_#1B4332] sm:shadow-[0_3px_0px_#1B4332]">
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-            {/* Mobile History / Menu Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-1.5 sm:p-2 bg-[#40916C] text-white hover:bg-white hover:text-[#1B4332] rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center cursor-pointer transition-all active:translate-y-0.5 shrink-0"
-              title={isKhmer ? 'ប្រវត្តិជជែក' : 'Chat History'}
-            >
-              <Menu className="w-4 h-4 stroke-[2.5]" />
-            </button>
+        {/* Top Header */}
+        <ChatHeader
+          profile={profile}
+          isSayoThinking={isSayoThinking}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onNewChat={handleNewChat}
+          onBackToHome={onBackToHome}
+          worksheetQueue={worksheetQueue}
+          onSelectExercise={onSelectExercise}
+          onViewAllChats={() => setSidebarMode('chats')}
+        />
 
-            <div className="relative">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] rounded-lg sm:rounded-2xl flex items-center justify-center border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332]">
-                <TunsayAvatar size="sm" state={isSayoThinking ? 'thinking' : 'idle'} showBadge={false} />
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#2D6A4F] border-2 border-[#1B4332] rounded-full" title="Online" />
-            </div>
-
-            <div>
-              <h3 className="font-black text-xs sm:text-sm md:text-base text-white flex items-center gap-1 font-heading leading-tight drop-shadow-[1px_1px_0px_#1B4332]">
-                {isKhmer ? 'ReanMore' : 'ReanMore AI'}
-              </h3>
-              <p className="text-[10px] sm:text-xs text-white font-black flex items-center gap-1 drop-shadow-[1px_1px_0px_#1B4332]">
-                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                {isKhmer ? `ថ្នាក់ទី ${profile.grade}` : `Grade ${profile.grade}`}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] text-white hover:bg-white hover:text-[#1B4332] rounded-lg sm:rounded-2xl flex items-center justify-center transition-all cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
-              title={isKhmer ? 'ចាប់ផ្តើមជជែកថ្មី' : 'New Chat'}
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
-            </button>
-
-            {onBackToHome && (
-              <button
-                type="button"
-                onClick={onBackToHome}
-                className="px-2.5 sm:px-3.5 py-1.5 bg-[#40916C] text-white hover:bg-white hover:text-[#1B4332] rounded-lg sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1 cursor-pointer border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] active:translate-x-0.5 active:translate-y-0.5 shrink-0"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                <span className="hidden min-[380px]:inline">{isKhmer ? 'ទំព័រដើម' : 'Home'}</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Worksheet Exercise Bar — shown above scrollable area when multi-exercise queue active */}
-        {worksheetQueue && worksheetQueue.problems.length > 1 && (
-          <WorksheetExerciseBar
-            problems={worksheetQueue.problems}
-            activeIndex={worksheetQueue.activeIndex}
-            completedIds={worksheetQueue.completedIds}
-            language={profile.language}
-            onSelectExercise={(idx) => onSelectExercise?.(idx)}
-            onViewAllChats={() => setSidebarMode('chats')}
-          />
-        )}
-
-        {/* Scrollable Conversation Area */}
+        {/* Scrollable Conversation Stream */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2.5 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-5">
-          {/* Celebration banner — shown inline after exercise completion */}
-          {activeProblem && celebratingProblemId === activeProblem.id && worksheetQueue && (() => {
-            const exIdx = worksheetQueue.problems.findIndex(p => p.id === celebratingProblemId);
-            const hasNext = worksheetQueue.problems.some(
-              (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
-            );
-            return (
-              <ExerciseCelebrationBanner
-                exerciseNumber={exIdx + 1}
-                totalExercises={worksheetQueue.problems.length}
-                exerciseTitleKhmer={activeProblem.titleKhmer}
-                exerciseTitleEng={activeProblem.titleEng}
-                language={profile.language}
-                hasNext={hasNext}
-                onNext={() => {
-                  setCelebratingProblemId(null);
-                  const nextIdx = worksheetQueue.problems.findIndex(
-                    (p, i) => i > exIdx && !worksheetQueue.completedIds.includes(p.id)
-                  );
-                  if (nextIdx !== -1) onSelectExercise?.(nextIdx);
-                }}
-                onReview={() => setCelebratingProblemId(null)}
-              />
-            );
-          })()}
-
-
-          {(() => {
-            const displayedMessages = messages.filter((msg) => {
-              // Always show messages with no problemId (welcome messages, general chat)
-              if (!msg.problemId && !msg.problem?.id) return true;
-              // If there's an active problem, show only its messages
-              if (activeProblem) {
-                if (msg.problemId) return msg.problemId === activeProblem.id;
-                if (msg.problem?.id) return msg.problem.id === activeProblem.id;
-              }
-              // No active problem — show everything
-              return true;
-            });
-
-            return displayedMessages.map((msg) => {
-              const isUser = msg.sender === 'user';
-              let displayText = '';
-              if (isUser) {
-                displayText = msg.textEng || msg.textKhmer || '';
-              } else {
-                displayText = isKhmer ? (msg.textKhmer || msg.textEng || '') : (msg.textEng || msg.textKhmer || '');
-              }
-
-              const stepCardData = !isUser ? extractStepWidgetFromMessage(msg) : null;
-
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-start gap-2 sm:gap-3 w-full ${isUser ? 'flex-row-reverse' : 'flex-row'} animate-fadeIn`}
-                >
-                {!isUser ? (
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] rounded-lg sm:rounded-2xl shrink-0 border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] flex items-center justify-center p-0.5">
-                    <TunsayAvatar size="sm" state={msg.isSafetyRefusal ? 'encouraging' : 'explaining'} showBadge={false} />
-                  </div>
-                ) : (
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-[#A7CDB4] text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] font-black flex items-center justify-center shrink-0 overflow-hidden">
-                    {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt="You" className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
-                  </div>
-                )}
-
-                {stepCardData ? (
-                  <div className="w-full max-w-[94%] sm:max-w-[85%] flex flex-col gap-2 min-w-0">
-                    {stepCardData.introText && (
-                      <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white text-[#1B4332] border-2 sm:border-2.5 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[2.5px_2.5px_0px_#1B4332] speech-tail-left text-xs sm:text-sm font-black leading-relaxed">
-                        {stepCardData.introText}
-                      </div>
-                    )}
-                    <StepChatBubble
-                      step={stepCardData.activeStep}
-                      stepIndex={stepCardData.activeIdx}
-                      totalSteps={stepCardData.totalSteps}
-                      language={profile.language}
-                      visualData={activeProblem?.visualData || (stepCardData.widget as any)?.visualData}
-                      completedStepIndices={stepCardData.completedSteps}
-                      isLatest={msg.id === messages[messages.length - 1]?.id}
-                      onOpenHints={() => {
-                        setActiveModalStep(stepCardData.activeStep);
-                        setIsHintOpen(true);
-                        handleStepHint(msg.id);
-                      }}
-                      onOpenExplainDifferently={() => {
-                        setActiveModalStep(stepCardData.activeStep);
-                        setIsExplainOpen(true);
-                      }}
-                      onOpenAllSteps={() => handleOpenAllSteps(msg.id, stepCardData.widget)}
-                      onNavigateStep={(targetIdx) => handleStepNavigate(msg.id, targetIdx)}
-                      onStepAnswerSubmit={(stepIdx, ans, isCorrect) =>
-                        handleInlineStepAnswer(msg.id, stepIdx, ans, isCorrect)
-                      }
-                    />
-                    <span className="text-[10px] block font-black opacity-60 ml-2">
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    className={`max-w-[88%] sm:max-w-[80%] min-w-0 p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] text-xs sm:text-sm md:text-base leading-relaxed break-words overflow-hidden ${
-                      isUser
-                        ? 'bg-[#1B4332] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
-                        : msg.isSafetyRefusal
-                        ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                        : 'bg-white text-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                    }`}
-                  >
-                    <div className="font-black text-xs sm:text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">
-                      {formatMessageText(displayText)}
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] mt-1.5 block text-right font-black opacity-80">
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          });
-        })()}
-
-          {/* Socratic Loading / Thinking Message Bubble */}
-          {isSayoThinking && (
-            <div className="flex items-start gap-2 sm:gap-3 w-full flex-row animate-fadeIn">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] rounded-lg sm:rounded-2xl shrink-0 border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] flex items-center justify-center p-0.5 animate-pulse">
-                <TunsayAvatar size="sm" state="thinking" showBadge={false} />
-              </div>
-              <div className="max-w-[88%] sm:max-w-[80%] min-w-0 p-2.5 sm:p-4 rounded-xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] bg-white text-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left flex flex-col gap-1 sm:gap-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-[#E8F5E9] px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg border border-[#A7CDB4]">
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#40916C] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#2D6A4F] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#1B4332] rounded-full animate-bounce"></span>
-                  </div>
-                  <span className="text-xs sm:text-sm font-black text-[#1B4332]">
-                    {isKhmer ? 'ReanMore កំពុងគិត...' : 'ReanMore is thinking...'}
-                  </span>
-                </div>
-                <div className="text-[11px] sm:text-xs md:text-sm font-bold text-[#1B4332]/75 italic pl-0.5">
-                  💭 {isKhmer ? thinkingTextsKhmer[thinkingTextIdx] : thinkingTextsEng[thinkingTextIdx]}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Fresh Start: Scan Button */}
-          {!activeProblem && messages.length <= 1 && (
-            <div className="space-y-3 pt-1 pl-1 sm:pl-12 animate-fadeIn">
-              <div className="flex flex-wrap gap-2.5">
-                <button
-                  type="button"
-                  onClick={onOpenScanner}
-                  className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-[#2D6A4F] text-white hover:bg-[#40916C] hover:text-white rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer"
-                >
-                  <Camera className="w-4 h-4 stroke-[2.5]" />
-                  <span>{isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeProblem && (
-            <div className="space-y-3 sm:space-y-4">
-              {/* Scanned Problem Header Card */}
-              {(activeProblem.problemStatementKhmer || activeProblem.problemStatementEng) && (
-                <div className="p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-black text-[#2D6A4F] uppercase tracking-wider">
-                      {isKhmer 
-                        ? `លំហាត់ស្កែនបាន ${worksheetQueue ? worksheetQueue.activeIndex + 1 : 1}` 
-                        : `SCANNED PROBLEM ${worksheetQueue ? worksheetQueue.activeIndex + 1 : 1}`}
-                    </p>
-                    {completedStepIndices.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleResetProgress}
-                        title={isKhmer ? 'ចាប់ផ្ដើមពីដើម' : 'Reset to Step 1'}
-                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-black text-[#2D6A4F] border border-[#2D6A4F]/40 rounded-lg hover:bg-[#E8F5E9] hover:border-[#1B4332] transition-all cursor-pointer shrink-0"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>{isKhmer ? 'ចាប់ផ្ដើមពីដើម' : 'Start fresh'}</span>
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-sm sm:text-base md:text-lg font-black text-[#1B4332]">
-                    {isKhmer 
-                      ? (activeProblem.problemStatementKhmer || activeProblem.problemStatementEng)
-                      : (activeProblem.problemStatementEng || activeProblem.problemStatementKhmer)}
-                  </p>
-                </div>
-              )}
-
-              {/* Step Trail */}
-              {activeProblem.steps && activeProblem.steps.length > 0 && (
-                <StepTrail
-                  currentStep={currentStepIndex + 1}
-                  totalSteps={activeProblem.steps.length}
-                  completedSteps={completedStepIndices}
-                  maxUnlockedStep={maxUnlockedStepIndex + 1}
-                  language={profile.language}
-                  onSelectStep={(stepIdx) => {
-                    if (stepIdx <= maxUnlockedStepIndex || completedStepIndices.includes(stepIdx)) {
-                      setCurrentStepIndex(stepIdx);
-                    }
-                  }}
-                />
-              )}
-
-              {/* Step Card with Embedded Visual Manipulative */}
-              {currentStep && (
-                <StepCard
-                  step={currentStep}
-                  isCompleted={completedStepIndices.includes(currentStepIndex)}
-                  language={profile.language}
-                  visualData={activeProblem.visualData}
-                  onAnswerSubmit={handleStepAnswer}
-                  onNextStep={
-                    currentStepIndex < maxUnlockedStepIndex && currentStepIndex + 1 < (activeProblem?.steps?.length || 0)
-                      ? () => setCurrentStepIndex(currentStepIndex + 1)
-                      : undefined
-                  }
-                  onOpenHints={() => {
-                    setActiveModalStep(currentStep || null);
-                    setIsHintOpen(true);
-                    if (currentActivityRef.current) {
-                      const act = findActiveActivity(activeSessionId);
-                      if (act) {
-                        updateActivity(currentActivityRef.current, {
-                          hintsUsed: act.hintsUsed + 1,
-                        });
-                      }
-                    }
-                  }}
-                  onOpenExplainDifferently={() => {
-                    setActiveModalStep(currentStep || null);
-                    setIsExplainOpen(true);
-                    if (currentActivityRef.current) {
-                      const act = findActiveActivity(activeSessionId);
-                      if (act) {
-                        updateActivity(currentActivityRef.current, {
-                          explainUsed: act.explainUsed + 1,
-                        });
-                      }
-                    }
-                  }}
-                />
-              )}
-            </div>
-          )}
+          <ChatMessageList
+            messages={messages}
+            profile={profile}
+            activeProblem={activeProblem}
+            celebratingProblemId={celebratingProblemId}
+            worksheetQueue={worksheetQueue}
+            setCelebratingProblemId={setCelebratingProblemId}
+            onSelectExercise={onSelectExercise}
+            isSayoThinking={isSayoThinking}
+            thinkingTextIdx={thinkingTextIdx}
+            onOpenScanner={onOpenScanner}
+            onStepHint={handleStepHint}
+            onStepNavigate={handleStepNavigate}
+            onOpenAllSteps={handleOpenAllSteps}
+            onInlineStepAnswer={handleInlineStepAnswer}
+            setActiveModalStep={setActiveModalStep}
+            setIsHintOpen={setIsHintOpen}
+            setIsExplainOpen={setIsExplainOpen}
+          />
 
           <div ref={chatEndRef} />
         </div>
@@ -1717,11 +1017,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isOpen={isMathKeypadOpen}
           onClose={() => setIsMathKeypadOpen(false)}
           onInsert={(char) => {
-            setInputQuery(prev => prev + char);
+            setInputQuery((prev) => prev + char);
             lastInteractionRef.current = Date.now();
           }}
           onBackspace={() => {
-            setInputQuery(prev => prev.slice(0, -1));
+            setInputQuery((prev) => prev.slice(0, -1));
             lastInteractionRef.current = Date.now();
           }}
           onClear={() => {
@@ -1736,116 +1036,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
         />
 
         {/* Bottom Chat Input Bar */}
-        <div className="px-2.5 sm:px-5 py-2 sm:py-3 bg-white border-t-2 sm:border-t-3 border-[#1B4332] shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {/* Queue Status Notification Banner */}
-          {isSayoThinking && (
-            <div className="mb-2 px-3 py-2 bg-emerald-50 border-2 border-emerald-400 rounded-xl flex items-center gap-2 animate-pulse">
-              <span className="text-base">🌟</span>
-              <span className="text-xs sm:text-sm font-black text-[#1B4332]">
-                {isKhmer ? 'អ្នកស្ថិតក្នុងជួរបន្ទាប់! ReanMore កំពុងគិត...' : "You're next in line! ReanMore is preparing your step-by-step guidance..."}
-              </span>
-            </div>
-          )}
-
-          {/* Tap-First Degraded Suggested Chips (Sprint 0.3) */}
-          {(() => {
-            const lastMsg = messages[messages.length - 1];
-            const chips = lastMsg?.suggestedChips;
-            if (!chips || chips.length === 0) return null;
-            return (
-              <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 animate-fadeIn no-scrollbar">
-                {chips.map((chip, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      if (chip.toLowerCase().includes('hint') || chip.toLowerCase().includes('clue') || chip.includes('តម្រុយ')) {
-                        setActiveModalStep(currentStep || null);
-                        setIsHintOpen(true);
-                      } else {
-                        setInputQuery(chip);
-                      }
-                    }}
-                    className="px-2.5 py-1 text-xs sm:text-sm font-bold bg-[#E8F5E9] hover:bg-[#D8F3DC] text-[#1B4332] rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer shrink-0"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-            className="w-full flex items-center gap-1.5 sm:gap-2.5"
-          >
-            <button
-              type="button"
-              onClick={onOpenScanner}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-[#2D6A4F] text-white rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0"
-              title={isKhmer ? 'ស្កែនរូបថតលំហាត់' : 'Scan Homework Photo'}
-            >
-              <Camera className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsMathKeypadOpen(prev => !prev)}
-              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all cursor-pointer shrink-0 ${
-                isMathKeypadOpen ? 'bg-emerald-700 text-white' : 'bg-[#E8F5E9] text-[#1B4332]'
-              }`}
-              title="Math Keypad & Problem Builder (Grades 1-6)"
-            >
-              <Calculator className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
-
-            <div className="flex-1 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] px-3 sm:px-4 flex items-center">
-              <input
-                type="text"
-                value={inputQuery}
-                disabled={isSayoThinking}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setInputQuery(value);
-                  lastInteractionRef.current = Date.now();
-                  if (value.trim().length > 0 && sayoStatus !== 'thinking') {
-                    setSayoStatus('listening');
-                  }
-                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                  typingTimeoutRef.current = setTimeout(() => {
-                    setSayoStatus(prev => prev === 'listening' ? 'idle' : prev);
-                  }, 1500);
-                }}
-                placeholder={
-                  isSayoThinking
-                    ? (isKhmer ? 'ReanMore កំពុងគិត...' : 'ReanMore is thinking...')
-                    : (isKhmer ? 'សួរអ្វីបន្ថែម ឬ "ខ្ញុំមិនយល់ទេ"...' : 'Ask for help or "I\'m stuck"...')
-                }
-                className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-xs sm:text-sm md:text-base py-2 sm:py-2.5 font-bold text-[#1B4332] placeholder:text-[#1B4332]/50 disabled:opacity-60"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!inputQuery.trim() || isSayoThinking}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-[#1B4332] disabled:bg-gray-200 disabled:border-gray-400 text-white rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] font-black hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] transition-all flex items-center justify-center cursor-pointer shrink-0"
-            >
-              <Send className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
-            </button>
-          </form>
-        </div>
+        <ChatInputBar
+          inputQuery={inputQuery}
+          isSayoThinking={isSayoThinking}
+          isMathKeypadOpen={isMathKeypadOpen}
+          setIsMathKeypadOpen={setIsMathKeypadOpen}
+          suggestedChips={lastMsg?.suggestedChips}
+          onOpenScanner={onOpenScanner}
+          onSendMessage={handleSendMessage}
+          onChipClick={handleChipClick}
+          onInputChange={handleInputChange}
+        />
       </div>
 
-      {/* Sheets Modals */}
+      {/* Sheets & Drawer Modals */}
       {(activeModalStep || currentStep) && (
         <>
           <HintSheet
             step={activeModalStep || currentStep!}
             isOpen={isHintOpen}
             language={profile.language}
+            grade={profile.grade}
             onClose={() => {
               setIsHintOpen(false);
               setActiveModalStep(null);
@@ -1855,6 +1066,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             step={activeModalStep || currentStep!}
             isOpen={isExplainOpen}
             language={profile.language}
+            grade={profile.grade}
             onClose={() => {
               setIsExplainOpen(false);
               setActiveModalStep(null);
@@ -1863,21 +1075,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </>
       )}
 
-      {/* Socratic Stepper Solution Journey Drawer */}
-      <AllStepsDrawer
-        steps={activeDrawerSteps}
-        currentStepIndex={activeDrawerStepIdx}
-        isOpen={isAllStepsDrawerOpen}
-        language={profile.language}
-        onSelectStep={(idx) => {
-          if (activeDrawerMsgId) {
-            handleStepNavigate(activeDrawerMsgId, idx);
-          }
-          setIsAllStepsDrawerOpen(false);
-        }}
-        onClose={() => setIsAllStepsDrawerOpen(false)}
-      />
+      {isAllStepsDrawerOpen && (
+        <AllStepsDrawer
+          isOpen={isAllStepsDrawerOpen}
+          steps={activeDrawerSteps}
+          currentStepIndex={activeDrawerStepIdx}
+          language={profile.language}
+          onClose={() => {
+            setIsAllStepsDrawerOpen(false);
+            setActiveDrawerMsgId(null);
+          }}
+          onSelectStep={(targetIdx) => {
+            if (activeDrawerMsgId) {
+              handleStepNavigate(activeDrawerMsgId, targetIdx);
+            }
+            setActiveDrawerStepIdx(targetIdx);
+          }}
+        />
+      )}
     </div>
   );
 };
-

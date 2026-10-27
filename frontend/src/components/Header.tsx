@@ -1,7 +1,6 @@
 import React from 'react';
 import { UserProfile, UserAccount, UserRole } from '../types';
-import { Home, BookOpen, User, Award, LogIn, LogOut, ChevronDown } from 'lucide-react';
-import { getDisplayName } from '../utils/language';
+import { Home, BookOpen, User, Award } from 'lucide-react';
 import logoWhiteImg from '../assets/logo_white.png';
 
 export type TabType = 'home' | 'chat' | 'profile' | 'report';
@@ -33,14 +32,17 @@ export const Header: React.FC<HeaderProps> = ({
   const isKhmer = false;
   const role = currentUser?.role || profile.role || 'student';
   const isParent = role === 'parent';
+  const isChat = activeTab === 'chat';
 
   return (
     <header className="sticky top-0 z-40 bg-[#1B4332] border-b-2 sm:border-b-[3px] border-[#1B4332] shadow-[0_3px_0px_#2D6A4F] sm:shadow-[0_4px_0px_#2D6A4F] select-none">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 sm:py-2.5">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-          {/* Logo */}
+      <div className={`${isChat ? 'w-full px-1.5 sm:px-4 lg:px-6' : 'max-w-7xl mx-auto px-2 sm:px-4 md:px-6'} py-2 sm:py-2.5`}>
+        <div className="flex items-center justify-between gap-1.5 sm:gap-3 w-full">
+          {/* Logo: Centered over history sidebar on desktop chat */}
           <div
-            className="flex items-center gap-2 shrink-0 cursor-pointer"
+            className={`flex items-center shrink-0 cursor-pointer ${
+              isChat ? 'lg:w-[28%] lg:min-w-[260px] lg:max-w-[340px] lg:justify-center' : ''
+            }`}
             onClick={() => onSelectTab('home')}
             title="ReanMore AI Tutor"
           >
@@ -64,23 +66,18 @@ export const Header: React.FC<HeaderProps> = ({
                     key={item.key}
                     type="button"
                     onClick={() => {
-                      // If clicking Parent Report while in student mode, prompt parent authentication
-                      if (item.key === 'report' && role === 'student' && onOpenAuth) {
-                        onOpenAuth('parent');
-                        return;
-                      }
                       onSelectTab(item.key);
                     }}
                     aria-current={isActive ? 'page' : undefined}
                     title={label}
-                    className={`relative flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2 rounded-lg sm:rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer border-2 ${
+                    className={`relative flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 md:px-4 md:py-2 rounded-lg sm:rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer border-2 ${
                       isActive
                         ? 'bg-[#40916C] text-white border-[#A7CDB4] shadow-[1.5px_1.5px_0px_#A7CDB4] sm:shadow-[2px_2px_0px_#A7CDB4]'
                         : 'bg-[#2D6A4F] text-white border-[#1B4332] hover:bg-[#40916C]'
                     }`}
                   >
                     <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isActive ? 'text-white' : 'text-white/90'}`} />
-                    <span className={`truncate ${isActive ? 'inline min-[400px]:inline' : 'hidden min-[480px]:inline'}`}>
+                    <span className="truncate">
                       {label}
                     </span>
                     {isActive && (
@@ -90,48 +87,6 @@ export const Header: React.FC<HeaderProps> = ({
                 );
               })}
             </nav>
-
-            {/* Auth Account / Switcher / Logout */}
-            <div className="flex items-center gap-1 sm:gap-2 pl-1.5 sm:pl-2.5 ml-0.5 sm:ml-1 border-l-2 border-white/20">
-              {currentUser ? (
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {/* Account Badge / Switcher Button */}
-                  <button
-                    type="button"
-                    onClick={() => onOpenAuth?.()}
-                    title="Switch Account"
-                    className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2 rounded-lg sm:rounded-xl bg-[#2D6A4F] hover:bg-[#40916C] text-white border-2 border-[#1B4332] font-black text-xs sm:text-sm transition-all cursor-pointer shadow-[1.5px_1.5px_0px_rgba(0,0,0,0.2)]"
-                  >
-                    <span className="text-xs sm:text-sm">{isParent ? '👩‍👧' : '👦'}</span>
-                    <span className="inline max-w-[80px] sm:max-w-[110px] truncate text-white">
-                      {getDisplayName(currentUser.profile.name, false)}
-                    </span>
-                    <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/70 shrink-0" />
-                  </button>
-
-                  {/* Log Out Button */}
-                  <button
-                    type="button"
-                    onClick={() => onLogout?.()}
-                    title="Log Out"
-                    className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2 rounded-lg sm:rounded-xl bg-red-700 hover:bg-red-600 text-white border-2 border-red-900 font-black text-xs sm:text-sm transition-all cursor-pointer shadow-[1.5px_1.5px_0px_rgba(0,0,0,0.2)] active:scale-95"
-                  >
-                    <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="hidden sm:inline">Log Out</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onOpenAuth?.()}
-                  title={isKhmer ? 'ចូលគណនី' : 'Log In'}
-                  className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2 rounded-lg sm:rounded-xl bg-amber-400 hover:bg-amber-300 text-[#1B4332] border-2 border-amber-600 font-black text-xs sm:text-sm transition-all cursor-pointer shadow-[2px_2px_0px_#78350F] active:scale-95"
-                >
-                  <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1B4332] shrink-0" />
-                  <span className="inline">{isKhmer ? 'ចូលគណនី' : 'Log In'}</span>
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </div>

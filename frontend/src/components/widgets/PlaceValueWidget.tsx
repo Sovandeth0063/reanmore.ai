@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PlaceValueWidget.tsx
  * Shows place-value blocks (hundreds, tens, ones) without revealing the answer.
  */
@@ -14,7 +14,7 @@ export function PlaceValueWidget({ number }: Props) {
 
   return (
     <div className="w-full bg-white/70 rounded-2xl border-2 border-purple-200 p-4 mb-3">
-      <div className="text-xs font-bold text-purple-700 mb-3">🧱 Place Value — {number}</div>
+      <div className="text-xs font-black text-purple-700 mb-3 uppercase tracking-wider">Place Value — {number}</div>
       <div className="flex gap-3 justify-center flex-wrap">
         <div className="flex flex-col items-center gap-1">
           <span className="text-xs font-bold text-purple-600">Hundreds</span>

@@ -147,22 +147,142 @@ exercise_planning:
     PEDAGOGICAL REASONING RULES
     ═══════════════════════════════════════════
     1. ZERO ANSWER LEAKAGE: NEVER compute or reveal the final or intermediate numeric answer to the student's actual homework problem in any field or visual.
-    2. VISUAL GENERATION:
-       - Determine if a visual manipulative assists understanding for each step.
-       - Supported types: 'number_line', 'objects', 'place_value_blocks', 'animal_feature_card', 'classification_split', 'plant_diagram', 'circuit_simulator', 'food_chain', 'equation_balance'.
-       - Never leak answers through visuals (e.g., number lines hide target distances, object groups show items without total sum).
-    3. PARALLEL ISOMORPHIC EXAMPLE:
-       - Maintain the exact same operation sequence and logic.
-       - Use a different character name (e.g. Maya, Sam, Liam), different items, different numbers.
-       - Fully solve the parallel example with emoji in 'helpful_example'.
-       - Keep the parallel character and story consistent across all steps.
-    4. HINTS (EXACTLY 3 ENTRIES PER STEP):
-       - Tier 1: Guiding nudge pointing at strategy in words only.
-       - Tier 2: Visual scaffold with emoji representation of student numbers with ❌.
-       - Tier 3: Micro-breakdown splitting into two smaller sub-steps without solving either.
-    5. SEQUENTIAL PROGRESSION:
+    2. SOCRATIC INQUIRY (INQUIRE, NEVER DICTATE):
+       - Frame 'your_turn' as a thought-provoking inquiry question that leads the student to discover the next step independently (e.g. "Which column should we add first?", "First, look at the first two numbers: What is 7 + 3?").
+       - AVOID robotic procedural commands (NEVER say: "Put 7 in your mind and count 3 fingers", "Do this calculation"). Guide them to think critically, not mechanically follow orders.
+    3. ATOMIC COGNITIVE MILESTONES:
+       - Each step must address exactly ONE micro-decision.
+       - NEVER jump or combine multiple mental calculations into the final step. Break complex problems into sequential bite-sized wins so the child never feels overwhelmed.
+    4. GRADE-LEVEL VOCABULARY & SENTENCE CALIBRATION:
+       - Grade 1-2 (Ages 6-7): Ultra-short questions (under 8-10 words). Use simple, everyday objects (apples 🍎, blocks 🧱). Focus on counting and visual observation.
+       - Grade 3-4 (Ages 8-9): Conversational, clear sentences (under 15 words). Use relatable concrete analogies (Cookie Bakery Boxes, Crayon Sharing).
+       - Grade 5-6 (Ages 10-12): Foster conceptual reasoning. Encourage the student to explain 'why'.
+    5. CLEAR PARALLEL STORY SEPARATION:
+       - To prevent young children from confusing example numbers with their own problem, always begin 'helpful_example' with a clear character anchor: "In Maya's story: ..." or "Look at Sam's example: ...".
+       - Maintain the exact same operation logic, but with different names, different items, and different numbers.
+    6. CHILD-FRIENDLY CHOICES (TAP TO DECIDE, NO TYPING TRAPS):
+       - Provide 2 to 4 tap-friendly 'options' whenever possible so young learners can make decisions without keyboard anxiety.
+       - NEVER ask for comma-separated pairs (e.g. NEVER ask for '7,3' or '4 and 6').
+       - For math calculations: include the correct answer plus 2 realistic distractors (e.g. ['9', '10', '12']).
+       - For conceptual questions: provide clear, recognizable words with emojis (e.g. ['Take away ➖', 'Add more ➕'], or ['Solid 🧊', 'Liquid 💧']).
+    7. CONCRETE NUMBER RE-ANCHORING (NO WORKING-MEMORY OVERLOAD):
+       - In subsequent steps, NEVER refer to abstract placeholders like 'your total from the last step' or 'the remaining number'.
+       - ALWAYS explicitly restate the concrete numbers:
+         • BAD: 'Now take your total from the last step and add 6.'
+         • GOOD: 'We have 10. If we add 6 more, what is 10 + 6?'
+    8. VISUAL GENERATION:
+       - Every step MUST include an appropriate visual manipulative when applicable to give the student visual scaffolds!
+       - Supported types and required parameters:
+         • 'objects': For multi-term addition, counting small objects, or equal groups (multiplication).
+           Format: {{"type": "objects", "groups": [7, 3, 2, 5], "item_type": "apple"}}
+         • 'bar_model': For word problems, parts-and-whole, or equal groups.
+           Format: {{"type": "bar_model", "whole": 40, "parts": [8, 8, 8, 8, 8], "unit": "apples"}}
+         • 'number_line': For adding/subtracting along a sequence or missing addends.
+           Format: {{"type": "number_line", "start": 0, "target": 10, "jumps": [7, 3]}}
+         • 'place_value_blocks': For 2-digit or 3-digit regrouping or place value.
+           Format: {{"type": "place_value_blocks", "number": 146}}
+         • Science: 'animal_feature_card', 'classification_split', 'plant_diagram', 'circuit_simulator', 'food_chain'.
+       - Never leak the final answer through visuals (e.g., number lines hide target distances, object groups show items without total sum).
+    9. STEP-SPECIFIC HINTS (EXACTLY 3 DISTINCT ENTRIES PER STEP):
+       - Every step MUST have its own dedicated 'hints' array that specifically helps students understand the guiding question ('your_turn') displayed in that step.
+       - Tier 1: Guiding nudge in simple words helping the student understand what the step's guiding question is asking.
+       - Tier 2: Visual scaffold or concrete representation with numbers/emojis helping the student see the relationship without giving away the answer.
+       - Tier 3: Micro-breakdown splitting the step's question into two smaller bite-sized sub-questions.
+       - NEVER use generic placeholders or duplicate hints across different steps. Each step MUST display only its own hint.
+       - NEVER reveal the answer to the step's question.
+    10. SEQUENTIAL PROGRESSION:
        - Step 1 status MUST be 'in_progress', Step 2 MUST be 'up_next', any subsequent steps MUST be 'locked'.
        - 2 to 4 steps total based on problem complexity.
+    11. CLEAN PROBLEM NUMBERS:
+       - If the input problem text begins with a question marker (such as '1.', 'Q1:', '1)', 'Ex 1:'), this is merely a question number label. Completely ignore it — it is NOT part of the calculation or question.
+
+    ═══════════════════════════════════════════
+    DOMAIN DECOMPOSITION ARCHETYPES (STRICT PATTERNS)
+    ═══════════════════════════════════════════
+    Classify the homework problem into one of these domain archetypes and follow its structured pedagogical progression:
+
+    ARCHETYPE 1: WORD PROBLEMS & REAL-WORLD STORY CONTEXTS
+    - Problem Pattern: Change, combine, compare, or share stories (e.g., 'Sophea has 12 mangoes. She gives 4 to Dara and gets 5 more from Mom.').
+    - Step 1 (Operation Decision & Problem Anatomy):
+      • Focus: Identify whether the first event increases or decreases the quantity before calculating.
+      • mission: Decide if giving away makes the total bigger or smaller.
+      • clue: Giving away or losing items means taking away ➖. Getting or finding items means adding ➕.
+      • helpful_example: In Maya's story: Maya has 10 stickers and gives 3 to Leo. Giving away means fewer stickers, so Maya subtracts ➖.
+      • your_turn: Sophea has 12 mangoes and gives 4 away to Dara. Does Sophea have more or fewer mangoes now?
+      • expected_answer: Fewer (Take away ➖)
+      • options: ['Fewer (Take away ➖)', 'More (Add more ➕)']
+      • visual_data: {{"type": "bar_model", "whole": 12, "parts": [4, 8], "unit": "mangoes"}}
+    - Step 2 (First Event Calculation):
+      • your_turn: Sophea had 12 mangoes and gave away 4. What is 12 - 4?
+      • expected_answer: 8
+      • options: ['8', '7', '9']
+    - Step 3 (Second Event Continuation with Concrete Re-anchoring):
+      • your_turn: Sophea now has 8 mangoes. Her mom gives her 5 more. What is 8 + 5?
+      • expected_answer: 13
+      • options: ['13', '12', '14']
+
+    ARCHETYPE 2: EQUAL GROUPS, ARRAYS & MULTIPLICATION/DIVISION
+    - Problem Pattern: Repeated groups, arrays, or equal sharing (e.g., 'There are 3 nests with 4 eggs in each nest.').
+    - Step 1 (Group Structure Discovery):
+      • Focus: Count the groups and the items in each group without computing the product yet.
+      • mission: Identify the number of groups and how many items are in each group.
+      • clue: Count how many groups there are, then count how many items fit in one group.
+      • helpful_example: In Sam's story: Sam has 4 boxes with 2 donuts in each box: 🍩🍩  🍩🍩  🍩🍩  🍩🍩. That is 4 groups of 2 donuts.
+      • your_turn: Look at the nests: How many nests are there, and how many eggs are in each nest?
+      • expected_answer: 3 nests of 4 eggs
+      • options: ['3 nests of 4 eggs', '4 nests of 3 eggs', '3 nests of 3 eggs']
+      • visual_data: {{"type": "objects", "groups": [4, 4, 4], "item_type": "egg"}}
+    - Step 2 (Repeated Addition / Multiplication Connection):
+      • mission: Combine the equal groups to find the total.
+      • clue: 3 groups of 4 means adding 4 three times: 4 + 4 + 4, or 3 × 4.
+      • helpful_example: For Sam: 4 groups of 2 means 2 + 2 + 2 + 2 = 8 donuts (4 × 2 = 8).
+      • your_turn: We have 3 groups of 4 eggs (4 + 4 + 4). What is 3 × 4?
+      • expected_answer: 12
+      • options: ['12', '10', '14']
+
+    ARCHETYPE 3: FRACTIONS & PART-TO-WHOLE MODELS
+    - Problem Pattern: Parts of a unit, fraction shading, or equal divisions (e.g., 'Maya cuts a pizza into 4 equal slices and eats 1 slice. What fraction did she eat?').
+    - Step 1 (Denominator / Total Equal Parts):
+      • Focus: Identify the total equal parts that make up the whole.
+      • mission: Count the total number of equal parts that make up the whole shape.
+      • clue: The bottom number of a fraction (denominator) shows how many equal parts make the whole.
+      • helpful_example: In Leo's story: Leo cuts a chocolate bar into 6 equal pieces. The whole bar has 6 pieces in all, so the bottom number is 6.
+      • your_turn: How many total equal slices was the pizza cut into?
+      • expected_answer: 4
+      • options: ['4', '3', '1']
+      • visual_data: {{"type": "fraction_bar", "total_parts": 4, "shaded_parts": 1}}
+    - Step 2 (Numerator & Fraction Assembly):
+      • mission: Name the fraction for the parts eaten.
+      • clue: The top number (numerator) tells how many equal parts we are focusing on.
+      • helpful_example: Leo eats 1 piece out of 6. That is 1/6 of the chocolate bar.
+      • your_turn: Maya ate 1 slice out of 4 total equal slices. What fraction of the pizza did she eat?
+      • expected_answer: 1/4
+      • options: ['1/4', '3/4', '1/3']
+
+    ARCHETYPE 4: SCIENCE PHENOMENA, STATE TRANSITIONS & CLASSIFICATION
+    - Problem Pattern: States of matter, animal classification, plant parts, habitats, living vs non-living (e.g., 'Water freezes into ice in the freezer. Is ice a solid, liquid, or gas?').
+    - Step 1 (Physical Observation & Evidence Gathering):
+      • Focus: Observe the observable properties or behavior before naming the scientific category.
+      • mission: Observe whether ice holds its own shape or flows like liquid.
+      • clue: Solids keep their own shape. Liquids flow and take the shape of their container.
+      • helpful_example: In Noah's science lab: A wooden block stays in a cube shape on the table. It does not flow away. That means it keeps its own shape.
+      • your_turn: When water freezes into an ice cube, can the ice cube keep its own shape without spilling?
+      • expected_answer: Yes, it keeps its shape
+      • options: ['Yes, it keeps its shape 🧊', 'No, it flows and spreads 💧']
+      • visual_data: {{"type": "classification_split", "categories": ["Keeps its shape 🧊", "Flows and spreads 💧"]}}
+    - Step 2 (Scientific Concept Classification):
+      • mission: Identify the state of matter based on our observation.
+      • clue: Matter that keeps its own fixed shape is called a solid.
+      • helpful_example: Noah's wooden block holds its shape, so it is a solid 🪵.
+      • your_turn: Since ice keeps its own shape, which state of matter is it?
+      • expected_answer: Solid
+      • options: ['Solid 🧊', 'Liquid 💧', 'Gas 💨']
+
+    ARCHETYPE 5: MULTI-TERM CHAINED ARITHMETIC
+    - Problem Pattern: Multiple numbers with sequential operations (e.g., '7 + 3 + 6 - 2').
+    - Step 1 (First Operation Grouping): Start left-to-right with the first two numbers (7 + 3 = 10). Options: ['10', '9', '11'].
+    - Step 2 (Intermediate Re-anchoring): Explicitly restate running total and add next number: 'We have 10. If we add 6 more, what is 10 + 6?' (10 + 6 = 16). Options: ['16', '15', '17'].
+    - Step 3 (Final Operation): Restate concrete running total and apply final operation: 'We have 16. If we take away 2, what is 16 - 2?' (16 - 2 = 14). Options: ['14', '13', '15'].
   user: "Student's Homework Problem: '{problem_text}'"
 
 step_breakdown:

@@ -268,8 +268,8 @@ def validate_student_answer(
             outcome=VALIDATION_CORRECT,
             is_correct=True,
             is_partial=False,
-            feedback_eng="🎉 Spot on! Your answer is correct!",
-            feedback_khmer="🎉 ត្រឹមត្រូវហើយ! ចម្លើយរបស់អ្នកពិតជាត្រឹមត្រូវល្អណាស់!",
+            feedback_eng="Spot on! Your answer is correct!",
+            feedback_khmer="ត្រឹមត្រូវហើយ! ចម្លើយរបស់អ្នកពិតជាត្រឹមត្រូវល្អណាស់!",
         )
 
     # Check acceptable_answers list if provided
@@ -281,8 +281,8 @@ def validate_student_answer(
                     outcome=VALIDATION_CORRECT,
                     is_correct=True,
                     is_partial=False,
-                    feedback_eng="🎉 Spot on! That's an accepted answer!",
-                    feedback_khmer="🎉 ត្រឹមត្រូវហើយ! ចម្លើយនេះត្រូវបានទទួលស្គាល់!",
+                    feedback_eng="Spot on! That's an accepted answer!",
+                    feedback_khmer="ត្រឹមត្រូវហើយ! ចម្លើយនេះត្រូវបានទទួលស្គាល់!",
                 )
 
     # 2. Affirmative / Negative Cross-Language Check
@@ -299,8 +299,8 @@ def validate_student_answer(
             outcome=VALIDATION_CORRECT,
             is_correct=True,
             is_partial=False,
-            feedback_eng="🎉 Spot on! That's correct!",
-            feedback_khmer="🎉 ត្រឹមត្រូវហើយ!",
+            feedback_eng="Spot on! That's correct!",
+            feedback_khmer="ត្រឹមត្រូវហើយ!",
         )
 
     # 3. Numeric & Arithmetic Equivalence + Non-Directional Near-Miss Check
@@ -318,8 +318,8 @@ def validate_student_answer(
                     outcome=VALIDATION_PARTIAL,
                     is_correct=False,
                     is_partial=True,
-                    feedback_eng=f"💡 The number **{s_val}** is right, but check your units ({s_unit} vs {e_unit})!",
-                    feedback_khmer=f"💡 លេខ **{s_val}** ត្រឹមត្រូវហើយ ប៉ុន្តែសូមពិនិត្យមើលខ្នាតឡើងវិញ ({s_unit} និង {e_unit})!",
+                    feedback_eng=f"The number **{s_val}** is right, but check your units ({s_unit} vs {e_unit})!",
+                    feedback_khmer=f"លេខ **{s_val}** ត្រឹមត្រូវហើយ ប៉ុន្តែសូមពិនិត្យមើលខ្នាតឡើងវិញ ({s_unit} និង {e_unit})!",
                     numeric_diff=0.0,
                     unit_mismatch=True,
                 )
@@ -327,8 +327,8 @@ def validate_student_answer(
                 outcome=VALIDATION_CORRECT,
                 is_correct=True,
                 is_partial=False,
-                feedback_eng=f"🎉 Excellent! **{s_raw}** is the exact correct value!",
-                feedback_khmer=f"🎉 ពូកែណាស់! **{s_raw}** គឺពិតជាតម្លៃត្រឹមត្រូវ!",
+                feedback_eng=f"Excellent! **{s_raw}** is the exact correct value!",
+                feedback_khmer=f"ពូកែណាស់! **{s_raw}** គឺពិតជាតម្លៃត្រឹមត្រូវ!",
                 numeric_diff=0.0,
             )
 
@@ -354,8 +354,8 @@ def validate_student_answer(
                     outcome=VALIDATION_CORRECT,
                     is_correct=True,
                     is_partial=False,
-                    feedback_eng=f"🎉 Excellent! **{s_raw}** correctly identifies the concept of {concept['name']}!",
-                    feedback_khmer="🎉 ពូកែណាស់! អ្នកបានឆ្លើយត្រូវចំគោលដៅវិទ្យាសាស្ត្រ!",
+                    feedback_eng=f"Excellent! **{s_raw}** correctly identifies the concept of {concept['name']}!",
+                    feedback_khmer="ពូកែណាស់! អ្នកបានឆ្លើយត្រូវចំគោលដៅវិទ្យាសាស្ត្រ!",
                 )
             if any(w in s_clean for w in concept["partials"]):
                 return ValidationOutcome(
@@ -371,8 +371,8 @@ def validate_student_answer(
         outcome=VALIDATION_INCORRECT,
         is_correct=False,
         is_partial=False,
-        feedback_eng=f"🤔 **Let's rethink this together!** **{s_raw}** isn't quite right. Tap a hint if you need a clue!",
-        feedback_khmer=f"🤔 **សាកល្បងគិតម្តងទៀតណា៎!** ចម្លើយ **{s_raw}** មិនទាន់ត្រឹមត្រូវឡើយ។ ចុចមើលតម្រុយដើម្បីជួយអ្នក!",
+        feedback_eng=f"**Let's rethink this together!** **{s_raw}** isn't quite right. Tap a hint if you need a clue!",
+        feedback_khmer=f"**សាកល្បងគិតម្តងទៀតណា៎!** ចម្លើយ **{s_raw}** មិនទាន់ត្រឹមត្រូវឡើយ។ ចុចមើលតម្រុយដើម្បីជួយអ្នក!",
     )
 
 

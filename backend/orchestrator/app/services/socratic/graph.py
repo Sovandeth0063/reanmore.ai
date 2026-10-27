@@ -235,18 +235,61 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
     adhering to the strict rule: NO ANSWER LEAK THROUGH VISUALS.
     Reuses existing frontend VisualWidget types.
     """
-    p_lower = (problem_text or "").lower()
-    q_lower = (step_dict.get("your_turn") or step_dict.get("mission") or "").lower()
+    KHMER_DIGITS = str.maketrans("០១២៣៤៥៦៧៨៩", "0123456789")
+    p_clean = (problem_text or "").translate(KHMER_DIGITS)
+    p_lower = p_clean.lower()
+    q_lower = ((step_dict.get("your_turn") or step_dict.get("mission") or "")).translate(KHMER_DIGITS).lower()
     combined = f"{p_lower} {q_lower}"
 
     import re
-    nums = [int(n) for n in re.findall(r"\b\d+\b", p_lower)]
 
-    # 1. Number Line for Adding/Subtracting or Missing Addends on number line (<= 120)
-    if any(k in combined for k in ["+", "plus", "add", "count", "missing", "reach", "jump", "number line", "distance", "___", "["]) and len(nums) >= 2:
+    # Strip exercise prefix like "1. ", "1) ", "លំហាត់ទី ១: " so it doesn't pollute numbers
+    clean_p_math = re.sub(r"^\s*(?:exercise|លំហាត់ទី|លំហាត់)?\s*\d+[\.\)\:\-]\s*", "", p_lower)
+    nums = [int(n) for n in re.findall(r"\b\d+\b", clean_p_math)]
+
+    # Detect item type
+    item_type = "apple"
+    if any(k in combined for k in ["orange", "oranges", "ក្រូច"]):
+        item_type = "orange"
+    elif any(k in combined for k in ["cookie", "cookies", "នំ"]):
+        item_type = "cookie"
+    elif any(k in combined for k in ["star", "stars", "ផ្កាយ"]):
+        item_type = "star"
+    elif any(k in combined for k in ["pencil", "pencils", "ខ្មៅដៃ"]):
+        item_type = "pencil"
+
+    # 1. Multiplication / Equal Groups
+    # Examples: "5 boxes with 8 apples each", "4 baskets of 6 apples", "5 x 8", "3 bags of 5 cookies"
+    is_mult_expr = bool(re.search(r"\b\d+\s*(?:[*x×]|times|ដង|គុណ)\s*\d+\b", combined))
+    has_groups_kw = any(k in combined for k in [
+        "box", "boxes", "basket", "baskets", "bag", "bags", "pack", "packs",
+        "group", "groups", "each", "every", "នីមួយៗ", "កន្ត្រក", "ប្រអប់", "កញ្ចប់", "ក្រុម", "ថង់", "ជួរ"
+    ])
+
+    if (is_mult_expr or has_groups_kw) and len(nums) >= 2:
+        n1, n2 = nums[0], nums[1]
+        if 1 <= n1 <= 12 and 1 <= n2 <= 30:
+            groups = [n2] * n1
+            return {
+                "type": "objects",
+                "groups": groups,
+                "item_type": item_type,
+                "purpose": "scaffold_equal_groups_multiplication"
+            }
+        elif 1 <= n2 <= 12 and 1 <= n1 <= 30:
+            groups = [n1] * n2
+            return {
+                "type": "objects",
+                "groups": groups,
+                "item_type": item_type,
+                "purpose": "scaffold_equal_groups_multiplication"
+            }
+
+    # 2. Number Line for Adding/Subtracting or Missing Addends on number line (<= 120)
+    if any(k in combined for k in ["number line", "បន្ទាត់ចំនួន", "jump", "distance", "reach", "missing", "___", "["]) and len(nums) >= 2:
         start_val = nums[0]
         jump_val = nums[1]
-        if start_val + jump_val <= 120 and (start_val >= 20 or jump_val >= 10 or "reach" in combined or "missing" in combined or "number line" in combined):
+        if start_val + jump_val <= 120 and (start_val >= 20 or jump_val >= 10 or "reach" in combined or "missing" in combined or "number line" in combined or "បន្ទាត់ចំនួន" in combined):
             return {
                 "type": "number_line",
                 "start": start_val,
@@ -255,17 +298,18 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
                 "purpose": "help_student_visualize_movement_on_number_line"
             }
 
-    # 2. Object Groups for multi-addition or counting small objects (e.g. 4 + 5 + 6 or 7 + 3 + 2 + 5)
-    if any(k in combined for k in ["+", "plus", "add", "combine", "total", "altogether", "apples", "cookies", "stars"]) and len(nums) >= 2:
+    # 3. Object Groups for multi-addition or counting small objects (e.g. 4 + 5 + 6 or 7 + 3 + 2 + 5)
+    if any(k in combined for k in ["+", "plus", "add", "combine", "total", "altogether", "apples", "cookies", "stars", "បូក", "និង", "សរុប", "ទាំងអស់"]) and len(nums) >= 2:
         if all(1 <= n <= 30 for n in nums[:4]):
             return {
                 "type": "objects",
                 "groups": nums[:4],
+                "item_type": item_type,
                 "purpose": "show_separate_groups_without_revealing_sum"
             }
 
-    # 3. Place Value Blocks (e.g. 146, hundreds, tens, ones)
-    if any(k in combined for k in ["place value", "hundreds", "tens", "ones", "digits", "decompose"]) and len(nums) >= 1:
+    # 4. Place Value Blocks (e.g. 146, hundreds, tens, ones)
+    if any(k in combined for k in ["place value", "hundreds", "tens", "ones", "digits", "decompose", "ខ្ទង់រយ", "ខ្ទង់ដប់", "ខ្ទង់រាយ", "តម្លៃលេខតាមខ្ទង់"]) and len(nums) >= 1:
         target_num = nums[0] if nums[0] >= 10 else (nums[1] if len(nums) > 1 else 10)
         return {
             "type": "place_value_blocks",
@@ -273,44 +317,44 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
             "purpose": "scaffold_base_10_decomposition"
         }
 
-    # 4. Animal features & classification
-    if any(k in combined for k in ["flamingo", "bird", "feathers", "wings", "beak"]):
+    # 5. Animal features & classification (clean, no raw emojis)
+    if any(k in combined for k in ["flamingo", "bird", "feathers", "wings", "beak", "ហ្វ្លាមីងហ្គោ"]):
         return {
             "type": "animal_feature_card",
-            "animal": "ហ្វ្លាមីងហ្គោ (Flamingo)",
-            "emoji": "🦩",
-            "features": ["ឆ្អឹងកង (Vertebrate)", "រោមស្លាប (Feathers)", "ស្លាបហោះ (Wings)"]
+            "animal": "flamingo",
+            "emoji": "",
+            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
         }
-    if any(k in combined for k in ["lobster", "crab", "shell", "claws", "invertebrate"]):
+    if any(k in combined for k in ["lobster", "crab", "shell", "claws", "invertebrate", "បង្កង"]):
         return {
             "type": "animal_feature_card",
-            "animal": "បង្កង (Lobster)",
-            "emoji": "🦞",
-            "features": ["ឥតឆ្អឹងកង (Invertebrate)", "សំបករឹង (Hard Shell)", "ដង្កៀប (Claws)"]
+            "animal": "lobster",
+            "emoji": "",
+            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
         }
-    if any(k in combined for k in ["camel", "hump", "desert"]):
+    if any(k in combined for k in ["camel", "hump", "desert", "អូដ្ឋ"]):
         return {
             "type": "animal_feature_card",
-            "animal": "អូដ្ឋ (Camel)",
-            "emoji": "🐪",
-            "features": ["ឆ្អឹងកង (Vertebrate)", "ពកខ្នង (Hump)", "រោមក្រាស់ (Fur)"]
+            "animal": "camel",
+            "emoji": "",
+            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
         }
-    if any(k in combined for k in ["vertebrate", "invertebrate", "backbone", "bones"]):
+    if any(k in combined for k in ["vertebrate", "invertebrate", "backbone", "bones", "ឆ្អឹងកង", "ឆ្អឹងខ្នង"]):
         return {
             "type": "classification_split",
             "purpose": "visualize_vertebrate_vs_invertebrate"
         }
 
-    # 5. Photosynthesis / Plants
-    if any(k in combined for k in ["plant", "leaf", "leaves", "photosynthesis", "roots", "stem", "sunlight"]):
+    # 6. Photosynthesis / Plants
+    if any(k in combined for k in ["plant", "leaf", "leaves", "photosynthesis", "roots", "stem", "sunlight", "រុក្ខជាតិ", "ស្លឹក", "រស្មីសំយោគ"]):
         return {
             "type": "plant_diagram",
             "purpose": "show_plant_anatomy_and_photosynthesis"
         }
 
-    # 6. Ecosystem / Food chain / Producer vs Consumer
-    if any(k in combined for k in ["producer", "consumer", "herbivore", "carnivore", "food chain", "eats"]):
-        if "chain" in combined or "arrow" in combined:
+    # 7. Ecosystem / Food chain / Producer vs Consumer
+    if any(k in combined for k in ["producer", "consumer", "herbivore", "carnivore", "food chain", "eats", "ខ្សែច្រវាក់អាហារ", "អ្នកផលិត", "អ្នកប្រើប្រាស់"]):
+        if "chain" in combined or "arrow" in combined or "ខ្សែច្រវាក់" in combined:
             return {
                 "type": "food_chain",
                 "hide_target_word": True,
@@ -322,16 +366,16 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
             "purpose": "sort_producers_and_consumers"
         }
 
-    # 7. Electric Circuits
-    if any(k in combined for k in ["circuit", "battery", "switch", "bulb", "electricity", "wire"]):
+    # 8. Electric Circuits
+    if any(k in combined for k in ["circuit", "battery", "switch", "bulb", "electricity", "wire", "សៀគ្វី", "ថ្មពិល", "កុងតាក់", "អំពូល"]):
         return {
             "type": "circuit_simulator",
             "switch_closed": False,
             "purpose": "interactive_open_closed_circuit"
         }
 
-    # 8. Balance scale for simple equations
-    if ("=" in problem_text or "balance" in combined or "equal" in combined) and len(nums) >= 2:
+    # 9. Balance scale for simple equations
+    if ("=" in problem_text or "balance" in combined or "equal" in combined or "ស្មើ" in combined) and len(nums) >= 2:
         return {
             "type": "equation_balance",
             "left": nums[0],
@@ -362,30 +406,32 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
 
         parsed_prob = parse_binary_arithmetic(problem)
         if not parsed_prob:
-            parse_res = verify_and_parse_word_problem(problem, grade_level=grade_level)
-            if parse_res.is_valid and parse_res.needs_confirmation and parse_res.confirmation_prompt:
-                return {
-                    "problem_text": problem,
-                    "clarification_needed": True,
-                    "clarification_question": parse_res.confirmation_prompt,
-                    "feedback_message": parse_res.confirmation_prompt,
-                    "is_problem_complete": False,
-                    "is_problem_solved": False,
-                }
-            elif parse_res.is_valid and parse_res.parsed_problem:
-                parsed_prob = parse_res.parsed_problem
-            else:
-                log_gap_event(
-                    gap_type="content",
-                    gap_code="UNPARSED_WORD_PROBLEM",
-                    severity=2,
-                    user_id=state.get("user_id"),
-                    session_id=session_id,
-                    problem_id=state.get("problem_id"),
-                    grade_tier=grade_level,
-                    subject="math",
-                    details={"raw_problem": problem, "issues": getattr(parse_res, "issues", [])}
-                )
+            from app.services.socratic.parse_verifier import is_pure_arithmetic_expression
+            if not is_pure_arithmetic_expression(problem):
+                parse_res = verify_and_parse_word_problem(problem, grade_level=grade_level)
+                if parse_res.is_valid and parse_res.needs_confirmation and parse_res.confirmation_prompt:
+                    return {
+                        "problem_text": problem,
+                        "clarification_needed": True,
+                        "clarification_question": parse_res.confirmation_prompt,
+                        "feedback_message": parse_res.confirmation_prompt,
+                        "is_problem_complete": False,
+                        "is_problem_solved": False,
+                    }
+                elif parse_res.is_valid and parse_res.parsed_problem:
+                    parsed_prob = parse_res.parsed_problem
+                else:
+                    log_gap_event(
+                        gap_type="content",
+                        gap_code="UNPARSED_WORD_PROBLEM",
+                        severity=2,
+                        user_id=state.get("user_id"),
+                        session_id=session_id,
+                        problem_id=state.get("problem_id"),
+                        grade_tier=grade_level,
+                        subject="math",
+                        details={"raw_problem": problem, "issues": getattr(parse_res, "issues", [])}
+                    )
 
         if parsed_prob:
             matched_skill = skill_registry.match(parsed_prob)
@@ -395,6 +441,7 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                 if templates and len(templates) >= 2:
                     coerced_steps = []
                     for t in templates:
+                        v_spec = t.visual_spec or synthesize_visual_data_for_step(problem, {"mission": t.mission, "your_turn": t.your_turn}, subject)
                         coerced_steps.append(SocraticStep(
                             step_number=t.step_number,
                             title=t.title,
@@ -407,7 +454,7 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                             concept=t.concept,
                             hints=t.hints,
                             current_hint_level=0,
-                            visual_data=t.visual_spec
+                            visual_data=v_spec
                         ))
                     widget = StepWidgetPayload(
                         total_steps=len(coerced_steps),
@@ -472,7 +519,19 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
         try:
             coerced_steps = []
             for raw in widget_dict["steps"]:
-                v_data = raw.get("visual_data") or raw.get("visual") or synthesize_visual_data_for_step(problem, raw, subject)
+                v_data = raw.get("visual_data") or raw.get("visual")
+                synth = synthesize_visual_data_for_step(problem, raw, subject)
+                if not v_data:
+                    v_data = synth
+                elif isinstance(v_data, dict) and synth:
+                    if v_data.get("type") in ("objects", "number_groups", "number_grouping") and not v_data.get("groups"):
+                        v_data["groups"] = synth.get("groups")
+                    if not v_data.get("item_type") and synth.get("item_type"):
+                        v_data["item_type"] = synth.get("item_type")
+                    if v_data.get("type") == "number_line" and v_data.get("target") is None:
+                        v_data["start"] = v_data.get("start", synth.get("start", 0))
+                        v_data["target"] = synth.get("target", 10)
+
                 coerced_steps.append(SocraticStep(
                     step_number=raw.get("step_number", 1),
                     title=raw.get("title", ""),
@@ -542,15 +601,15 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
             ex_text = card_content.get("helpful_example") or "Picture real objects in front of you!"
             if subject == "science":
                 step_hints = [
-                    f"💡 Helpful Clue: {clue_text}",
-                    f"🍎 Real-World Example: {ex_text}",
-                    "✨ Give it your best try! What word or idea fits our clue best?"
+                    f"Helpful Clue: {clue_text}",
+                    f"Real-World Example: {ex_text}",
+                    "Give it your best try! What word or idea fits our clue best?"
                 ]
             else:
                 step_hints = [
-                    f"💡 Helpful Clue: {clue_text}",
-                    f"🍎 Parallel Example: {ex_text}",
-                    "🔢 Count step-by-step or draw it on scratch paper to see the answer!"
+                    f"Helpful Clue: {clue_text}",
+                    f"Parallel Example: {ex_text}",
+                    "Count step-by-step or draw it on scratch paper to see the answer!"
                 ]
 
         v_data = synthesize_visual_data_for_step(problem, s, subject)
@@ -649,7 +708,7 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
 
     if is_correct:
         # Praise feedback
-        feedback = val_res.feedback_eng if val_res.feedback_eng else f"🌟 Spot on! That's correct! ({attempt})"
+        feedback = val_res.feedback_eng if val_res.feedback_eng else f"Spot on! That's correct! ({attempt})"
         active_step.student_answer = attempt
         has_more = widget.advance_step(recorded_answer=attempt)
 
@@ -667,7 +726,7 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
                 "current_step_index": widget.current_step_index,
                 "is_problem_complete": True,
                 "is_problem_solved": True,
-                "feedback_message": "🎉 Amazing work! You have completed all the steps for this problem! ⭐",
+                "feedback_message": "Amazing work! You have completed all the steps for this problem!",
                 "validation_outcome": VALIDATION_CORRECT,
                 "active_hint": None,
                 "current_hint_tier": 0,
@@ -716,7 +775,7 @@ def validate_attempt_node(state: TutorState) -> Dict[str, Any]:
             prior_attempts=[attempt],
             grade_level=grade_level
         )
-        feedback = f"Gently rethink: '{attempt}' isn't quite what we're looking for. Let's look at this hint! 👇"
+        feedback = f"Gently rethink: '{attempt}' isn't quite what we're looking for. Let's look at this hint:"
 
         history.append({
             "step_number": active_step.step_number,
@@ -1098,6 +1157,10 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
                     widget.visual_data = active_step.visual_data
             except Exception as e:
                 logger.debug(f"Visual spec leak check skipped: {e}")
+                if not widget.visual_data:
+                    widget.visual_data = active_step.visual_data
+        elif active_step and not active_step.visual_data and widget.visual_data:
+            active_step.visual_data = widget.visual_data
 
     # 2. Compile synchronized Markdown presentation
     if state.get("is_safe") is False:

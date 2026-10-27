@@ -17,10 +17,33 @@ logger = logging.getLogger("orchestrator.socratic.prompts")
 
 
 GRADE_LEVELS = {
+    "grade_1_2": {
+        "group": "Grade 1-2 (Early Elementary, Ages 6-7)",
+        "guidelines": (
+            "Use ultra-short sentences (< 10 words) and simple concrete objects (apples 🍎, blocks 🧱, stars ⭐). "
+            "Ask ONE direct counting or observation question per step. Never use mathematical jargon or multi-step operations. "
+            "Rely on visual models like Ten-Frames and counter dots."
+        )
+    },
+    "grade_3_4": {
+        "group": "Grade 3-4 (Mid Elementary, Ages 8-9)",
+        "guidelines": (
+            "Break problems into atomic single-decision steps (< 15 words per sentence). Use relatable concrete analogies (Cookie Bakery Boxes, Crayon Sharing). "
+            "Ask Socratic inquiry questions ('Which column do we add first?', 'Which two numbers make a ten?') rather than giving mechanical commands. "
+            "Never combine multiple mental calculations into one step. Use Number Lines and Base-Ten blocks."
+        )
+    },
+    "grade_5_6": {
+        "group": "Grade 5-6 (Upper Elementary, Ages 10-12)",
+        "guidelines": (
+            "Foster conceptual reasoning and asking 'why' (e.g. why denominators remain unchanged, how units relate). "
+            "Use structured visual scaffolds (Singapore Bar Models, Fraction Bars). Guide independent multi-step strategy."
+        )
+    },
     "grade_1_3": {
         "group": "Grade 1-3 (Early Elementary)",
         "guidelines": (
-            "Use extremely simple words, short sentences, and everyday objects (apples, cookies, blocks). "
+            "Use extremely simple words, short sentences (< 12 words), and everyday objects (apples, cookies, blocks). "
             "Never use variables (x, y) or formulas. Rely on counting and visual emoji diagrams."
         )
     },
@@ -51,11 +74,16 @@ DEFAULT_TEMPLATES = {
             "You are an expert Socratic Elementary STEM Tutor ({grade_level_group}).\n"
             "Your pedagogical mission is to guide young students through a step-by-step problem WITHOUT ever "
             "calculating or revealing the answer to their homework problem directly.\n\n"
+            "Pedagogical Rules:\n"
+            "1. INQUIRE, NEVER DICTATE: Ask a focused Socratic question in 'your_turn'. Do not just give mechanical commands.\n"
+            "2. PARALLEL EXAMPLE: 'helpful_example' MUST be anchored to a character (e.g. 'In Maya\\'s problem: ...') using DIFFERENT numbers.\n"
+            "3. ATOMIC STEPS: Exactly one mental micro-decision per card.\n"
+            "4. GRADE ADAPTATION: Short sentences, simple everyday words, no formulas.\n\n"
             "Generate a structured 4-Part Socratic Card for Step {step_number} of {total_steps}:\n"
             "1. 🌟 Mission: 1 simple sentence.\n"
-            "2. 💡 Clue: 1 elementary rule/concept.\n"
-            "3. 🍎 Helpful Picture / Example: ISOMORPHIC PARALLEL EXAMPLE with different characters and emoji pictures.\n"
-            "4. 👉 Your Turn: Exactly ONE single question on their own homework problem.\n\n"
+            "2. 💡 Clue: 1 elementary rule/analogy.\n"
+            "3. 🍎 Helpful Example: ISOMORPHIC PARALLEL EXAMPLE anchored to a character with emojis.\n"
+            "4. 👉 Your Turn: Exactly ONE Socratic question for their own problem numbers.\n\n"
             "Output valid JSON:\n"
             "{\n"
             '  "mission": "...",\n'
@@ -83,7 +111,9 @@ DEFAULT_TEMPLATES = {
         "system": (
             "You are a Socratic tutor creating a progressive hint for an elementary student ({grade_level_group}).\n"
             "Target Hint Level: Tier {hint_tier} of 3.\n"
-            "Tier 1: Guiding Nudge. Tier 2: Visual cross-out emoji. Tier 3: Micro-steps.\n"
+            "Tier 1: Guiding Nudge (point to place value or starting place without math).\n"
+            "Tier 2: Visual scaffold or friendly number breakdown.\n"
+            "Tier 3: Micro-step inquiry question.\n"
             "DO NOT reveal the final answer. Output ONLY the single hint sentence/text."
         ),
         "user": (
@@ -324,10 +354,21 @@ class SocraticPromptController:
 
     def _get_grade_info(self, grade_level: str) -> Tuple[str, str]:
         normalized = grade_level.lower().replace("-", "_").replace(" ", "_")
-        if "1" in normalized or "2" in normalized or "3" in normalized:
-            info = GRADE_LEVELS["grade_1_3"]
+        if normalized in GRADE_LEVELS:
+            info = GRADE_LEVELS[normalized]
+            return info["group"], info["guidelines"]
+        if "1" in normalized or "2" in normalized:
+            info = GRADE_LEVELS["grade_1_2"]
+        elif "3" in normalized or "4" in normalized:
+            info = GRADE_LEVELS["grade_3_4"]
+        elif "5" in normalized or "6" in normalized:
+            info = GRADE_LEVELS["grade_5_6"]
+        elif "7" in normalized or "8" in normalized or "9" in normalized:
+            info = GRADE_LEVELS["grade_7_9"]
+        elif "10" in normalized or "11" in normalized or "12" in normalized:
+            info = GRADE_LEVELS["grade_10_12"]
         else:
-            info = GRADE_LEVELS["grade_4_6"]
+            info = GRADE_LEVELS.get(grade_level, GRADE_LEVELS["grade_3_4"])
         return info["group"], info["guidelines"]
 
     def get_step_card_prompt(
@@ -643,12 +684,20 @@ class SocraticPromptController:
             return None
         group, _ = self._get_grade_info(grade_level)
         try:
+            # Clean leading question numbers (e.g. '1. 4 + 5 + 6 =' -> '4 + 5 + 6 =')
+            clean_problem = re.sub(
+                r"^\s*(?:(?:[Qq]uestion|[Ee]xercise|[Ee]x|[Pp]roblem|[Qq]|លំហាត់ទី?|សំណួរ)\s*[\d១-៩]+[\.\)\:\-\s]*|\(?[\d១-៩]+[\.\)]\s*\(?[a-zA-Z]\)?\s*|\(?[\d១-៩]+\s*[a-zA-Z]?\)\s*|\(?[a-zA-Z]\)\s*|[\d១-៩]+\s*[\:\-]\s*(?=[a-zA-Z\u1780-\u17FF])|[\d១-៩]+\.\s+)\s*",
+                "",
+                str(problem_text or ""),
+                flags=re.IGNORECASE
+            ).strip() or str(problem_text or "")
+
             system_prompt = template["system"].format(
                 grade_level_group=group,
                 session_id=session_id
             )
             context_block = f"\n\nAuthoritative Science Curriculum Reference:\n{exercise_context}" if exercise_context else ""
-            user_prompt = template["user"].format(problem_text=problem_text) + context_block
+            user_prompt = template["user"].format(problem_text=clean_problem) + context_block
             prompt = f"{system_prompt}\n\n{user_prompt}"
 
             raw_resp = self._call_gemini_llm(prompt)
@@ -683,15 +732,36 @@ class SocraticPromptController:
                 step_num = st.get("step_number", i + 1)
                 hints = st.get("hints") or []
                 if not isinstance(hints, list) or len(hints) != 3:
+                    step_q = _clean_str(st.get("your_turn") or st.get("mission") or "")
+                    clue_val = _clean_str(st.get("clue") or "")
                     hints = [
-                        _clean_str(hints[0]) if len(hints) > 0 else "💡 Focus on the main clue and what the question is asking.",
-                        _clean_str(hints[1]) if len(hints) > 1 else "🍎 Picture the helpful example and apply the same operation step-by-step!",
-                        _clean_str(hints[2]) if len(hints) > 2 else "📐 Break the calculation into two smaller sub-steps."
+                        _clean_str(hints[0]) if len(hints) > 0 else (f"💡 Look at what this step asks: {step_q}" if step_q else "💡 Read the guiding question carefully."),
+                        _clean_str(hints[1]) if len(hints) > 1 else (f"🍎 Remember our strategy: {clue_val}" if clue_val else "🍎 Think of concrete objects to help visualize."),
+                        _clean_str(hints[2]) if len(hints) > 2 else "📐 Break this step into two smaller, easier parts."
                     ]
                 else:
                     hints = [_clean_str(h) for h in hints]
 
                 status = "in_progress" if i == 0 else ("up_next" if i == 1 else "locked")
+                v_data = st.get("visual_data") or st.get("visual")
+                raw_options = st.get("options")
+                opts = None
+                if isinstance(raw_options, list) and len(raw_options) >= 2:
+                    opts = [_clean_str(o) for o in raw_options if _clean_str(o)]
+                elif st.get("expected_answer"):
+                    # Auto-generate 3 friendly tap choices for integer answers to eliminate blank keyboard anxiety
+                    try:
+                        clean_ans = _clean_str(st.get("expected_answer"))
+                        ans_int = int(clean_ans)
+                        if 0 <= ans_int <= 100:
+                            d1 = ans_int - 1 if ans_int > 0 else ans_int + 3
+                            d2 = ans_int + 2
+                            cand = [str(ans_int), str(d1), str(d2)]
+                            cand.sort(key=lambda x: (int(x) * 17 + step_num) % 5)
+                            opts = cand
+                    except Exception:
+                        pass
+
                 sanitized_steps.append({
                     "step_number": step_num,
                     "title": _clean_str(st.get("title", f"Step {step_num}")),
@@ -704,13 +774,17 @@ class SocraticPromptController:
                     "hints": hints,
                     "current_hint_level": 0,
                     "concept": _clean_str(st.get("concept", "")),
-                    "expected_answer": _clean_str(st.get("expected_answer", ""))
+                    "expected_answer": _clean_str(st.get("expected_answer", "")),
+                    "options": opts,
+                    "visual_data": v_data if isinstance(v_data, dict) else None
                 })
 
+            widget_v_data = widget_dict.get("visual_data") or widget_dict.get("visual")
             return {
                 "total_steps": len(sanitized_steps),
                 "current_step_index": 0,
                 "completed_steps": [],
+                "visual_data": widget_v_data if isinstance(widget_v_data, dict) else None,
                 "steps": sanitized_steps
             }
         except Exception as e:
@@ -727,8 +801,16 @@ class SocraticPromptController:
         Decomposes ANY elementary math or science problem into 2 to 4 bite-sized sequential steps.
         Uses Gemini LLM when online, or dispatches across the comprehensive Grade 1-3 Curricular Domain Registry.
         """
+        # Clean leading question numbers (e.g. '1. 4 + 5 + 6 =' -> '4 + 5 + 6 =')
+        clean_problem = re.sub(
+            r"^\s*(?:(?:[Qq]uestion|[Ee]xercise|[Ee]x|[Pp]roblem|[Qq]|លំហាត់ទី?|សំណួរ)\s*[\d១-៩]+[\.\)\:\-\s]*|\(?[\d១-៩]+[\.\)]\s*\(?[a-zA-Z]\)?\s*|\(?[\d១-៩]+\s*[a-zA-Z]?\)\s*|\(?[a-zA-Z]\)\s*|[\d១-៩]+\s*[\:\-]\s*(?=[a-zA-Z\u1780-\u17FF])|[\d១-៩]+\.\s+)\s*",
+            "",
+            str(problem_text or ""),
+            flags=re.IGNORECASE
+        ).strip() or str(problem_text or "")
+
         # 1. Try dynamic LLM breakdown if online
-        llm_prompt = self.get_step_breakdown_prompt(problem_text, grade_level=grade_level)
+        llm_prompt = self.get_step_breakdown_prompt(clean_problem, grade_level=grade_level)
         llm_resp = self._call_gemini_llm(llm_prompt)
         if llm_resp:
             parsed = self._extract_json(llm_resp)
@@ -737,8 +819,8 @@ class SocraticPromptController:
                 return parsed
 
         # 2. Curricular Domain Registry (Offline / Deterministic Fallback)
-        numbers = [int(n) for n in re.findall(r"\b\d+\b", problem_text)]
-        lower = problem_text.lower()
+        numbers = [int(n) for n in re.findall(r"\b\d+\b", clean_problem)]
+        lower = clean_problem.lower()
 
         # --- PHYSICAL SCIENCE & CHEMISTRY ---
         # 0. States of Matter (Solid, Liquid, Gas)

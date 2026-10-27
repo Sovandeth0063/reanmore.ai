@@ -305,9 +305,9 @@ async def handle_query(
         # 2. Pipeline Stage 1 & 2: Normalize
         normalized_query = normalize_query(raw_query)
 
-        # Check if incoming query is a standalone binary math calculation or explicit solve request
+        # Check if incoming query is a standalone arithmetic calculation (e.g. '4 + 5 =', '4 + 5 + 6 =') or explicit solve request
         is_fraction_literal = bool(re.match(r'^\s*-?\d+/\d+\s*$', normalized_query))
-        has_binary_math = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$', normalized_query))
+        has_binary_math = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?(?:\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?)+(?:\s*=\s*\??)?\s*$', normalized_query))
         expected_ans_str = str(active_step_dict.get("expected_answer") or "").strip() if active_step_dict else ""
         is_step_ans_match = bool(expected_ans_str and normalized_query.strip() == expected_ans_str)
         is_explicit_solve = bool(re.match(r'^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference)\b', normalized_query, re.I))

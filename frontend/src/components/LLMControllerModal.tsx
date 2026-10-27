@@ -10,6 +10,7 @@ import {
   Zap,
   HardDrive,
   X,
+  Shield,
 } from 'lucide-react';
 import {
   LLMControllerService,
@@ -328,7 +329,7 @@ export const LLMControllerModal: React.FC<LLMControllerModalProps> = ({
 
           {/* Invariant Safety Note */}
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
-            <span className="text-base">🛡️</span>
+            <Shield className="w-4 h-4 text-slate-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-slate-800">
                 {isKm ? 'គោលការណ៍សុវត្ថិភាពអចិន្ត្រៃយ៍៖' : 'Decoupled Core Architecture:'}

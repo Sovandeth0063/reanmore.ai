@@ -16,19 +16,20 @@ import { z } from 'zod';
 
 export const SocraticStepItemSchema = z.object({
   step_number: z.number().int().min(1),
-  title: z.string(),
+  title: z.string().nullable().optional().transform((v) => v || ''),
   status: z.enum(['completed', 'in_progress', 'pending', 'locked', 'up_next']).catch('pending'),
-  mission: z.string().optional(),
-  clue: z.string().optional(),
-  helpful_example: z.string().optional(),
-  your_turn: z.string().optional(),
+  mission: z.string().nullable().optional(),
+  clue: z.string().nullable().optional(),
+  helpful_example: z.string().nullable().optional(),
+  your_turn: z.string().nullable().optional(),
   student_answer: z.string().nullable().optional(),
   hints: z.array(z.string()).default([]),
   current_hint_level: z.number().int().default(0),
   expected_answer: z.string().nullable().optional(),
   concept: z.string().nullable().optional(),
+  options: z.array(z.string()).nullable().optional(),
   visual_data: z.record(z.string(), z.any()).nullable().optional(),
-});
+}).passthrough();
 export type SocraticStepItem = z.infer<typeof SocraticStepItemSchema>;
 
 export const StepWidgetContainerSchema = z.object({
@@ -37,10 +38,12 @@ export const StepWidgetContainerSchema = z.object({
   completed_steps: z.array(z.number().int()).default([]),
   steps: z.array(SocraticStepItemSchema),
   visual_data: z.record(z.string(), z.any()).nullable().optional(),
-  step_number: z.number().int().optional(),
-  title: z.string().optional(),
-  prompt: z.string().optional(),
-});
+  quota_remaining: z.any().nullable().optional(),
+  is_problem_complete: z.boolean().nullable().optional(),
+  step_number: z.number().int().nullable().optional(),
+  title: z.string().nullable().optional(),
+  prompt: z.string().nullable().optional(),
+}).passthrough();
 export type StepWidgetContainer = z.infer<typeof StepWidgetContainerSchema>;
 
 export const StepWidgetFlatSchema = z.object({
@@ -49,13 +52,13 @@ export const StepWidgetFlatSchema = z.object({
   title: z.string(),
   prompt: z.string(),
   input_type: z.enum(['number', 'text', 'mcq', 'choice']).catch('text'),
-  options: z.array(z.string()).optional(),
+  options: z.array(z.string()).nullable().optional(),
   hint_count: z.number().int().default(0),
   unlocked_hints: z.array(z.string()).default([]),
   grade_level: z.string().optional(),
   is_final_step: z.boolean().default(false),
   steps: z.array(z.any()).optional(),
-});
+}).passthrough();
 export type StepWidgetFlat = z.infer<typeof StepWidgetFlatSchema>;
 
 export const StepWidgetPayloadSchema = z.union([StepWidgetContainerSchema, StepWidgetFlatSchema]);

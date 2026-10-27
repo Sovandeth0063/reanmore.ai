@@ -13,7 +13,7 @@ export const GradeSubjectSelector: React.FC<GradeSubjectSelectorProps> = ({
   language = 'en',
   onSelectGrade
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const grades: Grade[] = [1, 2, 3, 4, 5, 6];
 
   const subjects = [

@@ -82,6 +82,9 @@ export interface StepItem {
   /** Ground truth or normalized target answer for evaluation */
   expectedAnswer?: string;
   expected_answer?: string;
+  /** Visual manipulative scaffolding data for this step */
+  visualData?: any;
+  visual_data?: any;
 }
 
 export interface HomeworkProblem {

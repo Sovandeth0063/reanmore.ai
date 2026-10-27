@@ -85,36 +85,36 @@ class Sub2DigitBorrowSkill:
             s1_title = "Check the Single Blocks 🧱"
             s1_mission = "Look at our single blocks: we have 0 blocks!"
             s1_clue = "We have 0 loose blocks to give away. We need to open 1 ten-box 📦 to get more blocks!"
-            s1_your_turn = "Do we need to open a ten-box to get loose blocks? (yes or no)"
+            s1_your_turn = "Do we need to open a ten-box to get loose blocks? (yes or no) 💭"
             s1_expected = "yes"
             s1_hints = [
                 "We have 0 loose blocks right now.",
                 "Since we need to give some away, we must open a ten-box to get blocks!",
-                "In our example: we cannot give away blocks from an empty box, so we answer yes!"
+                "In Maya's problem: we cannot give away blocks from an empty box, so we answer yes!"
             ]
             s1_visual_spec = {
                 "type": "base_ten_blocks",
                 "mode": "current",
                 "params": {"tens": tens_a, "ones": 0, "regroup": False},
-                "labels": [f"{tens_a} ten-boxes in {a} 📦", "0 single blocks"],
+                "labels": [f"{tens_a} ten-boxes in {a} ", "0 single blocks"],
                 "alt_text": f"Blocks showing {tens_a} ten-boxes and 0 single blocks."
             }
         else:
             s1_title = "Unpack a Ten-Box! 📦"
             s1_mission = f"We need to give away {ones_b} blocks, but we only have {ones_a}! Let's open 1 ten-box!"
             s1_clue = f"Opening 1 ten-box gives 10 loose blocks! Add those 10 new blocks to your {ones_a} blocks."
-            s1_your_turn = f"10 new blocks plus your {ones_a} blocks. How many loose blocks do you have now? 🧱"
+            s1_your_turn = f"Add 10 new blocks to your {ones_a} single blocks. How many loose blocks do you have now? 💭"
             s1_expected = str(regrouped_ones)
             s1_hints = [
-                f"Start at 10 and count up {ones_a} more fingers! 🖐️",
-                f"What is 10 + {ones_a}? 🧱",
-                f"In our example: {ex['ones_a']} became {ex['regroup_ones']}. What is 10 + {ones_a}?"
+                f"Start at 10 and count on {ones_a} more fingers! 🖐️",
+                f"Think of 10 and {ones_a} more. What teen number has {ones_a} ones? 💭",
+                f"In Maya's problem, {ex['ones_a']} became {ex['regroup_ones']}. Combine 10 with your {ones_a} single blocks."
             ]
             s1_visual_spec = {
                 "type": "base_ten_blocks",
                 "mode": "current",
                 "params": {"tens": tens_a, "ones": ones_a, "regroup": False},
-                "labels": [f"{tens_a} ten-boxes 📦", f"{ones_a} single blocks (need to open a box!)"],
+                "labels": [f"{tens_a} ten-boxes ", f"{ones_a} single blocks (need to open a box!)"],
                 "alt_text": f"Blocks showing {tens_a} ten-boxes and {ones_a} single blocks."
             }
 
@@ -124,8 +124,8 @@ class Sub2DigitBorrowSkill:
             mission=s1_mission,
             clue=s1_clue,
             helpful_example=(
-                f"For {ex['a']} - {ex['b']}: {ex['ones_a']} is smaller than {ex['ones_b']}. "
-                f"We open 1 ten-box to get 10 more blocks, giving {ex['regroup_ones']} loose blocks! 🎁"
+                f"In Maya's problem ({ex['a']} - {ex['b']}): {ex['ones_a']} is smaller than {ex['ones_b']}. "
+                f"She opens 1 ten-box to get 10 more blocks, giving {ex['regroup_ones']} loose blocks! 🌟"
             ),
             your_turn=s1_your_turn,
             expected_answer=s1_expected,
@@ -138,24 +138,25 @@ class Sub2DigitBorrowSkill:
             step_number=2,
             title="Take Away Single Blocks 🧱",
             mission=f"Now take away {ones_b} blocks from your {regrouped_ones} blocks!",
-            clue=f"Count backwards from {regrouped_ones}, or think: {ones_b} plus what number makes {regrouped_ones}?",
+            clue=f"Count backwards from {regrouped_ones}. Or think: what number plus {ones_b} makes {regrouped_ones}?",
             helpful_example=(
-                f"For {ex['a']} - {ex['b']}: {ex['regroup_ones']} blocks minus {ex['ones_b']} blocks = {ex['sub_ones']} blocks left! 🧱"
+                f"In Maya's problem ({ex['a']} - {ex['b']}): Maya takes {ex['ones_b']} from {ex['regroup_ones']} blocks. "
+                f"That leaves {ex['sub_ones']} single blocks left! 🌟"
             ),
-            your_turn=f"Take away {ones_b} from {regrouped_ones}. How many single blocks are left? 🧱",
+            your_turn=f"Take away {ones_b} from {regrouped_ones}. How many single blocks are left? 💭",
             expected_answer=str(sub_ones),
             concept="subtract_regrouped_ones",
             visual_spec={
                 "type": "base_ten_blocks",
                 "mode": "current",
                 "params": {"ones": regrouped_ones, "regroup": True},
-                "labels": [f"{regrouped_ones} loose blocks", f"Take away {ones_b} blocks ❌"],
+                "labels": [f"{regrouped_ones} loose blocks", f"Take away {ones_b} blocks "],
                 "alt_text": f"Blocks showing {regrouped_ones} singles to subtract from."
             },
             hints=[
                 f"Count backwards {ones_b} steps starting from {regrouped_ones}.",
-                f"What number plus {ones_b} equals {regrouped_ones}?",
-                f"In our example: {ex['regroup_ones']} minus {ex['ones_b']} is {ex['sub_ones']}. What is {regrouped_ones} minus {ones_b}?"
+                f"What number plus {ones_b} equals {regrouped_ones}? 💭",
+                f"In Maya's problem: taking {ex['ones_b']} away from {ex['regroup_ones']} left {ex['sub_ones']}. What is left when you take {ones_b} from {regrouped_ones}?"
             ]
         )
 
@@ -163,12 +164,12 @@ class Sub2DigitBorrowSkill:
             step_number=3,
             title="Count Remaining Ten-Boxes! 📦",
             mission=f"Now subtract the remaining ten-boxes: {rem_tens} boxes minus {tens_b} boxes!",
-            clue=f"We started with {tens_a} boxes, opened 1, leaving {rem_tens} boxes. Take away {tens_b} boxes, then combine with your {sub_ones} single blocks!",
+            clue=f"{rem_tens} tens minus {tens_b} tens leaves {sub_tens} tens ({sub_tens * 10}). Combine with your {sub_ones} single blocks! 🧱",
             helpful_example=(
-                f"For {ex['a']} - {ex['b']}: {ex['tens_a'] - 1} boxes - {ex['tens_b']} boxes = {ex['sub_tens']} boxes ({ex['sub_tens'] * 10}). "
-                f"With {ex['sub_ones']} singles, the final answer is {ex['diff']}! 🌟"
+                f"In Maya's problem ({ex['a']} - {ex['b']}): {ex['tens_a'] - 1} tens minus {ex['tens_b']} tens leaves {ex['sub_tens']} tens ({ex['sub_tens'] * 10}). "
+                f"With {ex['sub_ones']} singles, her final answer is {ex['diff']}! 🌟"
             ),
-            your_turn=f"What is the final answer for {a} - {b}? 🚀",
+            your_turn=f"You have {sub_tens} tens ({sub_tens * 10}) and {sub_ones} single blocks. What is the final answer for {a} - {b}? 💭",
             expected_answer=str(final_diff),
             concept="subtract_tens_column",
             visual_spec={
@@ -180,8 +181,8 @@ class Sub2DigitBorrowSkill:
             },
             hints=[
                 f"{sub_tens} ten-boxes makes {sub_tens * 10}. Combine that with your {sub_ones} single blocks.",
-                f"What is {sub_tens * 10} plus {sub_ones}? 🚀",
-                f"In our example: {ex['sub_tens']} tens and {ex['sub_ones']} ones = {ex['diff']}. Combine your {sub_tens} tens and {sub_ones} ones!"
+                f"Combine your {sub_tens} ten-boxes ({sub_tens * 10}) with your {sub_ones} single blocks.",
+                f"In Maya's problem: {ex['sub_tens']} tens and {ex['sub_ones']} ones makes {ex['diff']}. Combine your {sub_tens} tens and {sub_ones} ones!"
             ]
         )
 

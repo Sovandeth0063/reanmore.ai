@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StepItem, Language } from '../types';
-import { X, CheckCircle2, CircleDot, Circle, ArrowRight, ArrowLeft, BookOpen, Edit3, Lock } from 'lucide-react';
+import { X, CheckCircle2, CircleDot, Circle, ArrowRight, ArrowLeft, Edit3, Lock, Sparkles, Lightbulb, Clock, ListOrdered } from 'lucide-react';
 
 interface AllStepsDrawerProps {
   steps: StepItem[];
@@ -19,7 +19,7 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
   onSelectStep,
   onClose,
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,11 +46,11 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
         <div className="p-4 sm:p-5 bg-[#1B4332] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-[#40916C] border-2 border-white flex items-center justify-center shadow-[1px_1px_0px_white]">
-              <BookOpen className="w-5 h-5 text-white" />
+              <ListOrdered className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 id="all-steps-title" className="font-heading font-black text-sm sm:text-base leading-tight">
-                {isKhmer ? '📋 ផែនទីដំណើរការដោះស្រាយ' : '📋 Solution Journey Roadmap'}
+                {isKhmer ? 'ផែនទីដំណើរការដោះស្រាយ' : 'Solution Journey Roadmap'}
               </h3>
               <p className="text-[11px] font-bold text-white/80">
                 {isKhmer
@@ -139,7 +139,7 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
                 <div className="space-y-1.5 text-xs">
                   {missionText && (
                     <p className="font-bold text-[#1B4332] flex items-start gap-1.5">
-                      <span className="shrink-0 text-[#2D6A4F]">🌟</span>
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-[#2D6A4F] mt-0.5" />
                       <span>
                         <strong className="text-[#2D6A4F]">{isKhmer ? 'បេសកកម្ម៖' : 'Mission:'}</strong>{' '}
                         {missionText}
@@ -148,7 +148,7 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
                   )}
                   {ruleText && (
                     <p className="font-bold text-[#78350F] flex items-start gap-1.5">
-                      <span className="shrink-0 text-[#D97706]">💡</span>
+                      <Lightbulb className="w-3.5 h-3.5 shrink-0 text-[#D97706] mt-0.5" />
                       <span>
                         <strong className="text-[#B45309]">{isKhmer ? 'វិធាន/គន្លឹះ៖' : 'Rule:'}</strong>{' '}
                         {ruleText}
@@ -161,8 +161,9 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
                 <div className="pt-2 border-t border-[#1B4332]/10 flex items-center justify-between gap-2 flex-wrap">
                   {isCompleted && (
                     <div className="flex items-center justify-between w-full">
-                      <p className="text-[11px] font-black text-[#2D6A4F] flex items-center gap-1">
-                        <span>✅ {isKhmer ? 'បានដោះស្រាយ' : 'Solved'}</span>
+                      <p className="text-[11px] font-black text-[#2D6A4F] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                        <span>{isKhmer ? 'បានដោះស្រាយ' : 'Solved'}</span>
                         <span className="text-[#1B4332]/80 font-bold">
                           ({isKhmer ? 'កត់ត្រាទុក៖' : 'Recorded:'} "{s.studentAnswer || (isKhmer ? 'រួចរាល់' : 'Done')}")
                         </span>
@@ -183,8 +184,9 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
 
                   {isCurrent && (
                     <div className="flex items-center justify-between w-full">
-                      <p className="text-[11px] font-black text-[#1B4332] flex items-center gap-1">
-                        <span>🔄 {isKhmer ? 'កំពុងដំណើរការ' : 'In Progress'}</span>
+                      <p className="text-[11px] font-black text-[#1B4332] flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-[#1B4332]" />
+                        <span>{isKhmer ? 'កំពុងដំណើរការ' : 'In Progress'}</span>
                       </p>
                       <button
                         type="button"
@@ -201,8 +203,9 @@ export const AllStepsDrawer: React.FC<AllStepsDrawerProps> = ({
                   )}
 
                   {isLocked && (
-                    <p className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-                      <span>⏳ {isKhmer ? 'បន្ទាប់ទៀត 🔒' : 'Up Next 🔒'}</span>
+                    <p className="text-[11px] font-bold text-gray-500 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3 text-gray-400" />
+                      <span>{isKhmer ? 'បន្ទាប់ទៀត' : 'Up Next'}</span>
                     </p>
                   )}
                 </div>

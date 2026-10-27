@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, BookOpen, History } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, BookOpen, History, Calculator, FlaskConical } from 'lucide-react';
 import { HomeworkProblem, Language } from '../types';
 
 interface WorksheetExerciseBarProps {
@@ -19,7 +19,7 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
   onSelectExercise,
   onViewAllChats,
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (problems.length <= 1) return null;
@@ -72,7 +72,6 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
         {problems.map((prob, idx) => {
           const isDone = completedSet.has(prob.id);
           const isActive = idx === activeIndex;
-          const subjectEmoji = prob.subject === 'math' ? '🔢' : prob.subject === 'science' ? '🧪' : '📖';
           const shortTitle = isKhmer
             ? (prob.titleKhmer || `លំហាត់ ${idx + 1}`)
             : (prob.titleEng || `Exercise ${idx + 1}`);
@@ -103,11 +102,15 @@ export const WorksheetExerciseBar: React.FC<WorksheetExerciseBarProps> = ({
               aria-pressed={isActive}
             >
               {isDone ? (
-                <CheckCircle className="w-3 h-3 shrink-0" />
+                <CheckCircle className="w-3 h-3 shrink-0 stroke-[2.5]" />
               ) : isActive ? (
                 <span className="w-1.5 h-1.5 bg-[#40916C] rounded-full border border-white shrink-0 animate-pulse" />
+              ) : prob.subject === 'science' ? (
+                <FlaskConical className="w-3 h-3 shrink-0 stroke-[2.5]" />
+              ) : prob.subject === 'english' ? (
+                <BookOpen className="w-3 h-3 shrink-0 stroke-[2.5]" />
               ) : (
-                <span className="text-[10px]">{subjectEmoji}</span>
+                <Calculator className="w-3 h-3 shrink-0 stroke-[2.5]" />
               )}
               {truncated}
             </button>

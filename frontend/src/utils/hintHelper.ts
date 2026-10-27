@@ -3,11 +3,12 @@ import { StepItem, Language } from '../types';
 export interface ResolvedStepHints {
   hint1: string;
   hint2: string;
-  hint3Title: string;
-  hint3Example: string;
+  hint3Title?: string;
+  hint3Example?: string;
   simpleExplanation: string;
   analogyTitle: string;
   analogyExplanation: string;
+  visualReference?: string;
   allHints: string[];
 }
 
@@ -37,24 +38,28 @@ function cleanMd(val: any): string {
 }
 
 /**
- * Robustly extracts and normalizes hints and explanations for ANY StepItem,
- * whether it originates from:
- * 1. Hardcoded mock cases (with rich hint1, hint2, hint3, explainDifferently objects)
- * 2. Backend Orchestrator Socratic steppers (with hints array, clue, helpful_example, your_turn)
- * 3. Scanned VLM / OCR exercises (with prompt, sub_questions, mission)
- * 4. Synthesized fallback steps (regex parsed from conversational LLM output)
+ * Robustly extracts and normalizes hints and explanations for ANY StepItem.
+ * - Hint: Provides a short, grade-appropriate clue that guides students toward the answer without revealing it.
+ * - Explain Differently: Rephrases and explains the current step's guiding question in simpler language,
+ *   refers to the existing visual on the card when helpful, and provides a familiar analogy only when
+ *   it genuinely improves understanding.
  */
-export function resolveStepHints(step?: StepItem | any, language: Language = 'en'): ResolvedStepHints {
-  const isKhmer = false;
+export function resolveStepHints(
+  step?: StepItem | any,
+  language: Language = 'en',
+  grade: number = 2
+): ResolvedStepHints {
+  const isKhmer = language === 'km';
   if (!step) {
     return {
       hint1: isKhmer ? 'សូមអានសំណួរដោយប្រុងប្រយ័ត្ន។' : 'Read the question carefully.',
       hint2: isKhmer ? 'គិតអំពីលេខ ឬពាក្យគន្លឹះក្នុងសំណួរ។' : 'Look at key numbers and words in the question.',
-      hint3Title: isKhmer ? 'វិធីដោះស្រាយ' : 'Guided Solution',
-      hint3Example: isKhmer ? 'បំបែកលំហាត់ជាជំហានតូចៗដើម្បីគណនា។' : 'Break down the problem into smaller steps.',
+      hint3Title: '',
+      hint3Example: '',
       simpleExplanation: isKhmer ? 'តោះដោះស្រាយជាមួយគ្នា មួយជំហានម្តងៗ!' : "Let's solve this together step by step!",
-      analogyTitle: isKhmer ? 'ជំនួយការគិត' : 'Thinking Helper',
-      analogyExplanation: isKhmer ? 'ស្រមៃមើលរូបភាពជាក់ស្តែងដើម្បីងាយយល់។' : 'Visualize concrete examples to make it easy to grasp.',
+      analogyTitle: '',
+      analogyExplanation: '',
+      visualReference: '',
       allHints: [],
     };
   }
@@ -74,17 +79,16 @@ export function resolveStepHints(step?: StepItem | any, language: Language = 'en
     });
   }
 
-  // --- Hint 1 (Small Clue / Focus) ---
+  // --- Hint 1 (Small Clue / Focus: guides student without revealing answer) ---
   let h1 = '';
-  if (raw.hint1) {
+  if (rawHintsList.length > 0) {
+    h1 = rawHintsList[0];
+  } else if (raw.hint1) {
     if (typeof raw.hint1 === 'string') {
       h1 = cleanMd(raw.hint1);
     } else if (typeof raw.hint1 === 'object') {
       h1 = cleanMd(isKhmer ? (raw.hint1.khmer || raw.hint1.eng) : (raw.hint1.eng || raw.hint1.khmer));
     }
-  }
-  if (!h1 && rawHintsList.length > 0) {
-    h1 = rawHintsList[0];
   }
   if (!h1 && (raw.clue || raw.clueKhmer || raw.clue_khmer)) {
     h1 = cleanMd(isKhmer ? (raw.clueKhmer || raw.clue_khmer || raw.clue) : (raw.clue || raw.clueEng));
@@ -96,20 +100,20 @@ export function resolveStepHints(step?: StepItem | any, language: Language = 'en
       : (focusContext ? `Focus on this key part: ${focusContext}` : 'Start by reading the question carefully and finding the keywords.');
   }
 
-  // --- Hint 2 (Bigger Hint / Guided Strategy) ---
+  // --- Hint 2 (Stepping-Stone Clue / Strategy: guides toward answer without revealing it) ---
   let h2 = '';
-  if (raw.hint2) {
+  if (rawHintsList.length > 1) {
+    h2 = rawHintsList[1];
+  } else if (raw.hint2) {
     if (typeof raw.hint2 === 'string') {
       h2 = cleanMd(raw.hint2);
     } else if (typeof raw.hint2 === 'object') {
       h2 = cleanMd(isKhmer ? (raw.hint2.khmer || raw.hint2.eng) : (raw.hint2.eng || raw.hint2.khmer));
     }
   }
-  if (!h2 && rawHintsList.length > 1) {
-    h2 = rawHintsList[1];
-  }
-  if (!h2 && (raw.helpfulExample || raw.helpful_example || raw.helpfulExampleKhmer)) {
-    h2 = cleanMd(isKhmer ? (raw.helpfulExampleKhmer || raw.helpfulExample || raw.helpful_example) : (raw.helpfulExample || raw.helpful_example));
+  if (!h2 && (raw.clue || raw.clueKhmer)) {
+    const cl = cleanMd(raw.clue || raw.clueKhmer);
+    if (cl && cl !== h1) h2 = cl;
   }
   if (!h2 && (raw.yourTurn || raw.your_turn)) {
     const yt = cleanMd(raw.yourTurn || raw.your_turn);
@@ -121,115 +125,213 @@ export function resolveStepHints(step?: StepItem | any, language: Language = 'en
       : 'Break the problem down into smaller parts or calculate step by step.';
   }
 
-  // --- Hint 3 (Example / Concrete Analogy) ---
-  let h3Title = isKhmer ? 'ឧទាហរណ៍ និងវិធីដោះស្រាយ' : 'Example & Guidance';
-  let h3Example = '';
-  if (raw.hint3) {
-    if (typeof raw.hint3 === 'string') {
-      h3Example = cleanMd(raw.hint3);
-    } else if (typeof raw.hint3 === 'object') {
-      const title = isKhmer ? (raw.hint3.titleKhmer || raw.hint3.titleEng) : (raw.hint3.titleEng || raw.hint3.titleKhmer);
-      if (title) h3Title = cleanMd(title);
-      h3Example = cleanMd(isKhmer ? (raw.hint3.exampleKhmer || raw.hint3.exampleEng) : (raw.hint3.exampleEng || raw.hint3.exampleKhmer));
-    }
-  }
-  if (!h3Example && rawHintsList.length > 2) {
-    h3Example = rawHintsList[2];
-  }
-  if (!h3Example && (raw.helpfulExample || raw.helpful_example)) {
-    h3Example = cleanMd(raw.helpfulExample || raw.helpful_example);
-  }
-  if (!h3Example) {
-    const qText = cleanMd(raw.questionKhmer || raw.questionEng || raw.prompt || '');
-    h3Example = isKhmer
-      ? (qText ? `សាកល្បងគិត៖ ប្រសិនបើយើងពិនិត្យលើ ${qText} តើយើងអាចធ្វើតាមវិធីណាខ្លះ?` : 'សាកល្បងសរសេរលេខ ឬរូបមន្តនៅលើក្រដាសព្រាងដើម្បីងាយស្រួលផ្ទៀងផ្ទាត់!')
-      : (qText ? `Try thinking: If we look at "${qText}", what pattern or operation can we apply?` : 'Write down the steps or numbers on scratch paper to clearly see the solution!');
-  }
+  // Pure answer-safe hints array (no worked examples)
+  const allHints = [h1, h2].filter(Boolean);
 
-  // --- Simple Explanation ---
+  // --- Explain Differently: Rephrase and explain the current step's guiding question ---
+  const guidingQuestion = cleanMd(
+    raw.yourTurn ||
+    raw.your_turn ||
+    (isKhmer ? raw.socraticPromptKhmer : raw.socraticPromptEng) ||
+    raw.socraticPromptEng ||
+    (isKhmer ? raw.questionKhmer : raw.questionEng) ||
+    raw.questionEng ||
+    raw.mission ||
+    ''
+  );
+
+  const stepMission = cleanMd(
+    (isKhmer ? raw.questionKhmer : raw.questionEng) ||
+    raw.mission ||
+    raw.title ||
+    ''
+  );
+
+  const qLower = `${guidingQuestion} ${stepMission}`.toLowerCase();
+  const visual = raw.visualData || raw.visual_data || raw.visual;
+  const vType = visual ? String(visual.type || '').toLowerCase() : '';
+  const onLinePhrase = vType === 'number_line' ? ' on the number line' : '';
+
   let simpleExp = '';
+  // Check if explicit custom explainDifferently is already provided and not generic
   if (raw.explainDifferently) {
-    if (typeof raw.explainDifferently === 'string') {
+    if (typeof raw.explainDifferently === 'string' && raw.explainDifferently.trim().length > 20) {
       simpleExp = cleanMd(raw.explainDifferently);
     } else if (typeof raw.explainDifferently === 'object') {
-      simpleExp = cleanMd(isKhmer ? (raw.explainDifferently.simpleKhmer || raw.explainDifferently.simpleEng) : (raw.explainDifferently.simpleEng || raw.explainDifferently.simpleKhmer));
+      const exp = isKhmer 
+        ? (raw.explainDifferently.simpleKhmer || raw.explainDifferently.simpleEng) 
+        : (raw.explainDifferently.simpleEng || raw.explainDifferently.simpleKhmer);
+      if (exp && exp.trim().length > 20 && exp !== raw.mission && exp !== raw.questionEng) {
+        simpleExp = cleanMd(exp);
+      }
     }
   }
-  if (!simpleExp && (raw.clue || raw.helpfulExample || raw.helpful_example)) {
-    const parts = [raw.clue, raw.helpfulExample || raw.helpful_example].filter(Boolean).map(cleanMd);
-    simpleExp = parts.join(' ');
-  }
 
-  // --- Analogy & Visual ---
-  let anTitle = isKhmer ? 'ឧទាហរណ៍រូបភាព' : 'Visual Analogy';
-  let anExp = '';
-  if (raw.explainDifferently && typeof raw.explainDifferently === 'object') {
-    const t = raw.explainDifferently.analogyTitle;
-    if (t) anTitle = cleanMd(t);
-    anExp = cleanMd(isKhmer ? (raw.explainDifferently.analogyKhmer || raw.explainDifferently.analogyEng) : (raw.explainDifferently.analogyEng || raw.explainDifferently.analogyKhmer));
-  }
-  if (!anExp && (raw.helpfulExample || raw.helpful_example)) {
-    anExp = cleanMd(raw.helpfulExample || raw.helpful_example);
-  }
+  // Synthesize concise, grade-appropriate rephrasing (1-2 short sentences)
+  if (!simpleExp) {
+    const nums = (guidingQuestion.match(/\b\d+\b/g) || []).map(Number);
 
-  // Synthesize rich, story-driven, elementary-calibrated explanations if empty or duplicate of mission
-  const fullText = [
-    raw.title, raw.mission, raw.clue, raw.yourTurn,
-    raw.socraticPromptEng, raw.questionEng, raw.concept
-  ].filter(Boolean).join(' ').toLowerCase();
-
-  const isGeneric = !simpleExp || simpleExp === raw.mission || simpleExp === raw.questionEng || simpleExp.length < 15;
-
-  if (isGeneric) {
-    if (fullText.includes('block') || fullText.includes('ones') || fullText.includes('add') || fullText.includes('+')) {
-      if (fullText.includes('tower') || fullText.includes('pack') || fullText.includes('trade') || fullText.includes('carry')) {
-        simpleExp = "Every time we collect 10 loose pieces, they snap together into 1 tall ten-tower! 🗼 Any leftover pieces stay on the desk as single blocks! 🧱";
-        anTitle = "Cookie Box Bakery 🍪📦";
-        anExp = "Imagine baking cookies: 10 cookies fill 1 full box 📦! Any extra cookies that don't fit in the box stay out on the plate for you to snack on! 😋";
+    if (qLower.includes('subtract') || qLower.includes('minus') || qLower.includes('-') || qLower.includes('take away') || qLower.includes('backward')) {
+      if (nums.length >= 2) {
+        simpleExp = isKhmer
+          ? `ចាប់ផ្ដើមពី ${nums[0]} ហើយរាប់ថយក្រោយ ${nums[1]} ជំហាន${vType === 'number_line' ? ' លើបន្ទាត់លេខ' : ''}។ តើអ្នកទៅដល់លេខណា?`
+          : `Start at ${nums[0]} and count backward ${nums[1]} steps${onLinePhrase}. Where do you land?`;
+      } else if (nums.length === 1) {
+        simpleExp = isKhmer
+          ? `រាប់ថយក្រោយ ${nums[0]} ជំហាន${vType === 'number_line' ? ' លើបន្ទាត់លេខ' : ''}។ តើនៅសល់ប៉ុន្មាន?`
+          : `Count backward ${nums[0]} steps${onLinePhrase}. How many are left?`;
       } else {
-        simpleExp = "We are putting our loose single blocks together! Combine both piles into one big group and count them up using your fingers! 🖐️";
-        anTitle = "Apple Baskets 🍎🍏";
-        anExp = "Imagine putting red apples and green apples into one big basket to see how many yummy apples you have in all!";
+        simpleExp = isKhmer
+          ? 'រាប់ថយក្រោយដើម្បីដឹងថានៅសល់ប៉ុន្មាន!'
+          : 'Count backward to see what is left!';
       }
-    } else if (fullText.includes('unpack') || fullText.includes('borrow') || fullText.includes('take away') || fullText.includes('minus') || fullText.includes('-')) {
-      simpleExp = "We need to give blocks away, but our loose pile is too small! So we unwrap 1 packed ten-box 📦 to get 10 fresh blocks to share! 🎁";
-      anTitle = "Crayon Box Sharing 🖍️";
-      anExp = "Imagine you have a sealed 10-pack of crayons! To share with your friends, you open the pack so everyone gets single crayons to draw with! 🎨";
-    } else if (fullText.includes('solid') || fullText.includes('liquid') || fullText.includes('gas') || fullText.includes('matter')) {
-      simpleExp = "Everything in the world is matter! Solids hold their shape 🧊, liquids flow and splash 💧, and gases float invisibly in the air 🎈!";
-      anTitle = "Ice Cube Journey 🧊💧🎈";
-      anExp = "An ice cube is hard and solid 🧊. In warm sun, it melts into liquid water 💧. When boiled in a kettle, it floats up into the sky as gas steam 🎈!";
-    } else if (fullText.includes('group') || fullText.includes('multiply') || fullText.includes('times') || fullText.includes('×') || fullText.includes('*')) {
-      simpleExp = "Multiplication is just super-fast counting of equal teams! Instead of counting one by one, count team by team! 🚀";
-      anTitle = "Egg Cartons 🥚";
-      anExp = "Think of an egg carton with rows! Skip count the rows (like 3, 6, 9, 12) to quickly find the total number of eggs!";
-    } else if (fullText.includes('fraction') || fullText.includes('/')) {
-      simpleExp = "Fractions are all about fair sharing! Slicing into equal pieces makes it easy to compare amounts! 🍕";
-      anTitle = "Pizza Slices 🍕";
-      anExp = "2 slices out of a 4-slice pizza is the exact same amount of pizza as 1 giant slice out of a 2-slice pizza (half the whole pizza)! 🍕";
+    } else if (qLower.includes('put together') || qLower.includes('what two numbers') || qLower.includes('which two numbers') || qLower.includes('first two')) {
+      if (nums.length >= 2) {
+        simpleExp = isKhmer
+          ? `មើលលេខពីរដំបូង (${nums[0]} និង ${nums[1]})។ តើបូកបញ្ចូលគ្នាបានប៉ុន្មាន?`
+          : `Look at the first two numbers, ${nums[0]} and ${nums[1]}. What do you get when you put them together?`;
+      } else {
+        simpleExp = isKhmer
+          ? 'រកមើលលេខពីរដែលនៅសងខាងសញ្ញាបូក ➕!'
+          : 'Look at the numbers on either side of the plus sign ➕ to see what to combine.';
+      }
+    } else if (qLower.includes('add') || qLower.includes('plus') || qLower.includes('+') || qLower.includes('more') || qLower.includes('forward')) {
+      if (nums.length >= 2) {
+        simpleExp = isKhmer
+          ? `ចាប់ផ្ដើមពី ${nums[0]} ហើយរាប់ទៅមុខ ${nums[1]} ជំហាន${vType === 'number_line' ? ' លើបន្ទាត់លេខ' : ''}។ តើអ្នកទៅដល់លេខណា?`
+          : `Start at ${nums[0]} and count forward ${nums[1]} steps${onLinePhrase}. Where do you land?`;
+      } else if (nums.length === 1) {
+        simpleExp = isKhmer
+          ? `រាប់ទៅមុខ ${nums[0]} ជំហាន${vType === 'number_line' ? ' លើបន្ទាត់លេខ' : ''}។ តើទទួលបានប៉ុន្មាន?`
+          : `Count forward ${nums[0]} steps${onLinePhrase}. Where do you land?`;
+      } else {
+        simpleExp = isKhmer
+          ? 'បូកចំនួនទាំងពីរនេះបញ្ចូលគ្នាដើម្បីរកចំនួនសរុប!'
+          : 'Add these amounts together to find the total!';
+      }
+    } else if (qLower.includes('ones') || qLower.includes('tens') || qLower.includes('regroup') || qLower.includes('trade')) {
+      if (qLower.includes('ones')) {
+        simpleExp = isKhmer
+          ? 'រាប់ដុំរាយនៅខាងស្ដាំ។ តើយើងមានដុំរាយប៉ុន្មាន?'
+          : 'Look at the ones column on the right. How many single blocks do we have?';
+      } else {
+        simpleExp = isKhmer
+          ? 'តើដុំរាយមានដល់ ១០ ឬច្រើនជាងនេះដើម្បីបង្កើតជាខ្ទង់ដប់ទេ?'
+          : 'Do we have 10 or more loose pieces to make a new ten?';
+      }
+    } else if (qLower.includes('multiply') || qLower.includes('times') || qLower.includes('×') || (qLower.includes('group') && !qLower.includes('put together'))) {
+      if (nums.length >= 2) {
+        simpleExp = isKhmer
+          ? `រាប់លោត ${nums[0]} ក្រុម ដែលក្រុមនីមួយៗមាន ${nums[1]}។`
+          : `Skip-count ${nums[0]} equal groups of ${nums[1]}. Where do you land?`;
+      } else {
+        simpleExp = isKhmer
+          ? 'រាប់លោតតាមក្រុមនីមួយៗដើម្បីរកចំនួនសរុប!'
+          : 'Skip-count each equal group to find the total!';
+      }
+    } else if (qLower.includes('fraction') || qLower.includes('slice') || qLower.includes('shaded') || qLower.includes('/')) {
+      simpleExp = isKhmer
+        ? 'រាប់ចំនួនចំណែកដែលផាត់ពណ៌ ធៀបនឹងចំណែកស្មើៗគ្នាទាំងអស់។'
+        : 'Count how many parts are colored out of all the equal parts.';
+    } else if (qLower.includes('solid') || qLower.includes('liquid') || qLower.includes('gas') || qLower.includes('matter')) {
+      simpleExp = isKhmer
+        ? 'គិតមើលថាតើវាមានរាងរឹងមាំដូចទឹកកក ឬអាចហូរដូចទឹក?'
+        : 'Think about whether it stays firm like ice, or pours like water.';
+    } else if (guidingQuestion) {
+      simpleExp = guidingQuestion;
     } else {
       simpleExp = isKhmer
-        ? 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា មួយជំហានម្តងៗដោយភាពជឿជាក់!'
-        : "Let's take it one step at a time! Read the clue, imagine it in real life, and give it your best try! 🌟";
+        ? 'តោះធ្វើឱ្យវាកាន់តែងាយ! ឆ្លើយមួយជំហានម្តងៗ។'
+        : "Let's make it easier! Take it one step at a time.";
     }
+  }
+
+  // --- Visual Reference: Short single-line cue referring to the existing visual on the card ---
+  let visualRef = '';
+  if (visual && typeof visual === 'object') {
+    if (vType === 'number_line') {
+      visualRef = isKhmer
+        ? 'ប្រើបន្ទាត់លេខនៅលើកាតរបស់អ្នកដើម្បីជួយរាប់។'
+        : 'Use the number line on your card to help you.';
+    } else if (vType === 'ten_frame') {
+      visualRef = isKhmer
+        ? 'ប្រើរូបក្រឡា ១០ នៅលើកាតរបស់អ្នកដើម្បីជួយរាប់។'
+        : 'Use the ten-frame on your card to help you.';
+    } else if (vType === 'place_value_blocks' || vType === 'base_ten_blocks') {
+      visualRef = isKhmer
+        ? 'ប្រើដុំប្លុកនៅលើកាតរបស់អ្នកដើម្បីជួយរាប់។'
+        : 'Use the blocks on your card to help you.';
+    } else if (vType === 'objects') {
+      visualRef = isKhmer
+        ? 'ប្រើរូបភាពនៅលើកាតរបស់អ្នកដើម្បីជួយរាប់។'
+        : 'Use the pictures on your card to help you.';
+    } else if (vType === 'bar_model' || vType === 'fraction_bar') {
+      visualRef = isKhmer
+        ? 'ប្រើរបារនៅលើកាតរបស់អ្នកដើម្បីជួយមើល។'
+        : 'Use the bar diagram on your card to help you.';
+    } else if (vType === 'array_grid') {
+      visualRef = isKhmer
+        ? 'ប្រើក្រឡាចត្រង្គនៅលើកាតរបស់អ្នកដើម្បីជួយរាប់។'
+        : 'Use the grid on your card to help you.';
+    } else {
+      visualRef = isKhmer
+        ? 'ប្រើរូបភាពនៅលើកាតរបស់អ្នកដើម្បីជួយអ្នក។'
+        : 'Use the picture on your card to help you.';
+    }
+  }
+
+  // --- Familiar Analogy: Only when it genuinely improves understanding (optional extra help) ---
+  let anTitle = '';
+  let anExp = '';
+
+  if (raw.explainDifferently && typeof raw.explainDifferently === 'object') {
+    anTitle = cleanMd(isKhmer ? (raw.explainDifferently.analogyKhmerTitle || raw.explainDifferently.analogyTitle) : (raw.explainDifferently.analogyTitle || raw.explainDifferently.analogyEngTitle));
+    anExp = cleanMd(isKhmer ? (raw.explainDifferently.analogyKhmer || raw.explainDifferently.analogyEng) : (raw.explainDifferently.analogyEng || raw.explainDifferently.analogyKhmer));
   }
 
   if (!anExp) {
-    anExp = isKhmer
-      ? 'ស្រមៃមើលចំនួន ឬរូបភាពជាក់ស្តែង (ដូចជាផ្លែឈើ ឬដុំគ្រួស) ដើម្បីជួយឱ្យការគិតកាន់តែច្បាស់លាស់។'
-      : 'Picture real objects (like apples or blocks) in your mind to make the concept clear and intuitive.';
+    if (qLower.includes('ones') || qLower.includes('tens') || qLower.includes('regroup') || qLower.includes('trade')) {
+      anTitle = isKhmer ? 'ប្រអប់នំឃុកឃី' : 'Cookie Box';
+      anExp = isKhmer
+        ? 'ស្រមៃមើលនំ ១០ ដុំ រៀបចូលពេញប្រអប់ ១ ហើយនំដែលនៅសល់ក្រៅប្រអប់ជាដុំរាយ!'
+        : 'Imagine 10 cookies fill 1 full box, and any leftover cookies stay out as loose ones!';
+    } else if (qLower.includes('put together') || qLower.includes('add') || qLower.includes('plus') || qLower.includes('combine')) {
+      anTitle = isKhmer ? 'កន្ត្រកប្រដាប់ក្មេងលេង' : 'Toy Basket';
+      anExp = isKhmer
+        ? 'ស្រមៃមើលការប្រមូលប្រដាប់ក្មេងលេងពីគំនរពីរ ដាក់ចូលទៅក្នុងកន្ត្រកតែមួយ!'
+        : 'Imagine gathering toys from two separate piles together into one big basket!';
+    } else if (qLower.includes('multiply') || qLower.includes('times') || qLower.includes('×') || (qLower.includes('group') && !qLower.includes('put together'))) {
+      anTitle = isKhmer ? 'កង់កង់' : 'Bicycle Wheels';
+      anExp = isKhmer
+        ? 'គិតអំពីកង់កង់៖ កង់នីមួយៗមានកង់ ២ ដូច្នេះការរាប់កង់ ៣ គឺរាប់លោត ២, ៤, ៦!'
+        : 'Think of bicycles: each bike has 2 wheels, so counting 3 bikes is skip-counting: 2, 4, 6!';
+    } else if (qLower.includes('subtract') || qLower.includes('minus') || qLower.includes('take away')) {
+      anTitle = isKhmer ? 'ការចែករំលែកផ្លែឈើ' : 'Snack Sharing';
+      anExp = isKhmer
+        ? 'ស្រមៃមើលថាអ្នកមានផ្លែឈើមួយចាន ហើយចែកខ្លះទៅមិត្តភក្តិ—តើនៅសល់ប៉ុន្មានសម្រាប់អ្នក?'
+        : 'Imagine having a bowl of cherries and sharing some with a friend—how many are left for you?';
+    } else if (qLower.includes('fraction') || qLower.includes('slice')) {
+      anTitle = isKhmer ? 'ចំណែកភីហ្សា' : 'Pizza Slices';
+      anExp = isKhmer
+        ? 'ស្រមៃមើលការកាត់នំភីហ្សាជាចំណែកស្មើៗគ្នា ដើម្បីឱ្យអ្នកគ្រប់គ្នាទទួលបានចំណែកស្មើគ្នា!'
+        : 'Imagine cutting a pizza into equal slices so each slice has the exact same amount!';
+    } else if (qLower.includes('solid') || qLower.includes('liquid') || qLower.includes('gas')) {
+      anTitle = isKhmer ? 'ដំណើរនៃទឹកកក' : 'Ice, Water & Steam';
+      anExp = isKhmer
+        ? 'ដុំទឹកកកមានរាងរឹង កាលណាក្ដៅរលាយជាទឹក ហើយពេលដាំពុះហុយឡើងលើជាចំហាយ!'
+        : 'An ice cube stays firm (solid), in the sun it melts to water (liquid), and when boiled it turns to steam (gas)!';
+    }
   }
-
-  const allHints = [h1, h2, h3Example].filter(Boolean);
 
   return {
     hint1: h1,
     hint2: h2,
-    hint3Title: h3Title,
-    hint3Example: h3Example,
+    hint3Title: '',
+    hint3Example: '',
     simpleExplanation: simpleExp,
     analogyTitle: anTitle,
     analogyExplanation: anExp,
+    visualReference: visualRef,
     allHints,
   };
 }

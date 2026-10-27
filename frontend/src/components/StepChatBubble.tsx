@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StepItem, Language } from '../types';
-import { TunsayAvatar } from './TunsayAvatar';
-import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, ListOrdered, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, ListOrdered, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
 import { answersMatch, normalizeWithKhmer } from '../utils/answerNormalization';
@@ -50,6 +49,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Sync state when navigating between steps or when step updates
   useEffect(() => {
@@ -65,6 +65,23 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
     }
     setIsSubmitting(false);
   }, [stepIndex, step.stepNumber, isCompleted, rawStep.student_answer]);
+
+  const handleSpeakPrompt = () => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    if (isSpeaking) {
+      setIsSpeaking(false);
+      return;
+    }
+    const textToSpeak = `${promptText}. ${clueText || ''}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.05;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Clean helper: strips markdown tokens so strings render cleanly into UI components
   const stripMd = (str?: string): string => {
@@ -165,6 +182,10 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   const canGoBack = stepIndex > 0;
   const canGoNext = (isCompleted || stepIndex < Math.max(...completedStepIndices, -1)) && stepIndex + 1 < totalSteps;
 
+  const handleHintClick = () => {
+    onOpenHints?.();
+  };
+
   const clueText = stripMd(
     step.clue ||
     rawStep.clue ||
@@ -174,26 +195,17 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
 
   return (
     <div className="w-full bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] sm:shadow-[4px_4px_0px_#1B4332] p-3.5 sm:p-5 lg:p-6 space-y-3.5 sm:space-y-4 animate-fadeIn">
-      {/* Top Banner: Step Indicator & ReanMore Mascot Avatar */}
+      {/* Top Banner: Step Indicator */}
       <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 sm:pb-3 border-b-2 border-[#1B4332]/20">
-        <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#40916C] rounded-xl sm:rounded-2xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] sm:shadow-[2px_2px_0px_#1B4332] flex items-center justify-center shrink-0">
-            <TunsayAvatar
-              size="sm"
-              state={feedback === 'incorrect' ? 'encouraging' : feedback === 'correct' ? 'celebrating' : 'explaining'}
-              showBadge={false}
-            />
-          </div>
-          <div className="min-w-0">
-            <span className="px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] sm:text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] inline-block">
-              {isKhmer 
-                ? `ជំហានទី ${stepNum} នៃ ${totalSteps}` 
-                : `Step ${stepNum} of ${totalSteps}`}
-            </span>
-            <h4 className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332] font-heading mt-0.5 sm:mt-1 truncate">
-              {questionTitle}
-            </h4>
-          </div>
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <span className="px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] sm:text-xs font-black rounded-full border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] inline-block shrink-0">
+            {isKhmer 
+              ? `ជំហានទី ${stepNum} នៃ ${totalSteps}` 
+              : `Step ${stepNum} of ${totalSteps}`}
+          </span>
+          <h4 className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332] font-heading truncate">
+            {questionTitle}
+          </h4>
         </div>
 
         {onOpenAllSteps && (
@@ -211,9 +223,24 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
       {/* ReanMore Socratic Guiding Prompt with Embedded Visual Support & Helpful Tip */}
       <div className="p-3 sm:p-4 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] space-y-2.5 sm:space-y-3">
         <div>
-          <p className="text-[10px] sm:text-xs font-black text-[#1B4332] uppercase tracking-wider mb-0.5 sm:mb-1">
-            {isKhmer ? 'សំណួរណែនាំពី ReanMore៖' : "ReanMore's Guiding Prompt:"}
-          </p>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className="text-[10px] sm:text-xs font-black text-[#1B4332] uppercase tracking-wider">
+              {isKhmer ? 'សំណួរណែនាំពី ReanMore៖' : "ReanMore's Guiding Prompt:"}
+            </p>
+            <button
+              type="button"
+              onClick={handleSpeakPrompt}
+              title={isKhmer ? 'អានសំណួរឮៗ' : 'Listen to question'}
+              className={`px-2 py-0.5 rounded-full border border-[#1B4332]/30 flex items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${
+                isSpeaking
+                  ? 'bg-[#2D6A4F] text-white animate-pulse'
+                  : 'bg-white/90 hover:bg-white text-[#1B4332] shadow-sm hover:scale-105 active:scale-95'
+              }`}
+            >
+              <Volume2 className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>{isSpeaking ? (isKhmer ? 'កំពុងអាន...' : 'Reading...') : (isKhmer ? 'ស្តាប់' : 'Listen')}</span>
+            </button>
+          </div>
           <p className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332] leading-relaxed">
             {promptText}
           </p>
@@ -222,7 +249,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         {/* Kid-Friendly Helpful Tip Banner */}
         {clueText && (
           <div className="p-2 sm:p-2.5 bg-white/95 rounded-lg sm:rounded-xl border border-[#2D6A4F]/30 text-xs sm:text-sm text-[#1B4332] font-semibold flex items-start gap-2 shadow-[1px_1px_0px_#1B4332]">
-            <span className="text-base shrink-0 select-none">💡</span>
+            <Lightbulb className="w-4 h-4 text-[#2D6A4F] shrink-0 mt-0.5" />
             <div className="leading-snug">
               <span className="font-black text-[#2D6A4F] uppercase text-[10px] sm:text-xs block mb-0.5">
                 {isKhmer ? 'តម្រុយជំនួយ៖' : 'Helpful Tip:'}
@@ -248,14 +275,16 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         )}
       </div>
 
+
+
       {/* Answer Options or Input Area */}
-      {step.options && step.options.length > 0 ? (
+      {((step.options && step.options.length > 0) || (rawStep.options && rawStep.options.length > 0)) ? (
         <div className="space-y-2 sm:space-y-3">
           <p className="text-[11px] sm:text-xs font-black text-[#1B4332] uppercase">
             {isKhmer ? 'ជ្រើសរើសចម្លើយរបស់អ្នក៖' : 'Choose your answer:'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            {step.options.map((opt, idx) => {
+            {((step.options && step.options.length > 0) ? step.options : rawStep.options).map((opt: string, idx: number) => {
               const displayOpt = cleanBilingualOption(opt, language);
               const isSelected = selectedOption === displayOpt || inputAnswer === displayOpt;
               return (
@@ -286,6 +315,30 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         </div>
       ) : (
         <form onSubmit={handleFormSubmit} className="space-y-2 sm:space-y-3">
+          {/* Quick Number Tap Chips for Young Learners (Kill Typing Anxiety) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((digit) => (
+              <button
+                key={digit}
+                type="button"
+                onClick={() => setInputAnswer((prev) => prev + digit)}
+                disabled={isSubmitting || feedback === 'correct'}
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-[#A7CDB4] text-[#1B4332] font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs sm:text-sm active:translate-y-0.5 shrink-0 cursor-pointer"
+              >
+                {digit}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setInputAnswer((prev) => prev.slice(0, -1))}
+              disabled={isSubmitting || feedback === 'correct' || !inputAnswer}
+              className="px-2 h-8 sm:h-9 bg-white hover:bg-red-50 text-red-600 font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs shrink-0 cursor-pointer"
+              title="Delete"
+            >
+              ⌫
+            </button>
+          </div>
+
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -295,7 +348,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
                 if (feedback === 'incorrect') setFeedback('none');
               }}
               disabled={isSubmitting || feedback === 'correct'}
-              placeholder={isKhmer ? 'វាយចម្លើយរបស់អ្នកនៅទីនេះ...' : 'Type your answer here...'}
+              placeholder={isKhmer ? 'វាយចម្លើយ ឬចុចលេខខាងលើ...' : 'Type or tap numbers above...'}
               className="flex-1 p-2.5 sm:p-3.5 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] font-black text-xs sm:text-sm md:text-base text-[#1B4332] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#2D6A4F] disabled:opacity-60"
             />
             <button
@@ -338,7 +391,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
           </div>
           <button
             type="button"
-            onClick={onOpenHints}
+            onClick={handleHintClick}
             className="px-2.5 py-1 bg-[#40916C] text-white rounded-lg sm:rounded-xl border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] text-xs font-black cursor-pointer shrink-0 hover:scale-105 active:scale-95 transition-transform"
           >
             {isKhmer ? 'តម្រុយ' : 'Hint'}
@@ -351,7 +404,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={onOpenHints}
+            onClick={handleHintClick}
             className="px-3 py-1.5 sm:px-4 sm:py-2 bg-[#40916C] text-white hover:bg-[#40916C]/80 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm md:text-base border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer"
           >
             <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-[#1B4332] stroke-[2.5]" />

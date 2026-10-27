@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
+import { Search, Camera, Check, AlertTriangle, X } from 'lucide-react';
 
 /**
  * OcrConfirmModal — Sprint 1.1: OCR Quality Gate
  *
  * Shows extracted text after a scan with a confidence badge.
  * The student (or helper adult) can:
- *   - Confirm the text looks right ("Looks Good ✅")
+ *   - Confirm the text looks right ("Looks Good")
  *   - Edit the text inline before confirming
  *   - Retake the photo if the scan looks wrong
  *
@@ -36,14 +37,14 @@ const LABELS = {
     title: 'Check Your Scanned Homework',
     subtitle: 'Please review the scanned text below. You can edit it if anything is inaccurate.',
     confidence: 'Scan Clarity',
-    high: 'Clear Scan ✅',
-    medium: 'Moderate Clarity 🟡',
-    low: 'Needs Review ⚠️',
+    high: 'Clear Scan',
+    medium: 'Moderate Clarity',
+    low: 'Needs Review',
     lowHint: 'The scan clarity is low. Some characters might be misread — please double-check or retake a clearer photo.',
     multiTitle: 'Multiple exercises detected! Choose which ones to practice:',
     editLabel: 'Edit the scanned exercise text:',
-    retake: '📷 Retake Photo',
-    confirm: 'Looks Good, Let\'s Start! ✅',
+    retake: 'Retake Photo',
+    confirm: 'Looks Good, Let\'s Start!',
     selectAll: 'Select All',
     deselectAll: 'Deselect All',
   },
@@ -51,14 +52,14 @@ const LABELS = {
     title: 'ផ្ទៀងផ្ទាត់អត្ថបទដែលបានស្កែន',
     subtitle: 'សូមពិនិត្យអត្ថបទខាងក្រោម។ អ្នកអាចចុចកែសម្រួល ប្រសិនបើមានអក្សរណាខុស។',
     confidence: 'កម្រិតភាពច្បាស់',
-    high: 'ច្បាស់ល្អ ✅',
-    medium: 'មធ្យម 🟡',
-    low: 'មិនសូវច្បាស់ ⚠️',
+    high: 'ច្បាស់ល្អ',
+    medium: 'មធ្យម',
+    low: 'មិនសូវច្បាស់',
     lowHint: 'រូបភាពមិនសូវច្បាស់ទេ។ អក្សរមួយចំនួនអាចមិនត្រឹមត្រូវ — សូមពិនិត្យ ឬថតរូបម្តងទៀត។',
     multiTitle: 'រកឃើញលំហាត់ជាច្រើន! សូមជ្រើសរើសលំហាត់ដែលចង់អនុវត្ត៖',
     editLabel: 'កែសម្រួលអត្ថបទលំហាត់ដែលស្កែនបាន៖',
-    retake: '📷 ថតរូបឡើងវិញ',
-    confirm: 'ត្រឹមត្រូវហើយ តោះចាប់ផ្តើម! ✅',
+    retake: 'ថតរូបឡើងវិញ',
+    confirm: 'ត្រឹមត្រូវហើយ តោះចាប់ផ្តើម!',
     selectAll: 'ជ្រើសរើសទាំងអស់',
     deselectAll: 'ដកការជ្រើសរើស',
   },
@@ -119,12 +120,16 @@ export const OcrConfirmModal: React.FC<OcrConfirmModalProps> = ({
 
         {/* Header */}
         <div style={styles.header}>
-          <div style={styles.scanIcon}>🔍</div>
+          <div style={styles.scanIcon}>
+            <Search className="w-5 h-5 text-[#1B4332]" />
+          </div>
           <div>
             <h2 style={styles.title}>{l.title}</h2>
             <p style={styles.subtitle}>{l.subtitle}</p>
           </div>
-          <button style={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
+          <button style={styles.closeBtn} onClick={onClose} aria-label="Close">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
         </div>
 
         {/* Confidence badge */}
@@ -139,7 +144,8 @@ export const OcrConfirmModal: React.FC<OcrConfirmModalProps> = ({
         {/* Low confidence warning */}
         {isLowConfidence && (
           <div style={styles.lowConfWarning}>
-            ⚠️ {l.lowHint}
+            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 inline mr-1.5" />
+            {l.lowHint}
           </div>
         )}
 
@@ -191,6 +197,7 @@ export const OcrConfirmModal: React.FC<OcrConfirmModalProps> = ({
             style={{ ...styles.btn, ...styles.retakeBtn }}
             onClick={onRetake}
           >
+            <Camera style={{ width: 16, height: 16, display: 'inline', marginRight: 6, verticalAlign: 'text-bottom' }} />
             {l.retake}
           </button>
           <button
@@ -204,6 +211,7 @@ export const OcrConfirmModal: React.FC<OcrConfirmModalProps> = ({
             onClick={handleConfirm}
             disabled={isMulti && selectedSegments.size === 0}
           >
+            <Check style={{ width: 16, height: 16, display: 'inline', marginRight: 6, verticalAlign: 'text-bottom' }} />
             {l.confirm}
           </button>
         </div>

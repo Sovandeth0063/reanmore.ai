@@ -1,4 +1,5 @@
 import React from 'react';
+import { Coffee, Sparkles, CheckCircle2, BookOpen, Home, Play } from 'lucide-react';
 
 /**
  * PauseCard — Sprint 1.3 & Issue #11
@@ -30,33 +31,33 @@ export interface PauseCardProps {
 
 const LABELS = {
   en: {
-    titleNormal: 'Taking a Break! ☕',
-    titleFrustration: 'It\'s OK to Pause! 🌈',
+    titleNormal: 'Taking a Break!',
+    titleFrustration: 'It\'s OK to Pause!',
     normalMessage: 'Great work so far! Take a short break — stretch, drink some water, and come back fresh.',
-    frustrationMessage: 'You\'ve been working really hard and trying your best! Everyone needs a moment to rest. Take a deep breath 🌬️, get some water 💧, and come back when you\'re ready.',
+    frustrationMessage: 'You\'ve been working really hard and trying your best! Everyone needs a moment to rest. Take a deep breath, get some water, and come back when you\'re ready.',
     stepsRemaining: 'steps remaining',
-    progressSaved: '✅ Your progress is saved!',
-    resume: '▶️ Resume',
-    exit: '🏠 Exit to Home',
+    progressSaved: 'Your progress is saved!',
+    resume: 'Resume',
+    exit: 'Exit to Home',
     encouragement: [
-      'You\'re doing amazing! 🦁',
-      'Every great learner takes breaks! 📚',
-      'Your brain is getting stronger! 💪',
+      'You\'re doing amazing!',
+      'Every great learner takes breaks!',
+      'Your brain is getting stronger!',
     ],
   },
   km: {
-    titleNormal: 'ឈប់សំរាក! ☕',
-    titleFrustration: 'វាជារឿងធម្មតាទេ! 🌈',
+    titleNormal: 'ឈប់សំរាក!',
+    titleFrustration: 'វាជារឿងធម្មតាទេ!',
     normalMessage: 'អ្នកបានធ្វើការបានល្អណាស់! ឈប់សំរាកបន្តិច — ស្ទ្រេចខ្លួន ផឹកទឹក ហើយត្រឡប់មកវិញថ្ងើមថ្ជើម។',
-    frustrationMessage: 'អ្នកបានព្យាយាមយ៉ាងខ្លាំងណាស់! មនុស្សគ្រប់គ្នាត្រូវការពេលសំរាក។ ដកដង្ហើមជ្រៅ 🌬️ ផឹកទឹក 💧 ហើយត្រឡប់មកនៅពេលអ្នករួចរាល់។',
+    frustrationMessage: 'អ្នកបានព្យាយាមយ៉ាងខ្លាំងណាស់! មនុស្សគ្រប់គ្នាត្រូវការពេលសំរាក។ ដកដង្ហើមជ្រៅ ផឹកទឹក ហើយត្រឡប់មកនៅពេលអ្នករួចរាល់។',
     stepsRemaining: 'ជំហានដែលនៅសល់',
-    progressSaved: '✅ ដំណើរការរបស់អ្នកត្រូវបានរក្សាទុក!',
-    resume: '▶️ បន្ត',
-    exit: '🏠 ត្រឡប់ទៅផ្ទះ',
+    progressSaved: 'ដំណើរការរបស់អ្នកត្រូវបានរក្សាទុក!',
+    resume: 'បន្ត',
+    exit: 'ត្រឡប់ទៅផ្ទះ',
     encouragement: [
-      'អ្នកធ្វើបានអស្ចារ្យណាស់! 🦁',
-      'អ្នករៀនល្អតែងតែឈប់សំរាក! 📚',
-      'ខួរក្បាលអ្នកកំពុងខ្លាំងឡើង! 💪',
+      'អ្នកធ្វើបានអស្ចារ្យណាស់!',
+      'អ្នករៀនល្អតែងតែឈប់សំរាក!',
+      'ខួរក្បាលអ្នកកំពុងខ្លាំងឡើង!',
     ],
   },
 };
@@ -76,9 +77,13 @@ export const PauseCard: React.FC<PauseCardProps> = ({
     <div style={styles.overlay}>
       <div style={styles.card}>
 
-        {/* Animated emoji */}
+        {/* Animated icon */}
         <div style={styles.emojiPulse}>
-          {isFrustration ? '🌈' : '☕'}
+          {isFrustration ? (
+            <Sparkles style={{ width: 48, height: 48, color: '#F59E0B' }} />
+          ) : (
+            <Coffee style={{ width: 48, height: 48, color: '#D97706' }} />
+          )}
         </div>
 
         {/* Title */}
@@ -98,10 +103,14 @@ export const PauseCard: React.FC<PauseCardProps> = ({
 
         {/* Progress summary */}
         <div style={styles.progressRow}>
-          <span style={styles.progressSaved}>{l.progressSaved}</span>
+          <span style={styles.progressSaved}>
+            <CheckCircle2 style={{ width: 14, height: 14, display: 'inline', marginRight: 4, verticalAlign: 'text-bottom' }} />
+            {l.progressSaved}
+          </span>
           {problemTitle && (
             <span style={styles.problemTitle} title={problemTitle}>
-              📖 {problemTitle.length > 30 ? problemTitle.slice(0, 30) + '…' : problemTitle}
+              <BookOpen style={{ width: 14, height: 14, display: 'inline', marginRight: 4, verticalAlign: 'text-bottom' }} />
+              {problemTitle.length > 30 ? problemTitle.slice(0, 30) + '…' : problemTitle}
             </span>
           )}
           {typeof stepsLeft === 'number' && stepsLeft > 0 && (
@@ -118,6 +127,7 @@ export const PauseCard: React.FC<PauseCardProps> = ({
             style={{ ...styles.btn, ...styles.exitBtn }}
             onClick={onExit}
           >
+            <Home style={{ width: 16, height: 16, display: 'inline', marginRight: 6, verticalAlign: 'text-bottom' }} />
             {l.exit}
           </button>
           <button
@@ -125,6 +135,7 @@ export const PauseCard: React.FC<PauseCardProps> = ({
             style={{ ...styles.btn, ...styles.resumeBtn }}
             onClick={onResume}
           >
+            <Play style={{ width: 16, height: 16, display: 'inline', marginRight: 6, verticalAlign: 'text-bottom' }} />
             {l.resume}
           </button>
         </div>

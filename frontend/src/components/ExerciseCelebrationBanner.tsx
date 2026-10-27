@@ -33,7 +33,7 @@ export const ExerciseCelebrationBanner: React.FC<ExerciseCelebrationBannerProps>
   onNext,
   onReview,
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const bannerRef = useRef<HTMLDivElement>(null);
 
   // Scroll into view when shown
@@ -46,20 +46,20 @@ export const ExerciseCelebrationBanner: React.FC<ExerciseCelebrationBannerProps>
     : (exerciseTitleEng || `Exercise ${exerciseNumber}`);
 
   const doneText = isKhmer
-    ? `អ្នកបានបញ្ចប់ ${title} ហើយ! 🎉`
-    : `You completed ${title}! 🎉`;
+    ? `អ្នកបានបញ្ចប់ ${title} ហើយ!`
+    : `You completed ${title}!`;
 
   const allDone = !hasNext;
 
   const bigText = allDone
-    ? (isKhmer ? 'អ្នកបញ្ចប់ទំព័រលំហាត់ទាំងអស់ហើយ! 🌟' : 'You finished the whole worksheet! 🌟')
+    ? (isKhmer ? 'អ្នកបញ្ចប់ទំព័រលំហាត់ទាំងអស់ហើយ!' : 'You finished the whole worksheet!')
     : doneText;
 
   const subText = allDone
     ? (isKhmer ? 'អ្នកពូកែណាស់! រៀនបានគ្រប់ប្រភេទ' : 'Amazing work! You tackled every exercise.')
     : (isKhmer
-        ? `${exerciseNumber} / ${totalExercises} ☑`
-        : `${exerciseNumber} of ${totalExercises} done ☑`);
+        ? `${exerciseNumber} / ${totalExercises} រួចរាល់`
+        : `${exerciseNumber} of ${totalExercises} completed`);
 
   return (
     <div

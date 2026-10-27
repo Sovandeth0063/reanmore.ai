@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 class StepTemplate(BaseModel):
     """
     Template for a single Socratic milestone step card adhering to the 4-part specification:
-    1. Mission (🌟)
-    2. Clue (💡)
-    3. Helpful Example (🍎 - with distinct parallel numbers)
-    4. Your Turn (👉 - single question on student's problem)
+    1. Mission ()
+    2. Clue ()
+    3. Helpful Example ( - with distinct parallel numbers)
+    4. Your Turn ( - single question on student's problem)
     """
     step_number: int
     title: str

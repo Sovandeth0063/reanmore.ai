@@ -57,6 +57,10 @@ class SocraticStep(BaseModel):
         default=None,
         description="Underlying mathematical or scientific concept tag"
     )
+    options: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of 2-4 friendly choice options for young learners to tap instead of typing"
+    )
     visual_data: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Optional visual scaffolding data for the step"

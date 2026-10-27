@@ -32,7 +32,7 @@ const SUBJECT_META: Record<string, { labelKhmer: string; labelEng: string; color
 };
 
 export const ParentReport: React.FC<ParentReportProps> = ({ profile }) => {
-  const isKhmer = false;
+  const isKhmer = profile.language === 'km';
   const [showDetail, setShowDetail] = useState(false);
 
   /* Week selector */

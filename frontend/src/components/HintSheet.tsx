@@ -8,18 +8,20 @@ interface HintSheetProps {
   step: StepItem;
   isOpen: boolean;
   language?: Language;
+  grade?: number;
   onClose: () => void;
 }
 
 export const HintSheet: React.FC<HintSheetProps> = ({
   step,
   isOpen,
-  language = 'km',
+  language = 'en',
+  grade = 2,
   onClose
 }) => {
-  const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1);
-  const isKhmer = false;
-  const resolved = resolveStepHints(step, language);
+  const [hintLevel, setHintLevel] = useState<1 | 2>(1);
+  const isKhmer = language === 'km';
+  const resolved = resolveStepHints(step, language, grade);
   const rawStep = step as any;
   const stepNumber = step?.stepNumber || rawStep?.step_number || 1;
   const totalSteps = step?.totalSteps || rawStep?.total_steps || 3;
@@ -33,6 +35,10 @@ export const HintSheet: React.FC<HintSheetProps> = ({
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    setHintLevel(1);
+  }, [stepNumber]);
 
   if (!isOpen) return null;
 
@@ -93,25 +99,12 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             onClick={() => setHintLevel(2)}
             className={`flex-1 py-2 px-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border-2 border-[#1B4332] ${
               hintLevel === 2 
-                ? 'bg-[#A7CDB4] text-[#1B4332] shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
-                : 'bg-white text-[#1B4332]/80 hover:bg-[#A7CDB4]/50'
-            }`}
-          >
-            <HelpCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-            {isKhmer ? 'តម្រុយ ២' : 'Hint 2'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setHintLevel(3)}
-            className={`flex-1 py-2 px-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border-2 border-[#1B4332] ${
-              hintLevel === 3 
                 ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332] -translate-y-0.5' 
                 : 'bg-white text-[#1B4332]/80 hover:bg-[#2D6A4F]/50'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
-            {isKhmer ? 'ឧទាហរណ៍' : 'Example'}
+            <HelpCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+            {isKhmer ? 'តម្រុយ ២' : 'Hint 2'}
           </button>
         </div>
 
@@ -141,18 +134,6 @@ export const HintSheet: React.FC<HintSheetProps> = ({
             </div>
           )}
 
-          {hintLevel === 3 && (
-            <div className="bg-[#40916C] p-4 rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-3 animate-fadeIn">
-              <div className="flex items-center gap-2 text-white font-black text-sm">
-                <Sparkles className="w-4 h-4 text-white" />
-                {resolved.hint3Title}
-              </div>
-              <p className="text-sm sm:text-base text-[#1B4332] font-black leading-relaxed bg-white p-3 rounded-xl border-2 border-[#1B4332]">
-                {resolved.hint3Example}
-              </p>
-            </div>
-          )}
-
           {/* Sayo Encouragement Note */}
           <div className="flex items-center gap-3 p-3.5 bg-[#2D6A4F] rounded-2xl border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332]">
             <Sparkles className="w-5 h-5 text-white" />
@@ -166,10 +147,10 @@ export const HintSheet: React.FC<HintSheetProps> = ({
 
         {/* Bottom Actions */}
         <div className="p-4 bg-white border-t-3 border-[#1B4332] flex items-center justify-between">
-          {hintLevel < 3 ? (
+          {hintLevel < 2 ? (
             <button
               type="button"
-              onClick={() => setHintLevel((prev) => (prev + 1) as 1 | 2 | 3)}
+              onClick={() => setHintLevel(2)}
               className="text-xs sm:text-sm font-black text-[#1B4332] hover:underline flex items-center gap-1 cursor-pointer"
             >
               {isKhmer ? 'មើលតម្រុយបន្ទាប់' : 'See next hint'} <ChevronRight className="w-4 h-4 stroke-[3]" />

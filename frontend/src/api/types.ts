@@ -28,6 +28,7 @@ export interface SocraticStepItem {
   current_hint_level?: number;
   expected_answer?: string | null;
   concept?: string | null;
+  options?: string[];
   visual_data?: Record<string, any> | null;
 }
 

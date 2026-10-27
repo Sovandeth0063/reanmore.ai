@@ -41,6 +41,35 @@ def extract_numbers_from_text(text: str) -> List[Tuple[str, Fraction]]:
     return results
 
 
+def is_pure_arithmetic_expression(text: str) -> bool:
+    """
+    Checks if text is a direct arithmetic formula/expression rather than a narrative word problem.
+    Examples:
+      - '7 + 3 + 2 + 5 ='
+      - '4 + 5 + 6'
+      - 'solve 7 + 3 + 2 + 5 ='
+      - '15 + 27 = ?'
+      - '30 + [ ] = 100'
+    """
+    if not text or not text.strip():
+        return False
+    # Strip common command prefixes
+    cleaned = re.sub(
+        r"^(?:solve|calculate|what\s+is|how\s+much\s+is|compute|find\s+the\s+sum\s+of|find\s+the\s+value\s+of)\s*",
+        "",
+        text.strip(),
+        flags=re.IGNORECASE
+    )
+    cleaned = re.sub(r"[=\?_\[\]\(\)\s]+$", "", cleaned).strip()
+    cleaned = re.sub(r"[\[\]_\?]+", " ", cleaned)
+    tokens = [w for w in re.findall(r"[a-zA-Z]{2,}", cleaned) if w.lower() not in ("plus", "minus", "times", "divided", "by", "and")]
+    if tokens:
+        return False
+    has_operator = bool(re.search(r"[\+\-\*\/\.xX×÷\^]", cleaned))
+    has_digit = bool(re.search(r"\d", cleaned))
+    return has_operator and has_digit
+
+
 def verify_and_parse_word_problem(text: str, grade_level: str = "grade_1_3") -> ParseVerificationResult:
     """
     Executes the 7-stage parse verification pipeline:
@@ -55,6 +84,15 @@ def verify_and_parse_word_problem(text: str, grade_level: str = "grade_1_3") -> 
     clean_text = text.strip()
     words = clean_text.split()
     issues = []
+
+    # Pure arithmetic formulas (e.g. '7 + 3 + 2 + 5 =') are not narrative word problems
+    if is_pure_arithmetic_expression(clean_text):
+        return ParseVerificationResult(
+            is_valid=False,
+            confidence=0.0,
+            problem_type="arithmetic",
+            issues=["Input is a pure arithmetic expression, not a narrative word problem."]
+        )
 
     # Stage 1: Quantity Extraction
     num_tuples = extract_numbers_from_text(clean_text)

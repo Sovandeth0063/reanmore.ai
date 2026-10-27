@@ -139,6 +139,15 @@ Audited against `ReanMore_Architecture_v2.1.md` using the `architecture-auditor`
                                    │
                                    ▼
           ┌─────────────────────────────────────────────────┐
+          │  Phase 1H & 1I: Hints & Sessions [COMPLETED ✅] │
+          │  - Step-specific hints array in LLM payload (Done)│
+          │  - Zero extra LLM calls / 0ms hint latency (Done)│
+          │  - Navigation hint sync & ReanMore prompt intact│
+          │  - Ephemeral session creation on new chat/HW    │
+          └────────────────────────┬────────────────────────┘
+                                   │
+                                   ▼
+          ┌─────────────────────────────────────────────────┐
           │  Phase 2: Golden Verification & Pilot [DONE ✅] │
           │  - 50 Math golden worksheets evaluation (Done)  │
           │  - 100 Adversarial leak probes (Done)           │

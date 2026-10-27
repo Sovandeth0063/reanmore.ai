@@ -220,6 +220,28 @@ class TestMathSymbolAndUnitStandardization:
         assert normalize_text_sync("calculate ( 6 x 8 ) divided by 2") == "calculate (6 * 8) / 2"
 
 
+class TestQuestionNumberCleaning:
+    """Ensure question numbering is cleaned without confusing arithmetic expressions."""
+
+    def test_strip_question_number_dot(self):
+        assert normalize_text_sync("1. 4 + 5 + 6 =") == "4 + 5 + 6 ="
+        assert normalize_text_sync("2. 10 + 20 = ?") == "10 + 20 = ?"
+
+    def test_strip_question_number_paren(self):
+        assert normalize_text_sync("1) 4 + 5 + 6 =") == "4 + 5 + 6 ="
+        assert normalize_text_sync("(1) 4 + 5 + 6 =") == "4 + 5 + 6 ="
+
+    def test_strip_q_prefix(self):
+        assert normalize_text_sync("Q1: 4 + 5 + 6 =") == "4 + 5 + 6 ="
+        assert normalize_text_sync("Question 1: 4 + 5 + 6 =") == "4 + 5 + 6 ="
+        assert normalize_text_sync("Ex 1: 4 + 5 + 6 =") == "4 + 5 + 6 ="
+
+    def test_preserve_decimals(self):
+        # Decimals must NOT be stripped as question markers
+        assert normalize_text_sync("1.4 + 5.6 =") == "1.4 + 5.6 ="
+        assert normalize_text_sync("3.14 * 2") == "3.14 * 2"
+
+
 class TestPerformanceBenchmark:
     """Ensure normalization runs in under 1ms for sub-millisecond latency."""
 

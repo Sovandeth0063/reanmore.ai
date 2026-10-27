@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AnimalGroupCard.tsx
  * Shows animal group info for science grouping exercises.
  */
@@ -29,7 +29,7 @@ export function AnimalGroupCard({ group, emoji }: Props) {
         </div>
       </div>
       <div className="bg-cyan-50 rounded-xl p-2 border border-cyan-200">
-        <p className="text-xs text-cyan-700">💡 Clue: {fact}</p>
+        <p className="text-xs text-cyan-700 font-semibold">Clue: {fact}</p>
       </div>
       <p className="text-xs text-cyan-600 mt-2">What ONE feature is most important for this group?</p>
     </div>

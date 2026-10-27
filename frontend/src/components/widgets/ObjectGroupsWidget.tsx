@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw, Circle, Star, Square, Disc } from 'lucide-react';
 
 interface Props {
   groups: number[];
@@ -8,12 +8,12 @@ interface Props {
   titleEng?: string;
 }
 
-const ITEM_ICONS: Record<string, { emoji: string; nameKhmer: string; nameEng: string; color: string; bg: string }> = {
-  apple: { emoji: '🍎', nameKhmer: 'ផ្លែប៉ោម', nameEng: 'Apples', color: '#E63946', bg: 'bg-red-50 border-red-200' },
-  orange: { emoji: '🍊', nameKhmer: 'ផ្លែក្រូច', nameEng: 'Oranges', color: '#F77F00', bg: 'bg-orange-50 border-orange-200' },
-  star: { emoji: '⭐', nameKhmer: 'ផ្កាយ', nameEng: 'Stars', color: '#FCBF49', bg: 'bg-amber-50 border-amber-200' },
-  pencil: { emoji: '✏️', nameKhmer: 'ខ្មៅដៃ', nameEng: 'Pencils', color: '#457B9D', bg: 'bg-blue-50 border-blue-200' },
-  cookie: { emoji: '🍪', nameKhmer: 'នំឃុកឃី', nameEng: 'Cookies', color: '#8D5B4C', bg: 'bg-amber-50 border-amber-300' },
+const ITEM_ICONS = {
+  apple: { nameKhmer: 'ផ្លែប៉ោម', nameEng: 'Apples', color: '#E63946', bg: 'bg-red-50 border-red-200', icon: Circle, iconClass: 'fill-red-500 text-red-600' },
+  orange: { nameKhmer: 'ផ្លែក្រូច', nameEng: 'Oranges', color: '#F77F00', bg: 'bg-orange-50 border-orange-200', icon: Circle, iconClass: 'fill-orange-500 text-orange-600' },
+  star: { nameKhmer: 'ផ្កាយ', nameEng: 'Stars', color: '#FCBF49', bg: 'bg-amber-50 border-amber-200', icon: Star, iconClass: 'fill-amber-400 text-amber-500' },
+  pencil: { nameKhmer: 'ខ្មៅដៃ', nameEng: 'Pencils', color: '#457B9D', bg: 'bg-blue-50 border-blue-200', icon: Square, iconClass: 'fill-blue-500 text-blue-600' },
+  cookie: { nameKhmer: 'នំឃុកឃី', nameEng: 'Cookies', color: '#8D5B4C', bg: 'bg-amber-50 border-amber-300', icon: Disc, iconClass: 'fill-amber-700 text-amber-800' },
 };
 
 export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, titleEng }: Props) {
@@ -69,13 +69,14 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
                 const countNumber = countedItems[key];
                 const isCounted = Boolean(countNumber);
 
+                const Icon = itemInfo.icon;
                 return (
                   <button
                     key={i}
                     onClick={() => handleTapItem(gi, i)}
                     className={`
-                      w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-lg sm:text-xl
-                      transition-all duration-200 transform hover:scale-110 active:scale-95 relative
+                      w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center
+                      transition-all duration-200 transform hover:scale-110 active:scale-95 relative cursor-pointer
                       ${isCounted
                         ? 'bg-emerald-100 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-400/40 scale-105'
                         : 'bg-white/90 border border-gray-200 hover:bg-emerald-50 shadow-sm'
@@ -83,7 +84,7 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
                     `}
                     title={`Tap to count ${itemInfo.nameEng}`}
                   >
-                    <span>{itemInfo.emoji}</span>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${itemInfo.iconClass}`} />
                     
                     {/* Count Bubble Badge */}
                     {isCounted && (

@@ -107,7 +107,7 @@ describe('Two-Stage Resilient Socratic Parser', () => {
     const backendPayload = {
       category: 'math_tutoring',
       solution: 'តោះចាប់ផ្តើមដោះស្រាយលំហាត់នេះទាំងអស់គ្នា!',
-      formatted_markdown: '🌟 **Our Mission:** រកផលបូក 25 + 17',
+      formatted_markdown: '**Our Mission:** រកផលបូក 25 + 17',
       is_deflected: false,
       is_problem_complete: false,
       current_step_index: 0,
@@ -123,7 +123,7 @@ describe('Two-Stage Resilient Socratic Parser', () => {
             status: 'in_progress',
             mission: 'បូក 5 + 7',
             clue: '5 + 7 = 12',
-            helpful_example: '🍎 5 ផ្លែប៉ោម + 7 ផ្លែប៉ោម = 12 ផ្លែប៉ោម',
+            helpful_example: '5 ផ្លែប៉ោម + 7 ផ្លែប៉ោម = 12 ផ្លែប៉ោម',
             your_turn: 'តើ 5 + 7 ស្មើនឹងប៉ុន្មាន?',
             student_answer: null,
             hints: ['គិតអំពីលេខ 12'],

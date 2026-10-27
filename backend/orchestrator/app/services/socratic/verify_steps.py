@@ -103,8 +103,8 @@ def verify_math_convergence(problem_text: str, steps: List[Dict[str, Any]]) -> T
     if not steps:
         return True, issues
 
-    # Look for arithmetic patterns in problem text like "12 + 15", "8 * 7", "24 / 4", "15 - 9"
-    expr_match = re.search(r"(\d+(?:\.\d+)?)\s*([+\-*/×÷x])\s*(\d+(?:\.\d+)?)", problem_text)
+    # Look for arithmetic patterns in problem text like "7 + 3 + 2 + 5", "12 + 15", "8 * 7", "24 / 4", "15 - 9"
+    expr_match = re.search(r"\d+(?:\.\d+)?(?:\s*[+\-*/×÷x]\s*\d+(?:\.\d+)?)+", problem_text)
     if expr_match:
         computed_val = _safe_eval_arithmetic(expr_match.group(0))
         if computed_val is not None:
@@ -325,7 +325,7 @@ def verify_steps_node(state: Dict[str, Any]) -> Dict[str, Any]:
         updates["decompose_retry_count"] = retry_count + 1
         if retry_count >= 2:
             updates["feedback_message"] = (
-                "🙋 Let's take a look at this one together! "
+                " Let's take a look at this one together! "
                 "If it feels tricky, ask a grown-up or teacher to help with this problem."
             )
 

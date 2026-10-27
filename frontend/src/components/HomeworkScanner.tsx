@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Upload, RefreshCw, CheckCircle, ArrowLeft, Sparkles, BookOpen, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Upload, RefreshCw, CheckCircle, ArrowLeft, Sparkles, BookOpen, AlertCircle, Calculator, FlaskConical, ListChecks } from 'lucide-react';
 import { TunsayAvatar } from './TunsayAvatar';
 import { HomeworkProblem, Language, Grade } from '../types';
 import { MOCK_PROBLEMS } from '../data/mockProblems';
-import { processHomeworkImage } from '../services/ocrService';
-import { OcrConfirmModal } from './OcrConfirmModal';
+import { processHomeworkImage, cleanOcrText } from '../services/ocrService';
 
 interface HomeworkScannerProps {
   language?: Language;
@@ -19,22 +18,17 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
   onHomeworkConfirmed,
   onCancel
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const effectiveGrade = Math.min(Math.max(grade || 2, 1), 3);
   const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm'>('capture');
   const [imageUri, setImageUri] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [detectedProblems, setDetectedProblems] = useState<HomeworkProblem[]>([]);
   const [selectedProblem, setSelectedProblem] = useState<HomeworkProblem>(MOCK_PROBLEMS[0]);
+  const [selectedProblemIds, setSelectedProblemIds] = useState<Set<string>>(new Set());
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
-
-  // ── Sprint 1.1: OCR Quality Gate state ───────────────────────────────────
-  const [ocrConfirmVisible, setOcrConfirmVisible] = useState(false);
-  const [ocrExtractedText, setOcrExtractedText] = useState('');
-  const [ocrConfidence, setOcrConfidence] = useState(1.0);
-  const [ocrSegments, setOcrSegments] = useState<string[]>([]);
 
   useEffect(() => {
     return () => {
@@ -68,6 +62,7 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
 
     setDetectedProblems(chosenProblems);
     setSelectedProblem(mainProblem);
+    setSelectedProblemIds(new Set(chosenProblems.map(p => p.id)));
     setAnalysisError(null);
     setImageUri(mainProblem?.imageUri || '');
     // Directly open the exercise selector so the user can choose which exercise to proceed with!
@@ -97,34 +92,17 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
       try {
         const result = await processHomeworkImage(uploadedFile);
         if (result.success && result.problems && result.problems.length > 0) {
-          // ── Sprint 1.1: Extract confidence and raw text for quality gate ──
-          const rawResp = result.rawResponse;
-          const confidence: number =
-            rawResp?.confidence ??
-            rawResp?.ocr_confidence ??
-            rawResp?.pages?.[0]?.confidence ??
-            1.0;
+          const cleanedProblems = result.problems.map((p, idx) => ({
+            ...p,
+            titleEng: cleanOcrText(p.titleEng || `Exercise ${idx + 1}`),
+            problemStatementEng: cleanOcrText(p.problemStatementEng || p.problemStatementKhmer || ''),
+            problemStatementKhmer: p.problemStatementKhmer ? cleanOcrText(p.problemStatementKhmer) : cleanOcrText(p.problemStatementEng || ''),
+          }));
 
-          // Collect segment texts (one per detected problem)
-          const segments: string[] = result.problems.map(
-            (p: HomeworkProblem) => p.problemStatementEng || p.titleEng || ''
-          ).filter(Boolean);
-
-          const rawText =
-            rawResp?.raw_text ??
-            rawResp?.extracted_text ??
-            segments.join('\n\n') ??
-            result.problems[0]?.problemStatementEng ?? '';
-
-          setDetectedProblems(result.problems);
-          setSelectedProblem(result.problems[0]);
-
-          // Always show OCR confirm modal so student can verify the text
-          setOcrExtractedText(rawText);
-          setOcrConfidence(confidence);
-          setOcrSegments(segments.length > 1 ? segments : []);
-          setOcrConfirmVisible(true);
-          // Stay in analyzing stage; modal will advance to confirm on OK
+          setDetectedProblems(cleanedProblems);
+          setSelectedProblem(cleanedProblems[0]);
+          setSelectedProblemIds(new Set(cleanedProblems.map(p => p.id)));
+          setStage('confirm');
           return;
         } else if (result.error) {
           setAnalysisError(result.error);
@@ -136,67 +114,17 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
     }
 
     // Fallback if sample was chosen or if processing returned empty
+    setSelectedProblemIds(new Set(detectedProblems.map(p => p.id)));
     setStage('confirm');
   };
 
-  // ── Sprint 1.1: Handlers for OcrConfirmModal ──────────────────────────────
-  const handleOcrConfirmed = useCallback((finalText: string, selectedSegs: string[]) => {
-    setOcrConfirmVisible(false);
-    // If user edited text in confirmation modal, update problem text
-    if (finalText && finalText.trim()) {
-      const trimmedText = finalText.trim();
-      setSelectedProblem(prev => prev ? { ...prev, problemStatementEng: trimmedText } : prev);
-      setDetectedProblems(prev => prev.map((p, idx) => idx === 0 ? { ...p, problemStatementEng: trimmedText } : p));
-    }
-    // If multi-problem and user selected a subset, filter detected problems
-    if (selectedSegs.length > 0 && detectedProblems.length > 1) {
-      const filtered = detectedProblems.filter(p =>
-        selectedSegs.some(s =>
-          p.problemStatementEng?.includes(s.slice(0, 20)) ||
-          p.titleEng?.includes(s.slice(0, 20))
-        )
-      );
-      if (filtered.length > 0) {
-        setDetectedProblems(filtered);
-        setSelectedProblem(filtered[0]);
-      }
-    }
-    setStage('confirm');
-  }, [detectedProblems]);
-
-  const handleOcrRetake = useCallback(() => {
-    setOcrConfirmVisible(false);
-    setAnalysisError(null);
-    setStage('capture');
-    setImageUri('');
-    setUploadedFile(null);
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-  }, []);
-
   return (
-    <>
-      {/* Sprint 1.1: OCR Quality Gate confirmation modal */}
-      {ocrConfirmVisible && (
-        <OcrConfirmModal
-          extractedText={ocrExtractedText}
-          confidence={ocrConfidence}
-          segments={ocrSegments}
-          language={language}
-          onConfirm={handleOcrConfirmed}
-          onRetake={handleOcrRetake}
-          onClose={() => setOcrConfirmVisible(false)}
-        />
-      )}
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={isKhmer ? 'ស្កេនលំហាត់' : 'Homework Scanner'}
-        className="w-full max-w-xl sm:max-w-2xl mx-auto bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden animate-fadeIn text-[#1B4332] max-h-[90dvh] flex flex-col"
-      >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={isKhmer ? 'ស្កេនលំហាត់' : 'Homework Scanner'}
+      className="w-full max-w-xl sm:max-w-2xl mx-auto bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] sm:shadow-[6px_6px_0px_#1B4332] overflow-hidden animate-fadeIn text-[#1B4332] max-h-[90dvh] flex flex-col"
+    >
       {/* Header */}
       <div className="p-3 sm:p-4 bg-[#1B4332] border-b-2 sm:border-b-3 border-[#1B4332] flex items-center justify-between text-white shrink-0">
         <button
@@ -271,8 +199,8 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                   className="p-4 rounded-2xl border-3 border-[#1B4332] bg-[#E8F5E9] hover:bg-[#40916C] hover:text-white text-left transition-all shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex flex-col justify-between cursor-pointer group"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] text-white group-hover:bg-white group-hover:text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center justify-center font-black text-lg transition-colors">
-                      🔢
+                    <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] text-white group-hover:bg-white group-hover:text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center justify-center font-black transition-colors">
+                      <Calculator className="w-5 h-5 stroke-[2.5]" />
                     </div>
                     <span className="text-[10px] font-black text-[#1B4332] bg-white group-hover:bg-[#1B4332] group-hover:text-white px-2.5 py-0.5 rounded-full border-2 border-[#1B4332] transition-colors">
                       {isKhmer ? `ថ្នាក់ទី ${effectiveGrade} • គណិត` : `Grade ${effectiveGrade} • Math`}
@@ -303,8 +231,8 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                   className="p-4 rounded-2xl border-3 border-[#1B4332] bg-[#E8F5E9] hover:bg-[#40916C] hover:text-white text-left transition-all shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332] flex flex-col justify-between cursor-pointer group"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-[#40916C] text-white group-hover:bg-white group-hover:text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center justify-center font-black text-lg transition-colors">
-                      🧪
+                    <div className="w-10 h-10 rounded-xl bg-[#40916C] text-white group-hover:bg-white group-hover:text-[#1B4332] border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] flex items-center justify-center font-black transition-colors">
+                      <FlaskConical className="w-5 h-5 stroke-[2.5]" />
                     </div>
                     <span className="text-[10px] font-black text-[#1B4332] bg-white group-hover:bg-[#1B4332] group-hover:text-white px-2.5 py-0.5 rounded-full border-2 border-[#1B4332] transition-colors">
                       {isKhmer ? `ថ្នាក់ទី ${effectiveGrade} • វិទ្យាសាស្ត្រ` : `Grade ${effectiveGrade} • Science`}
@@ -386,80 +314,122 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
 
         {/* Stage 4: Confirm Analyzed Question */}
         {stage === 'confirm' && (
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-[#40916C] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332]">
-              <TunsayAvatar size="sm" state="explaining" showBadge={false} />
+          <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 flex flex-col h-full">
+            {/* Mascot Banner */}
+            <div className="flex items-center gap-3 p-3 bg-[#40916C] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] shrink-0">
+              <TunsayAvatar size="sm" state="happy" showBadge={false} />
               <div>
-                <p className="font-black text-sm text-white">
+                <p className="font-black text-xs sm:text-sm text-white">
                   {isKhmer 
-                    ? `ខ្ញុំឃើញ ${detectedProblems.length > 1 ? `${detectedProblems.length} លំហាត់` : 'លំហាត់'} របស់អ្នកហើយ! តោះដោះស្រាយវាជាមួយគ្នា!` 
-                    : `I found ${detectedProblems.length > 1 ? `${detectedProblems.length} exercises` : 'your exercise'}! Let's solve it together!`}
+                    ? `ខ្ញុំឃើញ ${detectedProblems.length > 1 ? `${detectedProblems.length} លំហាត់` : 'លំហាត់'} របស់អ្នកហើយ! តោះដោះស្រាយវាទាំងអស់គ្នា!` 
+                    : `I found ${detectedProblems.length > 1 ? `${detectedProblems.length} exercises` : 'your exercise'}! Let's solve them together!`}
                 </p>
               </div>
             </div>
 
             {analysisError && (
-              <div className="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2">
+              <div className="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2 shrink-0">
                 <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
                 <span>{analysisError}</span>
               </div>
             )}
 
-            {/* Multiple Exercise Selector if > 1 exercises detected — Kid-Friendly Cards */}
-            {detectedProblems.length > 1 && (
-              <div className="space-y-2">
-                <p className="text-xs font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5">
-                  <span>👆</span>
-                  {isKhmer ? 'ចុចជ្រើសរើសលំហាត់ដែលចង់ធ្វើ៖' : 'Tap the exercise you want to start:'}
-                </p>
-                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-0.5 no-scrollbar">
+            {/* Exercise Selector with Select All / Deselect All */}
+            {detectedProblems.length > 0 && (
+              <div className="space-y-2 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="text-xs font-black text-[#1B4332] uppercase tracking-wider flex items-center gap-1.5">
+                    <ListChecks className="w-4 h-4 text-[#1B4332] stroke-[2.5]" />
+                    <span>{isKhmer ? 'ជ្រើសរើសលំហាត់ដើម្បីអនុវត្ត៖' : 'Select exercises to practice:'}</span>
+                    <span className="text-[11px] font-black text-[#2D6A4F] bg-[#E8F5E9] px-2 py-0.5 rounded-full border border-[#1B4332]/20">
+                      {selectedProblemIds.size} / {detectedProblems.length}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedProblemIds.size === detectedProblems.length) {
+                        setSelectedProblemIds(new Set());
+                      } else {
+                        setSelectedProblemIds(new Set(detectedProblems.map(p => p.id)));
+                      }
+                    }}
+                    className="px-2.5 py-1 text-xs font-black text-[#1B4332] bg-[#E8F5E9] hover:bg-[#D8F3DC] rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    {selectedProblemIds.size === detectedProblems.length
+                      ? (isKhmer ? 'ដកការជ្រើសរើសទាំងអស់' : 'Deselect All')
+                      : (isKhmer ? 'ជ្រើសរើសទាំងអស់' : 'Select All')}
+                  </button>
+                </div>
+
+                {/* Scrollable list of exercises */}
+                <div className="grid grid-cols-1 gap-2.5 max-h-[50vh] sm:max-h-[54vh] overflow-y-auto pr-1 no-scrollbar">
                   {detectedProblems.map((prob, idx) => {
-                    const isSelected = selectedProblem.id === prob.id;
-                    const subjectEmoji = prob.subject === 'math' ? '🔢' : prob.subject === 'science' ? '🧪' : '📖';
+                    const isSelected = selectedProblemIds.has(prob.id);
                     const titleKh = prob.titleKhmer || (isKhmer ? `លំហាត់ ${idx + 1}` : `Exercise ${idx + 1}`);
                     const titleEn = prob.titleEng || `Exercise ${idx + 1}`;
                     const displayTitle = isKhmer ? titleKh : titleEn;
-                    const preview = (prob.problemStatementKhmer || prob.problemStatementEng || '').slice(0, 60);
+
+                    const rawPreview = (prob.problemStatementKhmer || prob.problemStatementEng || '').trim();
+                    const cleanTitleNorm = displayTitle.toLowerCase().replace(/^[q\d\.\:\s-]+/, '').trim();
+                    const cleanPrevNorm = rawPreview.toLowerCase().replace(/^[q\d\.\:\s-]+/, '').trim();
+                    const cleanPreview = rawPreview && cleanPrevNorm !== cleanTitleNorm && !cleanTitleNorm.includes(cleanPrevNorm)
+                      ? rawPreview.slice(0, 90)
+                      : '';
+
                     return (
                       <button
                         key={prob.id || idx}
                         type="button"
-                        onClick={() => setSelectedProblem(prob)}
+                        onClick={() => {
+                          setSelectedProblemIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(prob.id)) {
+                              next.delete(prob.id);
+                            } else {
+                              next.add(prob.id);
+                            }
+                            return next;
+                          });
+                          setSelectedProblem(prob);
+                        }}
                         aria-pressed={isSelected}
-                        className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-2xl border-3 cursor-pointer transition-all select-none ${
+                        className={`w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-2xl border-3 cursor-pointer transition-all select-none ${
                           isSelected
-                            ? 'bg-[#1B4332] text-white border-[#1B4332] shadow-[3px_3px_0px_#40916C] scale-[1.01]'
-                            : 'bg-white text-[#1B4332] border-[#1B4332]/40 hover:border-[#1B4332] hover:bg-[#E8F5E9] shadow-[2px_2px_0px_#1B4332]/20 hover:shadow-[2px_2px_0px_#1B4332]'
+                            ? 'bg-[#E8F5E9] text-[#1B4332] border-[#1B4332] shadow-[3px_3px_0px_#1B4332]'
+                            : 'bg-white text-[#1B4332]/80 border-[#1B4332]/25 hover:border-[#1B4332]/50 shadow-[1.5px_1.5px_0px_#1B4332]/10 hover:shadow-[2px_2px_0px_#1B4332]/20'
                         }`}
                       >
-                        {/* Big number badge */}
+                        {/* Number & subject icon badge */}
                         <div className={`shrink-0 w-11 h-11 rounded-2xl border-2 flex flex-col items-center justify-center font-black transition-colors ${
                           isSelected
-                            ? 'bg-[#40916C] border-[#40916C] text-white'
-                            : 'bg-[#E8F5E9] border-[#1B4332]/20 text-[#1B4332]'
+                            ? 'bg-white border-[#1B4332]/30 text-[#1B4332]'
+                            : 'bg-[#E8F5E9]/50 border-[#1B4332]/15 text-[#1B4332]/60'
                         }`}>
-                          <span className="text-base leading-none">{subjectEmoji}</span>
+                          {prob.subject === 'science' ? (
+                            <FlaskConical className="w-4 h-4 stroke-[2.5]" />
+                          ) : prob.subject === 'english' ? (
+                            <BookOpen className="w-4 h-4 stroke-[2.5]" />
+                          ) : (
+                            <Calculator className="w-4 h-4 stroke-[2.5]" />
+                          )}
                           <span className="text-[10px] leading-tight mt-0.5">{idx + 1}</span>
                         </div>
 
                         {/* Text block */}
                         <div className="flex-1 min-w-0">
-                          <p className={`font-black text-sm leading-snug truncate ${
-                            isSelected ? 'text-white' : 'text-[#1B4332]'
-                          }`}>
+                          <p className="font-black text-sm leading-snug truncate text-[#1B4332]">
                             {displayTitle}
                           </p>
-                          {preview && (
-                            <p className={`text-[11px] font-bold leading-snug mt-0.5 line-clamp-1 ${
-                              isSelected ? 'text-white/75' : 'text-[#1B4332]/60'
-                            }`}>
-                              {preview}{preview.length >= 60 ? '…' : ''}
+                          {cleanPreview && (
+                            <p className="text-[11px] font-bold leading-snug mt-0.5 line-clamp-1 text-[#1B4332]/75">
+                              {cleanPreview}
                             </p>
                           )}
                           {prob.grade && (
                             <span className={`mt-1 inline-block text-[10px] font-black px-1.5 py-0.5 rounded-full border ${
                               isSelected
-                                ? 'bg-white/20 border-white/40 text-white'
+                                ? 'bg-white border-[#1B4332]/25 text-[#2D6A4F]'
                                 : 'bg-[#E8F5E9] border-[#1B4332]/20 text-[#2D6A4F]'
                             }`}>
                               {isKhmer ? `ថ្នាក់ ${prob.grade}` : `Gr. ${prob.grade}`}
@@ -467,14 +437,14 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                           )}
                         </div>
 
-                        {/* Check / uncheck indicator */}
+                        {/* Checkbox indicator */}
                         <div className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
                           isSelected
-                            ? 'bg-[#40916C] border-white'
+                            ? 'bg-[#2D6A4F] border-[#1B4332] text-white shadow-[1px_1px_0px_#1B4332]'
                             : 'bg-transparent border-[#1B4332]/30'
                         }`}>
                           {isSelected && (
-                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
@@ -486,45 +456,34 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
               </div>
             )}
 
-            {/* Detected Question Box */}
-            <div className="p-4 bg-[#E8F5E9] rounded-2xl border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] space-y-2 max-h-48 overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-black text-[#1B4332] uppercase">
-                  {isKhmer ? 'សំណួរដែលស្កែនបាន៖' : 'Detected Question:'}
-                </p>
-                {selectedProblem.grade && (
-                  <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded-full border border-[#1B4332]">
-                    {isKhmer ? `ថ្នាក់ទី ${selectedProblem.grade}` : `Grade ${selectedProblem.grade}`}
-                  </span>
-                )}
-              </div>
-              <p className="font-bold text-sm text-[#1B4332] whitespace-pre-line leading-relaxed">
-                {selectedProblem.problemStatementKhmer || selectedProblem.problemStatementEng}
-              </p>
-            </div>
-
-            <p className="text-center font-black text-xs sm:text-sm text-[#1B4332]">
-              {isKhmer ? 'តើសំណួរនេះត្រឹមត្រូវទេ?' : 'Does this look correct?'}
-            </p>
-
-            <div className="flex gap-3">
+            {/* Bottom Actions */}
+            <div className="flex gap-3 pt-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setStage('capture')}
-                className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1 transition-all cursor-pointer hover:bg-gray-50"
+                className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:bg-gray-50 active:translate-y-0.5"
               >
                 <RefreshCw className="w-4 h-4 stroke-[2.5]" /> {isKhmer ? (uploadedFile ? 'ថតឡើងវិញ' : 'ត្រឡប់') : (uploadedFile ? 'Retake Photo' : 'Back')}
               </button>
               <button
                 type="button"
+                disabled={selectedProblemIds.size === 0}
                 onClick={() => {
-                  const allProbs = detectedProblems.length > 0 ? detectedProblems : [selectedProblem];
-                  const initialIdx = allProbs.findIndex(p => p.id === selectedProblem.id);
-                  onHomeworkConfirmed(allProbs, initialIdx >= 0 ? initialIdx : 0, imageUri || selectedProblem.imageUri);
+                  const chosenProbs = detectedProblems.filter(p => selectedProblemIds.has(p.id));
+                  const finalProbs = chosenProbs.length > 0 ? chosenProbs : [detectedProblems[0] || selectedProblem];
+                  onHomeworkConfirmed(finalProbs, 0, imageUri || finalProbs[0]?.imageUri);
                 }}
-                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-white font-black text-xs sm:text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1 transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0.5 hover:bg-[#40916C]"
+                className={`flex-1 py-3 px-4 rounded-2xl text-white font-black text-xs sm:text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  selectedProblemIds.size === 0
+                    ? 'bg-gray-400 opacity-60 cursor-not-allowed shadow-none'
+                    : 'bg-[#2D6A4F] hover:bg-[#40916C] hover:-translate-y-0.5 active:translate-y-0.5'
+                }`}
               >
-                <span>{isKhmer ? 'តោះចាប់ផ្តើម!' : 'Yes, let\'s start!'}</span>
+                <span>
+                  {isKhmer 
+                    ? `តោះចាប់ផ្តើម! (${selectedProblemIds.size})` 
+                    : `Yes, let's start! (${selectedProblemIds.size})`}
+                </span>
                 <CheckCircle className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
@@ -532,6 +491,5 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
         )}
       </div>
     </div>
-    </>
   );
 };

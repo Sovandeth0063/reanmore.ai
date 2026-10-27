@@ -19,7 +19,7 @@ export const StepTrail: React.FC<StepTrailProps> = ({
   language = 'km',
   onSelectStep
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const effectiveMaxUnlocked = maxUnlockedStep ?? currentStep;
 
   return (

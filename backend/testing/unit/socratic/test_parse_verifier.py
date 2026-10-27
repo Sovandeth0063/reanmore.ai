@@ -53,3 +53,23 @@ def test_unclear_or_insufficient_numbers():
     res = verify_and_parse_word_problem(text)
     assert res.is_valid is False
     assert res.problem_type == "unclear"
+
+
+def test_pure_arithmetic_expressions_are_not_word_problems():
+    from app.services.socratic.parse_verifier import is_pure_arithmetic_expression
+    
+    # Chained addition
+    assert is_pure_arithmetic_expression("7 + 3 + 2 + 5 =") is True
+    assert is_pure_arithmetic_expression("solve 7 + 3 + 2 + 5 =") is True
+    assert is_pure_arithmetic_expression("4 + 5 + 6") is True
+    assert is_pure_arithmetic_expression("30 + [ ] = 100") is True
+
+    # Word problems should not be treated as pure arithmetic
+    assert is_pure_arithmetic_expression("Dara has 15 marbles and gives 7 to Bopha.") is False
+    assert is_pure_arithmetic_expression("Chan has 8 books. His sister gives him 6 more books.") is False
+
+    # verify_and_parse_word_problem should return is_valid=False for pure arithmetic
+    res = verify_and_parse_word_problem("7 + 3 + 2 + 5 =")
+    assert res.is_valid is False
+    assert res.problem_type == "arithmetic"
+    assert res.needs_confirmation is False

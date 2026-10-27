@@ -1,5 +1,5 @@
 import React from 'react';
-import { Delete, Sparkles, X } from 'lucide-react';
+import { Delete, Sparkles, X, Plus, Minus, PieChart, Calculator } from 'lucide-react';
 
 interface MathKeypadProps {
   isOpen: boolean;
@@ -11,11 +11,11 @@ interface MathKeypadProps {
 }
 
 const STARTER_PROBLEMS = [
-  { label: '15 + 27', desc: 'Add with regrouping', icon: '➕' },
-  { label: '52 - 18', desc: 'Borrow from tens', icon: '➖' },
-  { label: '6 × 7', desc: 'Multiplication table', icon: '✖️' },
-  { label: '2/4 = ?', desc: 'Equivalent fractions', icon: '🍰' },
-  { label: '12 - 4 = ?', desc: 'Subtract within 20', icon: '🍎' },
+  { label: '15 + 27', desc: 'Add with regrouping', icon: Plus },
+  { label: '52 - 18', desc: 'Borrow from tens', icon: Minus },
+  { label: '6 × 7', desc: 'Multiplication table', icon: X },
+  { label: '2/4 = ?', desc: 'Equivalent fractions', icon: PieChart },
+  { label: '12 - 4 = ?', desc: 'Subtract within 20', icon: Calculator },
 ];
 
 const KEYPAD_BUTTONS = [
@@ -44,14 +44,24 @@ export const MathKeypad: React.FC<MathKeypadProps> = ({
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <span>Math Problem Builder (Grades 1-6)</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 hover:bg-[#D8F3DC] rounded-lg text-[#1B4332] transition-colors cursor-pointer"
-            title="Close keypad"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onClear}
+              className="px-2 py-0.5 text-xs font-bold text-[#1B4332] hover:bg-[#D8F3DC] rounded-lg transition-colors cursor-pointer"
+              title="Clear input"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 hover:bg-[#D8F3DC] rounded-lg text-[#1B4332] transition-colors cursor-pointer"
+              title="Close keypad"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Tap-to-Build Quick Problem Starter Chips */}
@@ -60,17 +70,20 @@ export const MathKeypad: React.FC<MathKeypadProps> = ({
             Quick Practice Problems:
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {STARTER_PROBLEMS.map((starter, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => onSelectStarter(starter.label)}
-                className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-[#1B4332] rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 transition-all text-xs font-black flex items-center gap-1 shrink-0 cursor-pointer"
-              >
-                <span>{starter.icon}</span>
-                <span>{starter.label}</span>
-              </button>
-            ))}
+            {STARTER_PROBLEMS.map((starter, idx) => {
+              const Icon = starter.icon;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSelectStarter(starter.label)}
+                  className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-[#1B4332] rounded-xl border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] active:translate-y-0.5 transition-all text-xs font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Icon className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                  <span>{starter.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

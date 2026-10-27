@@ -84,36 +84,36 @@ class Add2DigitRegroupSkill:
             step_number=1,
             title="Count Single Blocks (Ones) 🧱",
             mission="Let's count our single blocks 🧱 on the right side!",
-            clue=f"Put the bigger number {max(ones_a, ones_b)} in your head, then count on {min(ones_a, ones_b)} more fingers! 🖐️",
+            clue=f"Put the bigger number {max(ones_a, ones_b)} in your head. Then count on {min(ones_a, ones_b)} more fingers! 🖐️",
             helpful_example=(
-                f"Like {ex['a']} + {ex['b']}: {ex['ones_a']} blocks + {ex['ones_b']} blocks = {ex['ones_sum']} blocks in all! 🧱"
+                f"In Maya's problem ({ex['a']} + {ex['b']}): Maya counts {ex['ones_a']} blocks and {ex['ones_b']} blocks. That makes {ex['ones_sum']} blocks in all! 🌟"
             ),
-            your_turn=f"Add the single blocks: What is {ones_a} + {ones_b}? 🧱",
+            your_turn=f"Add your {ones_a} single blocks and {ones_b} single blocks. How many blocks in all? 💭",
             expected_answer=str(ones_sum),
             concept="add_ones_column",
             visual_spec={
                 "type": "base_ten_blocks",
                 "mode": "current",
                 "params": {"tens": tens_a + tens_b, "ones": ones_a, "regroup": False},
-                "labels": [f"{tens_a + tens_b} ten-towers 🗼", f"Single blocks: {ones_a} and {ones_b} 🧱"],
+                "labels": [f"{tens_a + tens_b} ten-towers 🏰", f"Single blocks: {ones_a} and {ones_b} 🧱"],
                 "alt_text": f"Blocks showing {ones_a} singles and {ones_b} singles."
             },
             hints=[
-                f"Put {max(ones_a, ones_b)} in your mind, then tap your fingers to count up {min(ones_a, ones_b)} more! 🖐️",
+                f"Put {max(ones_a, ones_b)} in your mind. Tap your fingers to count up {min(ones_a, ones_b)} more! 🖐️",
                 f"Imagine {ones_a} red apples 🍎 and {ones_b} green apples 🍏 in one bowl. Count them together!",
-                f"In our example: {ex['ones_a']} + {ex['ones_b']} = {ex['ones_sum']}. For your problem: add {ones_a} and {ones_b}."
+                f"In Maya's problem, {ex['ones_a']} and {ex['ones_b']} made {ex['ones_sum']}. How many do {ones_a} and {ones_b} make?"
             ]
         )
 
         step2 = StepTemplate(
             step_number=2,
             title="Pack a Ten-Box! 📦",
-            mission=f"We have {ones_sum} loose blocks! Let's pack 10 blocks into 1 ten-tower 🗼!",
-            clue=f"Every time we have 10 or more, 10 blocks snap into a ten-tower! 🗼 How many loose blocks are left outside?",
+            mission=f"We have {ones_sum} loose blocks! Let's pack 10 blocks into 1 ten-tower 🏰!",
+            clue=f"Every time we have 10 or more, 10 blocks snap into a ten-tower! 🏰 How many loose blocks are left outside?",
             helpful_example=(
-                f"For {ex['ones_sum']} cookies 🍪: Pack 10 in a box 📦, and {ex['ones_rem']} loose cookies stay on the plate!"
+                f"In Maya's problem: Maya packs 10 cookies into a box. {ex['ones_rem']} loose cookies stay on the plate!"
             ),
-            your_turn=f"You pack 10 out of your {ones_sum} blocks into a ten-tower. How many loose blocks are left? 🧱",
+            your_turn=f"You pack 10 out of your {ones_sum} blocks into a ten-tower. How many loose blocks are left? 💭",
             expected_answer=str(ones_remainder),
             concept="trade_ones_for_ten",
             visual_spec={
@@ -121,25 +121,25 @@ class Add2DigitRegroupSkill:
                 "mode": "current",
                 "params": {"ones": ones_sum, "regroup": False},
                 "highlights": [{"type": "carry_ten", "amount": 1}],
-                "labels": [f"We have {ones_sum} loose blocks 🧱", "Pack 10 blocks into 1 ten-tower 🗼"],
+                "labels": [f"We have {ones_sum} loose blocks 🧱", "Pack 10 blocks into 1 ten-tower 🏰"],
                 "alt_text": f"Packing 10 single blocks into 1 ten-tower, leaving loose single blocks."
             },
             hints=[
-                f"Take 10 away from {ones_sum}: what is left over? 🍪",
-                f"Think: 10 + what number makes {ones_sum}? Look at the last digit of {ones_sum}!",
-                f"In our cookie box example: {ex['ones_sum']} cookies left {ex['ones_rem']} loose ones. For {ones_sum}, how many stay outside?"
+                f"Take 10 away from {ones_sum}. What is left over? 💭",
+                f"Look at the last digit of {ones_sum}. How many ones does it have?",
+                f"In Maya's problem: {ex['ones_sum']} cookies left {ex['ones_rem']} loose ones. For your {ones_sum} blocks, how many stay outside?"
             ]
         )
 
         step3 = StepTemplate(
             step_number=3,
-            title="Count All Ten-Towers! 🗼",
-            mission=f"Now count all the 10-towers together, including our 1 new packed tower! ✨",
-            clue=f"Count the towers: {tens_a} from the first number, {tens_b} from the second, plus 1 new tower ({tens_a} + {tens_b} + 1 = {tens_sum} towers = {tens_sum * 10}). Plus your {ones_remainder} loose blocks!",
+            title="Count All Ten-Towers! 🏰",
+            mission=f"Now count all {tens_sum} ten-towers and {ones_remainder} single blocks together! 🌟",
+            clue=f"We have {tens_sum} ten-towers ({tens_sum * 10}). Now add your {ones_remainder} single blocks to find the total! 🧱",
             helpful_example=(
-                f"For {ex['a']} + {ex['b']}: {ex['tens_total']} ten-towers ({ex['tens_total'] * 10}) plus {ex['ones_rem']} singles gives {ex['total']}! 🌟"
+                f"In Maya's problem ({ex['a']} + {ex['b']}): {ex['tens_total']} tens ({ex['tens_total'] * 10}) and {ex['ones_rem']} singles make {ex['total']}! 🌟"
             ),
-            your_turn=f"What is the final answer for {a} + {b}? 🚀",
+            your_turn=f"You have {tens_sum} ten-towers ({tens_sum * 10}) and {ones_remainder} single blocks. What is the total sum for {a} + {b}? 💭",
             expected_answer=str(final_total),
             concept="add_tens_with_carry",
             visual_spec={
@@ -151,8 +151,8 @@ class Add2DigitRegroupSkill:
             },
             hints=[
                 f"You have {tens_sum} ten-towers ({tens_sum * 10}) and {ones_remainder} loose blocks. Put them together! 🧱",
-                f"What is {tens_sum * 10} plus {ones_remainder}? 🚀",
-                f"In our example: {ex['tens_total']} tens and {ex['ones_rem']} ones = {ex['total']}. What is {tens_sum} tens and {ones_remainder} ones?"
+                f"Count on from {tens_sum * 10} by adding your {ones_remainder} single blocks.",
+                f"In Maya's problem: {ex['tens_total']} tens and {ex['ones_rem']} ones make {ex['total']}. What do {tens_sum} tens and {ones_remainder} ones make?"
             ]
         )
 

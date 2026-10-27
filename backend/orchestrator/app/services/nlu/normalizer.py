@@ -283,10 +283,45 @@ class NormalizerEngine:
         """Compresses 3 or more repeated characters: e.g. 'meee' -> 'me', 'sooo' -> 'so'."""
         return re.sub(r'([a-zA-Z])\1{2,}', r'\1', text)
 
+    def strip_question_number_prefix(self, text: str) -> str:
+        """
+        Strips leading question number prefixes from input queries or scanned homework text.
+        E.g.:
+        - '1. 4 + 5 + 6 =' -> '4 + 5 + 6 ='
+        - 'Q1: 4 + 5 + 6 =' -> '4 + 5 + 6 ='
+        - '1) 4 + 5 + 6 =' -> '4 + 5 + 6 ='
+        - 'Question 1: What is 4 + 5?' -> 'What is 4 + 5?'
+        - 'លំហាត់ទី ១: 4 + 5 + 6 =' -> '4 + 5 + 6 ='
+        Preserves decimals like '1.4 + 5' (where no space follows the dot).
+        """
+        if not text or not text.strip():
+            return ""
+        cleaned = text.strip()
+
+        marker_pattern = re.compile(
+            r"^\s*(?:"
+            r"(?:[Qq]uestion|[Ee]xercise|[Ee]x|[Pp]roblem|[Qq]|លំហាត់ទី?|សំណួរ)\s*[\d១-៩]+[\.\)\:\-\s]*|"
+            r"\(?[\d១-៩]+[\.\)]\s*\(?[a-zA-Z]\)?\s*|"
+            r"\(?[\d១-៩]+\s*[a-zA-Z]?\)\s*|"
+            r"\(?[a-zA-Z]\)\s*|"
+            r"[\d១-៩]+\s*[\:\-]\s*(?=[a-zA-Z\u1780-\u17FF])|"
+            r"[\d១-៩]+\.\s+"
+            r")\s*",
+            flags=re.IGNORECASE
+        )
+
+        prev = None
+        while prev != cleaned:
+            prev = cleaned
+            cleaned = marker_pattern.sub("", cleaned).strip()
+
+        return cleaned or text.strip()
+
     def normalize_tier1_regex(self, text: str) -> str:
         """
         Executes fast deterministic regex normalization (<1ms).
         Pipeline order:
+        0. Leading question numbering stripping (e.g. '1. 4 + 5 + 6 =' -> '4 + 5 + 6 =')
         1. Longest-match-first dictionary replacement (slang, typos, math words)
         2. Unicode superscripts & exponents standardization
         3. Fractions standardization
@@ -302,6 +337,9 @@ class NormalizerEngine:
             return ""
 
         cleaned = text.strip()
+
+        # Step 0: Strip leading question list markers (e.g. '1. 4 + 5 + 6 =' -> '4 + 5 + 6 =')
+        cleaned = self.strip_question_number_prefix(cleaned)
 
         # Step 1: Longest-match-first dictionary replacement (slang, typos, math words)
         if self._compiled_regex:

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MultipleChoiceWidget.tsx
  * Multiple choice for science exercises (single and multi-select).
  * Answers are hidden — student picks, then validation is server-side.
@@ -25,10 +25,6 @@ function parseOption(opt: Option | string): Option {
   return opt;
 }
 
-const EMOJI_MAP: Record<string, string> = {
-  owl: '🦉', cabbage: '🥬', rabbit: '🐇', eagle: '🦅',
-};
-
 export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -50,26 +46,28 @@ export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) 
 
   return (
     <div className="w-full bg-white/70 rounded-2xl border-2 border-orange-200 p-4 mb-3">
-      <div className="text-xs font-bold text-orange-700 mb-3">
-        {multiSelect ? '☑️ Select ALL that apply' : '🔘 Choose the best answer'}
+      <div className="text-xs font-bold text-orange-700 mb-3 uppercase tracking-wider">
+        {multiSelect ? 'Select ALL that apply' : 'Choose the best answer'}
       </div>
       <div className="grid grid-cols-2 gap-2">
         {parsed.map(opt => {
-          const emoji = opt.emoji ?? EMOJI_MAP[opt.name?.toLowerCase() ?? ''] ?? '❓';
           const isSel = selected.has(opt.label);
           return (
             <button
               key={opt.label}
               onClick={() => toggle(opt.label)}
               className={[
-                'flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all font-semibold text-sm',
-                isSel ? 'bg-orange-400 border-orange-600 text-white scale-[0.98]' : 'bg-white border-gray-200 hover:border-orange-300',
+                'flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition-all font-semibold text-sm cursor-pointer',
+                isSel ? 'bg-orange-500 border-orange-700 text-white scale-[0.98] shadow-sm' : 'bg-white border-gray-200 hover:border-orange-300 text-gray-800',
               ].join(' ')}
             >
-              <span className="text-2xl">{emoji}</span>
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-wide opacity-70">{opt.label}</div>
-                <div>{opt.name}</div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 border-2 ${
+                isSel ? 'bg-white text-orange-800 border-white' : 'bg-orange-50 text-orange-900 border-orange-200'
+              }`}>
+                {opt.label}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-xs sm:text-sm truncate">{opt.name}</div>
               </div>
             </button>
           );

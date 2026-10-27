@@ -24,6 +24,8 @@ flowchart TD
     subgraph COMPLETED ["✅ COMPLETED & LIVE VERIFIED"]
         Q["Normal Query & Intent Flow: Arithmetic vs Chitchat Routing"]
         P["Kid-Friendly Pedagogy: On-Card Clues, Concrete Analogies & Story Explanations"]
+        H["Step-Specific Hint Architecture: Zero-Latency Payload & Step Sync"]
+        E["Ephemeral Session Management: Lazy Chat Save for Homework & New Chat"]
         M["In-Process SymPy CAS & 7 Math Skill Templates"]
         V["Deterministic SVG VisualSpec Engine & 6 React Visual Manipulatives"]
         L["Leak Guard v2: 0 Answer Leaks across 100 Adversarial Probes"]
@@ -64,7 +66,18 @@ flowchart TD
 * **Story-Driven "Explain Differently"**: Synthesizes rich, relatable everyday stories in `hintHelper.ts` rather than mechanically restating the problem mission.
 * **States of Matter Science Scaffolding**: Structured 3-step concrete inquiry for Solids 🧊 (ice keeping its shape), Liquids 💧 (water flowing and splashing into cups), and Gases 🎈 (air filling floating balloons and steam from hot soup).
 
-### 3.3 Core Symbolic & Observability Systems
+### 3.3 Dynamic Step-Specific Hint System & Zero-Latency Scaffolding
+* **Step-Specific Hint Payloads**: Rule 9 in `planning.yml` and `templates.yml` requires each milestone step to generate its own 3 distinct hints (`hints[0]` guiding nudge, `hints[1]` visual scaffold, `hints[2]` micro-breakdown) tailored strictly to understanding that step's guiding question (`your_turn`).
+* **Zero Additional LLM Calls**: All hints for all steps are pre-generated within the initial Socratic step widget payload. Clicking "Hint" triggers **0 network latency and 0 additional LLM inference calls**.
+* **Step-Bound Inline Rendering**: Clicking "Hint" on the active step card reveals that step's hint in an inline yellow highlight banner (`Hint for Step X:`) directly under the guiding prompt, and auto-reveals on incorrect attempts to prompt thinking without revealing answers.
+* **Navigation Synchronization**: Stepping forward/backward via `<` / `>` buttons or step dots immediately updates both the card hint and the modal `HintSheet` to the target step's specific hints, ensuring students never see hints from the wrong step.
+* **Prompt Box Preservation**: Built cleanly without modifying or disrupting ReanMore's primary Guiding Prompt visual structure.
+
+### 3.4 Ephemeral Session Management (Homework & New Chat)
+* **Lazy Session Creation**: Clicking the "Homework" tab, the "New Chat" button, or "Ask ReanMore via Chat" navigates immediately to a fresh chat URL without pre-allocating an empty database record.
+* **Zero Ghost Chats**: Sessions are only persisted to the database and history sidebar once the student actively sends their first message or uploads homework, keeping the chat history clean and clutter-free.
+
+### 3.5 Core Symbolic & Observability Systems
 * **In-Process SymPy CAS**: Symbolic arithmetic equivalence engine; LLM never performs raw math calculations.
 * **Deterministic SVG VisualSpec Engine**: 6 pure React SVG visual components (`TenFrameSVG`, `NumberLineSVG`, `BaseTenBlocksSVG`, `ArrayGridSVG`, `FractionBarSVG`, `BarModelSVG`).
 * **Leak Guard v2**: 6-token disclosure window, allowlist for given operands, and visual label scanner (0 leaks across 100 adversarial attack probes).
@@ -75,16 +88,18 @@ flowchart TD
 
 ## 4. Pending Features Roadmap (Staff Left to Do)
 
-### Feature 1: Local Worksheet Photo Ingress (OCR / Offline VLM)
-* **Status:** `PENDING (Phase 4)`
-* **Current Foundation:**
-  * Frontend camera snapshot and file upload modal ([`HomeworkScanner.tsx`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/frontend/src/components/HomeworkScanner.tsx)).
-  * Backend PII student name/header redaction filter ([`ingress.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/ocr/ingress.py)).
-  * Honest degradation notice when vision service is not running.
-* **Remaining Engineering Work:**
-  1. **Deploy 100% Local Offline Vision Model**: Integrate IBM Docling v2 or a quantized local Vision-Language Model (such as `qwen2.5-vl:3b` or `minicpm-v:8b`) running locally without cloud API dependencies ($0.00 inference cost).
-  2. **Multi-Exercise Bounding Box Extraction**: Detect individual problem numbers on printed worksheets, crop bounding boxes, and populate the frontend `WorksheetQueue` stepper automatically.
-  3. **Handwritten Arithmetic Digit Recognition**: Recognize pencil/pen handwritten student work on physical paper.
+### Feature 1: Worksheet Photo Ingress & OCR Pipeline (Phase 4)
+* **Status:** `PARTIAL (FUNCTIONAL MVP BUILT; REAL-WORLD BENCHMARKING & TESTING IN PROGRESS) 🟡`
+* **What is Already Built & Working:**
+  * **Frontend Camera & Upload Ingress**: Complete camera viewfinder snapshot, image upload, and interactive crop box in [`HomeworkScanner.tsx`](file:///d:/User/Science_chatbot/frontend/src/components/HomeworkScanner.tsx).
+  * **Multi-Exercise Parsing**: Robust extraction of multi-part worksheet problems, exercise numbers, options, subjects, and grade detection in [`ocrService.ts`](file:///d:/User/Science_chatbot/frontend/src/services/ocrService.ts).
+  * **Interactive Worksheet Stepper**: Scanned questions directly populate the frontend `WorksheetQueue` stepper so students can solve problems one by one.
+  * **PII Redaction Filter**: Automatic student name/header masking in [`ingress.py`](file:///d:/User/Science_chatbot/backend/orchestrator/app/services/ocr/ingress.py).
+  * **Graceful Degradation**: Clear fallback notices and manual entry when the vision service is unavailable.
+* **Why It is Classified as Partial (Areas for Ongoing Testing & Improvement):**
+  1. **No Strict Need for 100% Offline Weight Imposition**: The system works with fast vision endpoints; forcing local student devices to download 4–8 GB local offline vision models (Docling/Qwen-VL) is an optional deployment mode rather than a prerequisite.
+  2. **Real-World Classroom Stress Testing**: Needs broader testing across varied lighting, phone camera angles, crumpled paper, and shadows.
+  3. **Messy Handwritten Digit Recognition**: Fine-tuning for young children's faint pencil/pen handwriting on paper.
 
 ---
 

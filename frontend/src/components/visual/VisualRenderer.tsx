@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sparkles, BookOpen, CheckCircle } from 'lucide-react';
 import { VisualSpec } from '../../types/visual';
 import { TenFrameSVG } from './TenFrameSVG';
 import { NumberLineSVG } from './NumberLineSVG';
@@ -68,18 +69,21 @@ export const VisualRenderer: React.FC<VisualRendererProps> = ({ spec, className 
       {/* Header bar */}
       <div className="flex items-center justify-between flex-wrap gap-1.5 mb-2.5 pb-1.5 border-b border-emerald-600/15">
         <div className="flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-800" />
           <span className="text-xs font-black text-emerald-900 tracking-wide uppercase">
-            🎨 {modelFriendlyNames[spec.type] || spec.type.replace('_', ' ')}
+            {modelFriendlyNames[spec.type] || spec.type.replace('_', ' ')}
           </span>
         </div>
         {spec.mode === 'example' && (
-          <span className="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded-full text-[10px] tracking-wider uppercase">
-            🍎 Parallel Worked Example
+          <span className="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded-full text-[10px] tracking-wider uppercase inline-flex items-center gap-1">
+            <BookOpen className="w-3 h-3" />
+            Parallel Worked Example
           </span>
         )}
         {spec.mode === 'reveal' && (
-          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-full text-[10px] tracking-wider uppercase">
-            🎉 Solution Revealed
+          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-full text-[10px] tracking-wider uppercase inline-flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Solution Revealed
           </span>
         )}
       </div>

@@ -114,7 +114,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             ) : (
               <div className="w-full h-full bg-[#E8F5E9] flex items-center justify-center">
                 {isParent ? (
-                  <span className="text-4xl">👩‍👧</span>
+                  <Shield className="w-12 h-12 sm:w-14 sm:h-14 text-amber-600" strokeWidth={2} />
                 ) : (
                   <User className="w-12 h-12 sm:w-14 sm:h-14 text-[#40916C]" strokeWidth={2} />
                 )}
@@ -192,8 +192,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <div className="bg-white rounded-2xl sm:rounded-3xl border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 border-2 border-[#1B4332] flex items-center justify-center text-lg">
-              {isParent ? '👩‍👧' : '👦'}
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 border-2 border-[#1B4332] flex items-center justify-center">
+              {isParent ? <Shield className="w-5 h-5 text-amber-800" /> : <User className="w-5 h-5 text-emerald-800" />}
             </div>
             <div>
               <h3 className="font-black text-base sm:text-lg text-[#1B4332] font-heading leading-tight">
@@ -262,13 +262,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-[#A7CDB4]">
-              <span className="font-bold text-[#1B4332]">👦 Student (sochea)</span>
+              <span className="font-bold text-[#1B4332]">Student (sochea)</span>
               <span className="font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
                 PIN: 1234
               </span>
             </div>
             <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-[#A7CDB4]">
-              <span className="font-bold text-[#1B4332]">👩‍👧 Parent (parent)</span>
+              <span className="font-bold text-[#1B4332]">Parent (parent)</span>
               <span className="font-mono font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
                 PIN: 9999
               </span>

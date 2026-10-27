@@ -43,25 +43,23 @@ function sanitizeSession(s: ChatSession): ChatSession {
   };
 }
 
-function getInitialSessions(profileName: string): ChatSession[] {
-  return [
-    {
-      id: generateId(),
-      title: 'New Chat',
-      titleKhmer: 'ជជែកថ្មី',
-      messages: [
-        {
-          id: 'init-msg',
-          sender: 'sayo',
-          textKhmer: `សួស្តី ${profileName}! ខ្ញុំគឺ ReanMore គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
-          textEng: `Hi ${profileName}! I am ReanMore, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
-          timestamp: 'Just now'
-        }
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  ];
+function createBlankDraftSession(profileName: string, customId?: string): ChatSession {
+  return {
+    id: customId || generateId(),
+    title: 'New Chat',
+    titleKhmer: 'ជជែកថ្មី',
+    messages: [
+      {
+        id: 'init-msg',
+        sender: 'sayo',
+        textKhmer: `សួស្តី ${profileName}! ខ្ញុំគឺ ReanMore គ្រូបង្រៀន AI។ តើអ្នកមានលំហាត់អ្វីចង់ឱ្យខ្ញុំជួយទេ? អ្នកអាចថតរូបស្កែនលំហាត់ ឬវាយបញ្ចូលសំណួរនៅខាងក្រោម!`,
+        textEng: `Hi ${profileName}! I am ReanMore, your AI Tutor. What homework would you like help with? You can scan a photo or type your question below!`,
+        timestamp: 'Just now'
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 import { ParentReport } from './components/ParentReport';
@@ -152,25 +150,40 @@ export default function App() {
             Boolean(s.worksheetQueue?.problems && s.worksheetQueue.problems.length > 0) ||
             Boolean(s.imageUri)
           );
-          if (genuineSessions.length > 0) {
-            return genuineSessions;
-          }
-          // If all saved sessions were empty duplicates, keep only the first one
-          if (cleaned.length > 0) {
-            return [cleaned[0]];
-          }
+          return genuineSessions;
         }
       }
     } catch { /* ignore corrupt storage */ }
-    return getInitialSessions('សុជា (Sochea)');
+    return [];
+  });
+
+  const [draftSession, setDraftSession] = useState<ChatSession | null>(() => {
+    try {
+      const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+      const parts = pathname.split('/').filter(Boolean);
+      if (parts[0] === 'chat') {
+        const targetId = parts[1];
+        if (targetId) {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as ChatSession[];
+            if (parsed.some(s => s.id === targetId && (s.messages?.some(m => m.sender === 'user') || s.problem || s.imageUri))) {
+              return null; // Target is an existing saved session
+            }
+          }
+        }
+        return createBlankDraftSession('សុជា (Sochea)', targetId);
+      }
+    } catch {}
+    return null;
   });
 
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     try {
       const pathname = window.location.pathname.replace(/\/$/, '') || '/';
       const parts = pathname.split('/').filter(Boolean);
-      if (parts[0] === 'chat' && parts[1]) {
-        return parts[1];
+      if (parts[0] === 'chat') {
+        if (parts[1]) return parts[1];
       }
     } catch {}
     return (sessions[0] && sessions[0].id) ? sessions[0].id : '';
@@ -193,6 +206,16 @@ export default function App() {
     }
   }, []);
 
+  const handleOpenNewChat = useCallback(() => {
+    const draft = createBlankDraftSession(profile.name);
+    setDraftSession(draft);
+    setActiveSessionId(draft.id);
+    setActiveProblem(undefined);
+    setInitialChatQuery(undefined);
+    setWorksheetQueue(null);
+    navigateTo('chat', draft.id);
+  }, [profile.name, navigateTo]);
+
   // Parse initial route from window.location.pathname on load and back/forward navigation
   useEffect(() => {
     const handleLocationChange = () => {
@@ -209,10 +232,11 @@ export default function App() {
         setIsScannerOpen(true);
       } else if (parts[0] === 'chat') {
         setActiveTab('chat');
-        const targetId = parts[1] || activeSessionId || sessions[0]?.id;
+        const targetId = parts[1];
         if (targetId) {
-          const targetSession = sessions.find(s => s.id === targetId) || sessions[0];
+          const targetSession = sessions.find(s => s.id === targetId);
           if (targetSession) {
+            setDraftSession(null);
             setActiveSessionId(targetSession.id);
             if (targetSession.worksheetQueue && targetSession.worksheetQueue.problems && targetSession.worksheetQueue.problems.length > 0) {
               setWorksheetQueue(targetSession.worksheetQueue);
@@ -226,7 +250,14 @@ export default function App() {
               setWorksheetQueue(null);
               setActiveProblem(undefined);
             }
+          } else {
+            setDraftSession(prev => (prev && prev.id === targetId ? prev : createBlankDraftSession(profile.name, targetId)));
+            setActiveSessionId(targetId);
+            setWorksheetQueue(null);
+            setActiveProblem(undefined);
           }
+        } else {
+          handleOpenNewChat();
         }
       } else if (parts[0] === 'exercise' && parts[1]) {
         const exId = parts[1];
@@ -248,7 +279,7 @@ export default function App() {
     handleLocationChange();
     window.addEventListener('popstate', handleLocationChange);
     return () => window.removeEventListener('popstate', handleLocationChange);
-  }, [sessions, profile.grade, profile.subject, activeSessionId]);
+  }, [sessions, profile.grade, profile.subject, profile.name, handleOpenNewChat]);
 
   // Persist sessions to localStorage (always sanitize to prevent duplicates)
   useEffect(() => {
@@ -293,7 +324,9 @@ export default function App() {
     } catch { /* ignore network error in offline mode */ }
   }, []);
 
-  const activeSession = sessions.find(s => s.id === activeSessionId) ?? sessions[0];
+  const activeSession = (draftSession && activeSessionId === draftSession.id)
+    ? draftSession
+    : (sessions.find(s => s.id === activeSessionId) ?? draftSession ?? sessions[0] ?? createBlankDraftSession(profile.name));
 
   const handleUpdateProfile = (updated: Partial<UserProfile>) => {
     const sanitized = { ...updated, language: 'en' as const };
@@ -322,18 +355,10 @@ export default function App() {
   };
 
   const createNewSession = useCallback((problem?: HomeworkProblem, wsQueue?: WorksheetQueue, imageUri?: string) => {
-    // If starting a blank chat and an empty chat already exists, reuse it
+    // If starting a blank chat without problem/worksheet/image, use draft session instead of saving
     if (!problem && !wsQueue && !imageUri) {
-      const existingEmpty = sessions.find(s =>
-        !s.problem &&
-        (!s.worksheetQueue?.problems || s.worksheetQueue.problems.length === 0) &&
-        !s.imageUri &&
-        !s.messages?.some(m => m.sender === 'user')
-      );
-      if (existingEmpty) {
-        setActiveSessionId(existingEmpty.id);
-        return existingEmpty.id;
-      }
+      handleOpenNewChat();
+      return '';
     }
 
     const isWs = Boolean(wsQueue && wsQueue.problems && wsQueue.problems.length > 1);
@@ -345,7 +370,7 @@ export default function App() {
       id: generateId(),
       title,
       titleKhmer,
-      messages: [
+      messages: problem ? [] : [
         {
           id: 'init-msg',
           sender: 'sayo',
@@ -362,27 +387,56 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
-    setSessions(prev => {
-      // Filter out any other duplicate blank unused sessions
-      const filtered = prev.filter(s =>
-        s.messages?.some(m => m.sender === 'user') ||
-        Boolean(s.problem) ||
-        Boolean(s.worksheetQueue?.problems && s.worksheetQueue.problems.length > 0) ||
-        Boolean(s.imageUri)
-      );
-      return [newSession, ...filtered];
-    });
-
+    setDraftSession(null);
+    setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSession.id)]);
     setActiveSessionId(newSession.id);
-    // Navigate to the new session URL immediately so the user sees the blank chat
     navigateTo('chat', newSession.id);
-    if (problem || wsQueue || imageUri) {
-      syncSessionToBackend(newSession, profile);
-    }
+    syncSessionToBackend(newSession, profile);
     return newSession.id;
-  }, [profile, sessions, syncSessionToBackend, navigateTo]);
+  }, [profile, handleOpenNewChat, syncSessionToBackend, navigateTo]);
 
   const updateSessionMessages = useCallback((sessionId: string, messages: ChatSession['messages'], progressMap?: Record<string, any>) => {
+    const hasUserStartedChat = messages.some(m => m.sender === 'user');
+
+    // Case 1: Session is currently an unsaved draft
+    if (draftSession && draftSession.id === sessionId) {
+      if (!hasUserStartedChat && !activeProblem && (!worksheetQueue?.problems || worksheetQueue.problems.length === 0)) {
+        // Keep in draft mode (e.g. initial greeting update)
+        setDraftSession(prev => prev ? { ...prev, messages } : null);
+        return;
+      }
+
+      // User started chatting! Promote draft to saved session
+      const firstUserMsg = messages.find(m => m.sender === 'user');
+      let title = 'New Chat';
+      let titleKhmer = 'ជជែកថ្មី';
+      if (firstUserMsg) {
+        const preview = firstUserMsg.textEng.slice(0, 30);
+        title = preview + (firstUserMsg.textEng.length > 30 ? '...' : '');
+        const khmerPreview = firstUserMsg.textKhmer?.slice(0, 30) ?? '';
+        titleKhmer = khmerPreview + ((firstUserMsg.textKhmer?.length ?? 0) > 30 ? '...' : '');
+      }
+
+      const promotedSession: ChatSession = {
+        ...draftSession,
+        id: sessionId,
+        title,
+        titleKhmer,
+        messages,
+        problem: activeProblem,
+        worksheetQueue: worksheetQueue ?? undefined,
+        problemStepProgress: progressMap,
+        createdAt: draftSession.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setDraftSession(null);
+      setSessions(prev => [promotedSession, ...prev.filter(s => s.id !== sessionId)]);
+      syncSessionToBackend(promotedSession, profile);
+      return;
+    }
+
+    // Case 2: Existing saved session
     setSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
       const firstUserMsg = messages.find(m => m.sender === 'user');
@@ -405,9 +459,15 @@ export default function App() {
       syncSessionToBackend(updated, profile);
       return updated;
     }));
-  }, [profile, syncSessionToBackend]);
+  }, [draftSession, activeProblem, worksheetQueue, profile, syncSessionToBackend]);
 
   const handleStartChatWithProblem = (problem?: HomeworkProblem, initialQuery?: string) => {
+    // If no problem and no query (e.g. from "Ask ReanMore via Chat" or "More Topics"), open unsaved draft
+    if (!problem && !initialQuery) {
+      handleOpenNewChat();
+      return;
+    }
+
     // Only route to curriculum practice queue if problem is an empty subject placeholder
     const isSubjectOnlyPlaceholder = problem && !problem.problemStatementEng && !problem.problemStatementKhmer && (!problem.steps || problem.steps.length === 0);
     if (isSubjectOnlyPlaceholder && (problem.subject === 'math' || problem.subject === 'science')) {
@@ -418,8 +478,9 @@ export default function App() {
       }
     }
     const enriched = problem;
+    const query = initialQuery || (enriched ? (enriched.problemStatementEng || enriched.problemStatementKhmer || enriched.titleEng) : undefined);
     setActiveProblem(enriched);
-    setInitialChatQuery(initialQuery);
+    setInitialChatQuery(query);
     setWorksheetQueue(null);
     const sessionId = createNewSession(enriched);
     setActiveSessionId(sessionId);
@@ -437,8 +498,10 @@ export default function App() {
 
     const enrichedProblems = problems;
     const initialProblem = enrichedProblems[initialIndex] || enrichedProblems[0];
+    const initialPrompt = (initialProblem.problemStatementEng || initialProblem.problemStatementKhmer || initialProblem.titleEng || '').trim();
+
     setActiveProblem(initialProblem);
-    setInitialChatQuery(undefined);
+    setInitialChatQuery(initialPrompt);
     setIsScannerOpen(false);
 
     // Initialize worksheet queue with all exercises on the scanned page
@@ -523,6 +586,7 @@ export default function App() {
   };
 
   const handleSelectSession = (sessionId: string) => {
+    setDraftSession(null);
     setActiveSessionId(sessionId);
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
@@ -545,14 +609,14 @@ export default function App() {
     setSessions(prev => {
       const filtered = prev.filter(s => s.id !== sessionId);
       if (filtered.length === 0) {
-        const fresh = getInitialSessions(profile.name);
-        setActiveSessionId(fresh[0].id);
-        navigateTo('chat', fresh[0].id);
-        return fresh;
+        handleOpenNewChat();
+        return [];
       }
       if (activeSessionId === sessionId) {
-        setActiveSessionId(filtered[0].id);
-        navigateTo('chat', filtered[0].id);
+        const nextSession = filtered[0];
+        setDraftSession(null);
+        setActiveSessionId(nextSession.id);
+        navigateTo('chat', nextSession.id);
       }
       return filtered;
     });
@@ -571,7 +635,13 @@ export default function App() {
         profile={profile}
         currentUser={currentUser}
         activeTab={activeTab}
-        onSelectTab={(tab) => navigateTo(tab)}
+        onSelectTab={(tab) => {
+          if (tab === 'chat') {
+            handleOpenNewChat();
+          } else {
+            navigateTo(tab);
+          }
+        }}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
       />
@@ -594,13 +664,9 @@ export default function App() {
             onClearInitialQuery={() => setInitialChatQuery(undefined)}
             sessions={sessions}
             activeSessionId={activeSessionId}
+            activeSession={activeSession}
             onSelectSession={handleSelectSession}
-            onNewSession={() => {
-              const newId = createNewSession();
-              setWorksheetQueue(null);
-              setActiveProblem(undefined);
-              if (newId) navigateTo('chat', newId);
-            }}
+            onNewSession={handleOpenNewChat}
             onDeleteSession={handleDeleteSession}
             onUpdateMessages={(msgs, progressMap) => updateSessionMessages(activeSessionId, msgs, progressMap)}
             onOpenScanner={() => setIsScannerOpen(true)}

@@ -161,7 +161,7 @@ export const BaseTenBlocksSVG: React.FC<BaseTenBlocksSVGProps> = ({ spec }) => {
             fontWeight="800"
             fill="#92400E"
           >
-            ⚡ Trade 10 Ones ⇄ 1 Ten
+            Trade 10 Ones ⇄ 1 Ten
           </text>
         </g>
       )}

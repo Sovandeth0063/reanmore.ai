@@ -5,10 +5,11 @@
  * instant-answer action buttons, and upcoming steps are shown as pending.
  */
 import { StepItem } from '../../types';
+import { Sparkles } from 'lucide-react';
 
 interface Props {
   animal: string;
-  emoji: string;
+  emoji?: string;
   features: string[];
   step?: StepItem | undefined;
   onSelect?: ((value: string) => void) | undefined;
@@ -69,7 +70,13 @@ export function AnimalFeatureCard({ animal, emoji, features, step, onSelect }: P
       {/* Animal Header */}
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#1B4332]/15">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="text-3xl sm:text-4xl shrink-0">{emoji}</span>
+          {emoji ? (
+            <span className="text-3xl sm:text-4xl shrink-0">{emoji}</span>
+          ) : (
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#E8F5E9] border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-[#2D6A4F]" />
+            </div>
+          )}
           <div className="min-w-0">
             <h4 className="font-black text-[#1B4332] capitalize text-sm sm:text-base truncate">
               {displayName}
@@ -80,7 +87,7 @@ export function AnimalFeatureCard({ animal, emoji, features, step, onSelect }: P
           </div>
         </div>
         <span className="text-[10px] sm:text-xs font-black bg-[#E8F5E9] text-[#1B4332] border border-[#2D6A4F] px-2 py-0.5 rounded-full shrink-0">
-          {isAllComplete ? '✅ រួចរាល់' : `ជំហានទី ${Math.min(activeStepIdx + 1, features.length)} / ${features.length}`}
+          {isAllComplete ? '✓ រួចរាល់' : `ជំហានទី ${Math.min(activeStepIdx + 1, features.length)} / ${features.length}`}
         </span>
       </div>
 
@@ -163,11 +170,11 @@ export function AnimalFeatureCard({ animal, emoji, features, step, onSelect }: P
 
       {isAllComplete ? (
         <div className="p-2 bg-[#2D6A4F] text-white text-xs font-black rounded-xl text-center shadow-xs">
-          🎉 តារាងលក្ខណៈសត្វត្រូវបានបំពេញរួចរាល់ទាំងស្រុង!
+          តារាងលក្ខណៈសត្វត្រូវបានបំពេញរួចរាល់ទាំងស្រុង!
         </div>
       ) : (
         <p className="text-[11px] text-[#2D6A4F] font-bold text-center">
-          👉 ចុចជ្រើសរើស «✓ មាន» ឬ «✗ គ្មាន» សម្រាប់លក្ខណៈក្នុងជំហាននេះ
+          ចុចជ្រើសរើស «✓ មាន» ឬ «✗ គ្មាន» សម្រាប់លក្ខណៈក្នុងជំហាននេះ
         </p>
       )}
     </div>

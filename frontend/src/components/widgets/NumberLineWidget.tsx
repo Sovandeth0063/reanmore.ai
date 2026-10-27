@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NumberLineWidget.tsx
  * Renders a number line with optional arrows/jumps.
  * Never reveals the answer — shows visual scaffold only.
@@ -28,7 +28,7 @@ export function NumberLineWidget({ start, target, jumps, showJumps }: Props) {
 
   return (
     <div className="w-full bg-white/70 rounded-2xl border-2 border-emerald-200 p-4 mb-3">
-      <div className="text-xs font-bold text-emerald-700 mb-3">📏 Number Line</div>
+      <div className="text-xs font-black text-emerald-700 mb-3 uppercase tracking-wider">Number Line</div>
       <div className="relative h-12 mx-4">
         {/* baseline */}
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-400 rounded" />
@@ -41,7 +41,9 @@ export function NumberLineWidget({ start, target, jumps, showJumps }: Props) {
             style={{ left: `${toPercent(v)}%`, transform: 'translateX(-50%)' }}
           >
             <div className="w-0.5 h-3 bg-emerald-500" style={{ marginTop: '14px' }} />
-            <span className="text-[10px] font-bold text-emerald-700 mt-0.5">{v}</span>
+            <span className="text-[10px] font-bold text-emerald-700 mt-0.5">
+              {target !== undefined && v === target ? '?' : v}
+            </span>
           </div>
         ))}
 

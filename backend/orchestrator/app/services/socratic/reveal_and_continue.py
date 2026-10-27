@@ -85,9 +85,9 @@ def _build_worked_example(
         # Use different numbers (offset by small prime)
         sa, sb = a + 3, b + 2
         return (
-            f"📖 **Worked Example (similar problem):**\n"
-            f"If you had **{sa} 🍎 apples** and got **{sb} 🍎 more**, how many in total?\n\n"
-            f"  {sa} + {sb} = **{sa + sb}** ✅\n\n"
+            f" **Worked Example (similar problem):**\n"
+            f"If you had **{sa}  apples** and got **{sb}  more**, how many in total?\n\n"
+            f"  {sa} + {sb} = **{sa + sb}** \n\n"
             f"Now try the same steps on your problem!"
         )
 
@@ -96,42 +96,42 @@ def _build_worked_example(
         a, b = numbers[0], numbers[1]
         sa, sb = a + 4, b + 1
         return (
-            f"📖 **Worked Example (similar problem):**\n"
-            f"If there were **{sa} 🍊 oranges** and you ate **{sb}**, how many are left?\n\n"
-            f"  {sa} − {sb} = **{sa - sb}** ✅\n\n"
+            f" **Worked Example (similar problem):**\n"
+            f"If there were **{sa}  oranges** and you ate **{sb}**, how many are left?\n\n"
+            f"  {sa} − {sb} = **{sa - sb}** \n\n"
             f"Use the same take-away thinking on your problem!"
         )
 
     # Science — classification / yes-no / feature
     if any(w in lower for w in ["vertebrate", "invertebrate", "backbone", "feature", "classify"]):
         return (
-            f"📖 **Worked Example:**\n"
+            f" **Worked Example:**\n"
             f"Is a **fish** a vertebrate or invertebrate?\n\n"
-            f"👉 A fish **has a backbone** → it is a **Vertebrate** ✅\n\n"
+            f" A fish **has a backbone** → it is a **Vertebrate** \n\n"
             f"Now check whether the animal in your problem has a backbone!"
         )
 
     # Science — photosynthesis / plants
     if any(w in lower for w in ["plant", "sunlight", "photosynthesis", "leaf", "roots"]):
         return (
-            f"📖 **Worked Example:**\n"
+            f" **Worked Example:**\n"
             f"What does a **cactus** need to make its own food?\n\n"
-            f"👉 All plants need **Sunlight ☀️ + Water 💧** → **Photosynthesis** ✅\n\n"
+            f" All plants need **Sunlight ️ + Water ** → **Photosynthesis** \n\n"
             f"Think about what the plant in your problem needs!"
         )
 
     # Science — states of matter
     if any(w in lower for w in ["evapor", "melt", "boil", "solid", "liquid", "gas", "state"]):
         return (
-            f"📖 **Worked Example:**\n"
+            f" **Worked Example:**\n"
             f"When **butter** is left in a hot pan, what happens?\n\n"
-            f"👉 Solid butter → heats up → becomes **liquid** (melting) ✅\n\n"
+            f" Solid butter → heats up → becomes **liquid** (melting) \n\n"
             f"Think about what state change is happening in your problem!"
         )
 
     # Generic fallback
     return (
-        f"📖 **Worked Example:**\n"
+        f" **Worked Example:**\n"
         f"Here is how to approach a similar question:\n"
         f"1. Re-read the mission carefully.\n"
         f"2. Find the key fact or number.\n"
@@ -145,15 +145,15 @@ def _build_worked_example(
 # ─────────────────────────────────────────────────────────────────────────────
 
 _REVEAL_INTRO_MESSAGES = [
-    "You gave it your best shot — let's look at this one together! 🌟",
-    "Great effort! Sometimes a worked example helps most. Let's see it! 📚",
-    "Three tries is real perseverance! Let me show you how to approach this. 💪",
+    "You gave it your best shot — let's look at this one together! ",
+    "Great effort! Sometimes a worked example helps most. Let's see it! ",
+    "Three tries is real perseverance! Let me show you how to approach this. ",
 ]
 
 _TAKE_A_BREAK_MESSAGE = (
-    "🌈 You've been working really hard! Take a short break — stretch, "
-    "drink some water, and come back fresh. Your progress is saved! ☕\n\n"
-    "Tap **Resume** when you're ready to continue. You're doing great! 🦁"
+    " You've been working really hard! Take a short break — stretch, "
+    "drink some water, and come back fresh. Your progress is saved! \n\n"
+    "Tap **Resume** when you're ready to continue. You're doing great! "
 )
 
 
@@ -176,9 +176,9 @@ def build_reveal_message(
         f"{intro}\n\n"
         f"{worked}\n\n"
         f"---\n\n"
-        f"✅ **The answer to Step {step_number} is: `{expected_answer}`**\n\n"
+        f" **The answer to Step {step_number} is: `{expected_answer}`**\n\n"
         f"Don't worry — every mistake helps you learn. "
-        f"Onto the next step! 🚀"
+        f"Onto the next step! "
     )
     return msg
 
@@ -210,14 +210,14 @@ def reveal_and_continue_node(state: Dict[str, Any]) -> Dict[str, Any]:
     widget = _get_widget_from_state(state)
     if not widget:
         return {
-            "feedback_message": "Great effort! Let's try a new problem. 🌟",
+            "feedback_message": "Great effort! Let's try a new problem. ",
             "is_deflected": False,
         }
 
     active_step = widget.get_active_step()
     if not active_step:
         return {
-            "feedback_message": "🎉 You've completed all steps! Amazing work!",
+            "feedback_message": " You've completed all steps! Amazing work!",
             "is_problem_complete": True,
             "is_problem_solved": True,
         }
@@ -317,7 +317,7 @@ def reveal_and_continue_node(state: Dict[str, Any]) -> Dict[str, Any]:
         updates["is_problem_complete"] = True
         updates["is_problem_solved"] = True
         updates["feedback_message"] = (
-            reveal_msg + "\n\n🎉 **You've completed all steps!** "
+            reveal_msg + "\n\n **You've completed all steps!** "
             "Amazing perseverance — keep it up! ⭐"
         )
     else:
@@ -326,7 +326,7 @@ def reveal_and_continue_node(state: Dict[str, Any]) -> Dict[str, Any]:
         updates["is_problem_solved"] = False
         if next_step:
             updates["feedback_message"] = (
-                reveal_msg + f"\n\n➡️ **Moving on to Step {next_step.step_number}: "
+                reveal_msg + f"\n\n️ **Moving on to Step {next_step.step_number}: "
                 f"{next_step.title}**"
             )
 

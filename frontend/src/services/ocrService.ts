@@ -8,12 +8,37 @@ export interface OCRProcessResult {
   error?: string;
 }
 
+export function stripQuestionPrefix(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  const pattern = /^\s*(?:(?:[Qq]uestion|[Ee]xercise|[Ee]x|[Pp]roblem|[Qq]|លំហាត់ទី?|សំណួរ)\s*[\d១-៩]+[\.\)\:\-\s]*|\(?[\d១-៩]+[\.\)]\s*\(?[a-zA-Z]\)?\s*|\(?[\d១-៩]+\s*[a-zA-Z]?\)\s*|\(?[a-zA-Z]\)\s*|[\d១-៩]+\s*[\:\-]\s*(?=[a-zA-Z\u1780-\u17FF])|[\d១-៩]+\.\s+)\s*/i;
+  let prev = '';
+  while (prev !== cleaned) {
+    prev = cleaned;
+    cleaned = cleaned.replace(pattern, '').trim();
+  }
+  return cleaned || text.trim();
+}
+
+export function cleanOcrText(text: string): string {
+  if (!text) return '';
+  const withoutMd = text
+    .replace(/\*\*/g, '')
+    .replace(/__+/g, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/(\b\d+[\.\)]\s+)\1+/g, '$1')
+    .trim();
+  return stripQuestionPrefix(withoutMd);
+}
+
 // Extract full multi-part question text from all fields (title, prompt, instructions, elements, sub_questions)
 function extractFullQuestionStatement(q: any, section?: any): string {
   const parts: string[] = [];
 
-  const title = (q?.title || section?.title || '').trim();
-  const prompt = (q?.prompt || '').trim();
+  const rawTitle = (q?.title || section?.title || '').trim();
+  const title = stripQuestionPrefix(rawTitle);
+  const rawPrompt = (q?.prompt || '').trim();
+  const prompt = stripQuestionPrefix(rawPrompt);
   const instructions = (q?.instructions || section?.instructions || '').trim();
 
   // Extract from elements
@@ -194,41 +219,7 @@ export function parseOCRResponse(data: any): OCRProcessResult {
               subject,
               problemStatementKhmer: secStatement,
               problemStatementEng: secStatement,
-              steps: [
-                {
-                  id: `ocr-p-${problemCounter}-s1`,
-                  stepNumber: 1,
-                  totalSteps: 1,
-                  questionKhmer: secStatement,
-                  questionEng: secStatement,
-                  inputFormat: 'text',
-                  correctAnswer: '',
-                  hint1: {
-                    khmer: 'សូមអានសំណួរ និងការណែនាំដោយប្រុងប្រយ័ត្ន។',
-                    eng: 'Read the instructions and numbers carefully.',
-                  },
-                  hint2: {
-                    khmer: 'តើមានពាក្យគន្លឹះ ឬរូបមន្តអ្វីខ្លះនៅក្នុងសំណួរនេះ?',
-                    eng: 'Look for keywords and calculations in the question.',
-                  },
-                  hint3: {
-                    titleKhmer: 'ជំនួយពីទន្សាយ',
-                    titleEng: 'Guidance from Tunsay',
-                    exampleKhmer: 'សួរសំណួរទៅទន្សាយដើម្បីបំបែកលំហាត់ជាជំហានៗ!',
-                    exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
-                  },
-                  socraticPromptKhmer: `តោះយើងចាប់ផ្តើមដោះស្រាយ ${secTitle}!`,
-                  socraticPromptEng: `Let's solve ${secTitle}!`,
-                  explainDifferently: {
-                    simpleKhmer: secStatement,
-                    simpleEng: secStatement,
-                    analogyTitle: 'ជំនួយការគិត',
-                    analogyKhmer: 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា។',
-                    analogyEng: "Let's work through this step by step.",
-                    analogyType: 'apples',
-                  },
-                },
-              ],
+              steps: [],
             });
             problemCounter++;
           }
@@ -250,41 +241,7 @@ export function parseOCRResponse(data: any): OCRProcessResult {
             subject,
             problemStatementKhmer: fullStatement,
             problemStatementEng: fullStatement,
-            steps: [
-              {
-                id: `ocr-p-${problemCounter}-s1`,
-                stepNumber: 1,
-                totalSteps: 1,
-                questionKhmer: fullStatement,
-                questionEng: fullStatement,
-                inputFormat: 'text',
-                correctAnswer: '',
-                hint1: {
-                  khmer: 'សូមអានសំណួរម្តងទៀតដោយប្រុងប្រយ័ត្ន។',
-                  eng: 'Read the question carefully and think about the main concept.',
-                },
-                hint2: {
-                  khmer: 'តើមានពាក្យគន្លឹះអ្វីខ្លះនៅក្នុងសំណួរនេះ?',
-                  eng: 'Look for keywords in the question.',
-                },
-                hint3: {
-                  titleKhmer: 'ជំនួយ',
-                  titleEng: 'Guidance',
-                  exampleKhmer: 'អ្នកអាចសួរទន្សាយដើម្បីទទួលបានការណែនាំបន្ថែម!',
-                  exampleEng: 'You can ask Tunsay for step-by-step guidance!',
-                },
-                socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`${fullStatement}\` ចាប់ផ្តើមដោយអ្វីជាដំបូង?`,
-                socraticPromptEng: `What do you think we need to find first for "${fullStatement}"?`,
-                explainDifferently: {
-                  simpleKhmer: fullStatement,
-                  simpleEng: fullStatement,
-                  analogyTitle: 'ជំនួយការគិត',
-                  analogyKhmer: 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា។',
-                  analogyEng: "Let's work through this step by step.",
-                  analogyType: 'apples',
-                },
-              },
-            ],
+            steps: [],
           });
           problemCounter++;
         }
@@ -294,9 +251,19 @@ export function parseOCRResponse(data: any): OCRProcessResult {
     // Structured exercises from Orchestrator Gateway (e.g. Q5, Q6, Q7)
     for (let exIdx = 0; exIdx < data.exercises.length; exIdx++) {
       const ex = data.exercises[exIdx];
-      const fullStatement = ex.prompt || ex.scanned_text || ex.title || `Exercise ${problemCounter}`;
-      const titleEng = ex.title ? `${ex.number ? `${ex.number}: ` : ''}${ex.title}` : (ex.tab_label || `Exercise ${problemCounter}`);
-      const titleKhmer = ex.tab_label_khmer ? `${ex.tab_label_khmer}${ex.title ? `: ${ex.title}` : ''}` : `លំហាត់ទី ${problemCounter}`;
+      const rawStatement = ex.prompt || ex.scanned_text || ex.title || `Exercise ${problemCounter}`;
+      const fullStatement = cleanOcrText(rawStatement);
+
+      let cleanTitle = cleanOcrText(ex.title || '');
+      const numStr = (ex.number || `Q${problemCounter}`).trim();
+      const numDigits = numStr.replace(/[^\d]/g, '');
+      const qPrefix = numDigits ? `Q${numDigits}` : numStr;
+
+      if (numDigits) {
+        cleanTitle = cleanTitle.replace(new RegExp(`^(?:Q?\\s*${numDigits}[\\.:\\s-]*)+`, 'i'), '').trim();
+      }
+      const titleEng = cleanTitle ? `${qPrefix}: ${cleanTitle}` : (ex.tab_label || `Exercise ${problemCounter}`);
+      const titleKhmer = ex.tab_label_khmer ? `${ex.tab_label_khmer}${cleanTitle ? `: ${cleanTitle}` : ''}` : `លំហាត់ទី ${problemCounter}`;
 
 
       // Dynamic decomposition for any arbitrary exercise
@@ -340,40 +307,6 @@ export function parseOCRResponse(data: any): OCRProcessResult {
             },
           });
         }
-      } else {
-        steps.push({
-          id: `ocr-p-${problemCounter}-s1`,
-          stepNumber: 1,
-          totalSteps: 1,
-          questionKhmer: fullStatement,
-          questionEng: fullStatement,
-          inputFormat: 'text',
-          correctAnswer: '',
-          hint1: {
-            khmer: 'សូមអានសំណួរ និងការណែនាំដោយប្រុងប្រយ័ត្ន។',
-            eng: 'Read the instructions and numbers carefully.',
-          },
-          hint2: {
-            khmer: 'តើមានពាក្យគន្លឹះ ឬរូបមន្តអ្វីខ្លះនៅក្នុងសំណួរនេះ?',
-            eng: 'Look for keywords and calculations in the question.',
-          },
-          hint3: {
-            titleKhmer: 'ជំនួយពីទន្សាយ',
-            titleEng: 'Guidance from Tunsay',
-            exampleKhmer: 'អ្នកអាចសួរទន្សាយដើម្បីទទួលបានការណែនាំបន្ថែម!',
-            exampleEng: 'Ask Tunsay to break this problem down step-by-step!',
-          },
-          socraticPromptKhmer: `តើអ្នកយល់ថាសំណួរ \`${fullStatement}\` ចាប់ផ្តើមដោយអ្វីជាដំបូង?`,
-          socraticPromptEng: `What do you think we need to find first for "${fullStatement}"?`,
-          explainDifferently: {
-            simpleKhmer: fullStatement,
-            simpleEng: fullStatement,
-            analogyTitle: 'ជំនួយការគិត',
-            analogyKhmer: 'តោះចាប់ផ្តើមដោះស្រាយជាមួយគ្នា។',
-            analogyEng: "Let's work through this step by step.",
-            analogyType: 'apples',
-          },
-        });
       }
 
       problems.push({
@@ -400,30 +333,7 @@ export function parseOCRResponse(data: any): OCRProcessResult {
       subject,
       problemStatementKhmer: docTitle,
       problemStatementEng: docTitle,
-      steps: [
-        {
-          id: `ocr-p-1-s1`,
-          stepNumber: 1,
-          totalSteps: 1,
-          questionKhmer: docTitle,
-          questionEng: docTitle,
-          inputFormat: 'text',
-          correctAnswer: '',
-          hint1: { khmer: 'សួរសំណួរទៅទន្សាយ', eng: 'Ask Tunsay a question about your homework' },
-          hint2: { khmer: 'ទន្សាយនឹងជួយអ្នក', eng: 'Tunsay will help guide you' },
-          hint3: { titleKhmer: 'ជំនួយ', titleEng: 'Help', exampleKhmer: '', exampleEng: '' },
-          socraticPromptKhmer: 'តោះចាប់ផ្តើម',
-          socraticPromptEng: "Let's start",
-          explainDifferently: {
-            simpleKhmer: '',
-            simpleEng: '',
-            analogyTitle: '',
-            analogyKhmer: '',
-            analogyEng: '',
-            analogyType: 'apples',
-          },
-        },
-      ],
+      steps: [],
     });
   }
 
