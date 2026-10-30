@@ -3,7 +3,7 @@ import { StepItem, Language } from '../types';
 import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, ListOrdered, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
-import { answersMatch, normalizeWithKhmer } from '../utils/answerNormalization';
+import { answersMatch, expectsNumericAnswer, normalizeWithKhmer } from '../utils/answerNormalization';
 
 interface StepChatBubbleProps {
   step: StepItem;
@@ -26,7 +26,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   step,
   stepIndex,
   totalSteps,
-  language = 'km',
+  language = 'en',
   completedStepIndices,
   visualData,
   isLatest: _isLatest,
@@ -36,7 +36,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   onNavigateStep,
   onStepAnswerSubmit,
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const rawStep = step as any;
   const stepNum = step.stepNumber || rawStep.step_number || stepIndex + 1;
 
@@ -113,12 +113,20 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
   );
 
   const expectedAnswer = step.correctAnswer || rawStep.expectedAnswer || rawStep.expected_answer;
+  const acceptableAnswers: string[] = Array.isArray(rawStep.acceptable_answers)
+    ? rawStep.acceptable_answers
+    : Array.isArray(rawStep.acceptableAnswers)
+    ? rawStep.acceptableAnswers
+    : Array.isArray(step.acceptableAnswers)
+    ? step.acceptableAnswers
+    : [];
+  const showNumberPad = expectsNumericAnswer(step);
 
   const checkIsCorrect = (studentAns: string): boolean => {
     if (!studentAns.trim()) return false;
     if (!expectedAnswer || !expectedAnswer.trim()) return true;
 
-    if (answersMatch(studentAns, expectedAnswer)) return true;
+    if (answersMatch(studentAns, expectedAnswer, acceptableAnswers)) return true;
 
     // Mathematical problem verification for dynamic prompts:
     // e.g. "which two numbers add together to make 10?" -> student typed "4 6", "6 4", "៤ ៦"
@@ -265,6 +273,7 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
             <VisualWidget
               visualData={visualData}
               step={step}
+              language={language}
               onSelect={(val) => {
                 const singleVal = Array.isArray(val) ? val[0] || '' : val;
                 setInputAnswer(singleVal);
@@ -315,29 +324,32 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
         </div>
       ) : (
         <form onSubmit={handleFormSubmit} className="space-y-2 sm:space-y-3">
-          {/* Quick Number Tap Chips for Young Learners (Kill Typing Anxiety) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((digit) => (
+          {/* Quick Number Tap Chips for Young Learners (Kill Typing Anxiety).
+              Only shown for genuinely numeric answers — science steps answer with words. */}
+          {showNumberPad && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => setInputAnswer((prev) => prev + digit)}
+                  disabled={isSubmitting || feedback === 'correct'}
+                  className="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-[#A7CDB4] text-[#1B4332] font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs sm:text-sm active:translate-y-0.5 shrink-0 cursor-pointer"
+                >
+                  {digit}
+                </button>
+              ))}
               <button
-                key={digit}
                 type="button"
-                onClick={() => setInputAnswer((prev) => prev + digit)}
-                disabled={isSubmitting || feedback === 'correct'}
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-[#A7CDB4] text-[#1B4332] font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs sm:text-sm active:translate-y-0.5 shrink-0 cursor-pointer"
+                onClick={() => setInputAnswer((prev) => prev.slice(0, -1))}
+                disabled={isSubmitting || feedback === 'correct' || !inputAnswer}
+                className="px-2 h-8 sm:h-9 bg-white hover:bg-red-50 text-red-600 font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs shrink-0 cursor-pointer"
+                title="Delete"
               >
-                {digit}
+                ⌫
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setInputAnswer((prev) => prev.slice(0, -1))}
-              disabled={isSubmitting || feedback === 'correct' || !inputAnswer}
-              className="px-2 h-8 sm:h-9 bg-white hover:bg-red-50 text-red-600 font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs shrink-0 cursor-pointer"
-              title="Delete"
-            >
-              ⌫
-            </button>
-          </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input
@@ -348,7 +360,11 @@ export const StepChatBubble: React.FC<StepChatBubbleProps> = ({
                 if (feedback === 'incorrect') setFeedback('none');
               }}
               disabled={isSubmitting || feedback === 'correct'}
-              placeholder={isKhmer ? 'វាយចម្លើយ ឬចុចលេខខាងលើ...' : 'Type or tap numbers above...'}
+              placeholder={
+                showNumberPad
+                  ? (isKhmer ? 'វាយចម្លើយ ឬចុចលេខខាងលើ...' : 'Type or tap numbers above...')
+                  : (isKhmer ? 'វាយចម្លើយរបស់អ្នក...' : 'Type your answer...')
+              }
               className="flex-1 p-2.5 sm:p-3.5 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] font-black text-xs sm:text-sm md:text-base text-[#1B4332] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#2D6A4F] disabled:opacity-60"
             />
             <button

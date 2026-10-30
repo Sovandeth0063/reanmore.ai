@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from app.core.config import settings
 from app.core.logging import logger
 from app.services.ocr.extractor import ocr_extractor
 from app.api.auth import get_optional_user
@@ -10,6 +11,15 @@ upload_router = APIRouter(prefix="/upload", tags=["Upload & OCR"])
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".pdf"}
 MAX_FILE_SIZE_MB = 25
+
+
+def _ensure_ocr_enabled() -> None:
+    """Worksheet OCR is a Phase 4 feature; it is off in the Phase 1 MVP."""
+    if not getattr(settings, "ENABLE_API_OCR", False):
+        raise HTTPException(
+            status_code=404,
+            detail="Worksheet OCR is deferred to Phase 4 and is not enabled in this build.",
+        )
 
 
 @upload_router.post(
@@ -21,6 +31,7 @@ async def upload_and_ocr(
     file: UploadFile = File(..., description="Worksheet photo or PDF"),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
 ):
+    _ensure_ocr_enabled()
     filename = file.filename or "worksheet.png"
     suffix = Path(filename).suffix.lower()
 
@@ -67,6 +78,8 @@ async def select_exercise(
 ):
     from app.api.endpoints import handle_query, QueryRequest
     from fastapi import BackgroundTasks
+
+    _ensure_ocr_enabled()
 
     query_req = QueryRequest(
         query=request.prompt,

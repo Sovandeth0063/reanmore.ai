@@ -195,8 +195,6 @@ def run_gate_3_no_mock() -> Tuple[bool, str, Dict[str, Any]]:
 
     prod_dirs = [
         os.path.join(repo_root, "backend", "orchestrator", "app"),
-        os.path.join(repo_root, "backend", "services", "math_service", "app"),
-        os.path.join(repo_root, "backend", "services", "science_service", "app"),
     ]
 
     violations = []

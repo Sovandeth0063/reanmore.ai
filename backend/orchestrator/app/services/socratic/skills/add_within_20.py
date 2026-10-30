@@ -27,7 +27,9 @@ class AddWithin20Skill:
         if float(a).is_integer() and float(b).is_integer():
             a_int = int(a)
             b_int = int(b)
-            return (a_int > 0 and b_int > 0 and (a_int + b_int) <= 20 and (a_int < 10 or b_int < 10))
+            # Only use 'make a ten' when the sum really crosses ten.
+            # Simpler sums (e.g. 2 + 2) are handled by add_within_10.
+            return (a_int > 0 and b_int > 0 and 10 < (a_int + b_int) <= 20)
         return False
 
     def make_distinct_example(self, problem: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,5 +1,4 @@
-import { describe, it as test } from 'node:test';
-import assert from 'node:assert/strict';
+﻿import { describe, it as test, expect } from 'vitest';
 import { isApiError, ApiError } from '../client';
 
 describe('API Client & Error Normalization Unit Tests', () => {
@@ -11,12 +10,12 @@ describe('API Client & Error Normalization Unit Tests', () => {
       message: 'Device locked in crisis counseling mode',
       i18nKey: 'errors.tier2_locked',
     };
-    assert.equal(isApiError(validErr), true);
+    expect(isApiError(validErr)).toBe(true);
 
     const normalErr = new Error('Random failure');
-    assert.equal(isApiError(normalErr), false);
-    assert.equal(isApiError(null), false);
-    assert.equal(isApiError({ isApiError: false }), false);
+    expect(isApiError(normalErr)).toBe(false);
+    expect(isApiError(null)).toBe(false);
+    expect(isApiError({ isApiError: false })).toBe(false);
   });
 
   test('New v9 error codes are defined and typesafe', () => {
@@ -38,18 +37,18 @@ describe('API Client & Error Normalization Unit Tests', () => {
         message: `Testing ${code}`,
         i18nKey: `errors.${code.toLowerCase()}`,
       };
-      assert.equal(err.code, code);
-      assert.ok(err.i18nKey.startsWith('errors.'));
+      expect(err.code).toBe(code);
+      expect(err.i18nKey.startsWith('errors.')).toBeTruthy();
     }
   });
 
   test('Relative budget calculation satisfies client timeout budget invariant', () => {
     const chatTimeoutMs = 40_000;
     const chatBudgetMs = Math.max(0, chatTimeoutMs - 2000);
-    assert.equal(chatBudgetMs, 38_000);
+    expect(chatBudgetMs).toBe(38_000);
 
     const ocrTimeoutMs = 90_000;
     const ocrBudgetMs = Math.max(0, ocrTimeoutMs - 2000);
-    assert.equal(ocrBudgetMs, 88_000);
+    expect(ocrBudgetMs).toBe(88_000);
   });
 });

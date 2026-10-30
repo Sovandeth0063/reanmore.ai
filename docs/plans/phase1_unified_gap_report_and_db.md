@@ -1,6 +1,6 @@
 # Phase 1D Implementation Plan: Unified Gap Accounting & PostgreSQL Schema
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Section 11, Section 11.1, Section 11.2, Section 11.3)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Section 11, Section 11.1, Section 11.2, Section 11.3)  
 > **Status:** COMPLETED & VERIFIED ✅ (All 8 gap tests passed, 249 socratic tests passed)  
 > **Prerequisites:** PostgreSQL 16 Alpine connection available.
 
@@ -20,7 +20,7 @@ Phase 1D establishes the **Unified Gap Accounting** architecture, aggregating co
 
 | Component | Current Implementation | Target Specification | Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Gap Event Storage** | Separate `curriculum_gap_reports` table & general logs | Unified `gap_events` table covering content, learner, & system | `PARTIAL` | [`database.py:L20-105`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/infrastructure/database.py#L20-L105) |
+| **Gap Event Storage** | Separate `curriculum_gap_reports` table & general logs | Unified `gap_events` table covering content, learner, & system | `PARTIAL` | [`database.py:L20-105`](../../backend/orchestrator/app/infrastructure/database.py#L20-L105) |
 | **Summary View** | Ad-hoc SQL queries | `gap_summary` database view with priority score formula | `MISSING` | Target: `init_db()` migration |
 | **Event Taxonomy** | Fragmented string codes | Standardized taxonomy (`NO_SKILL_MATCH`, `STEP_ERROR_STREAK`, `LEAK_BLOCKED`, etc.) | `PARTIAL` | `backend/orchestrator/app/` |
 | **Admin Digest CLI** | None | `scripts/generate_admin_digest.py` generating weekly markdown digests | `MISSING` | `scripts/` |

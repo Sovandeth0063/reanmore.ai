@@ -92,7 +92,7 @@ class TestScienceRAGSubsystem:
         assert gap_events[-1]["subject"] == "science"
 
     @pytest.mark.asyncio
-    async def test_socratic_graph_science_grounding(self):
+    async def test_socratic_graph_science_grounding(self, stub_socratic_llm):
         """Verify LangGraph initial_problem produces 2-4 step cards with retrieved_context."""
         graph = build_socratic_graph(checkpointer=MemorySaver())
         config = {"configurable": {"thread_id": "test_science_rag_graph"}}

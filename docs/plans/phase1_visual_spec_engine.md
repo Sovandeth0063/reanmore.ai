@@ -1,6 +1,6 @@
 # Phase 1B Implementation Plan: Deterministic VisualSpec Engine & Pure SVG Renderer
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Section 8, Section 8.1, Section 8.2)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Section 8, Section 8.1, Section 8.2)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Prerequisites:** Phase 1A complete (`StepTemplate` models defined).
 
@@ -20,8 +20,8 @@ Phase 1B implements the deterministic visual explanation engine that generates s
 
 | Component | Current Implementation | Target Specification | Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Visual Generation** | LLM text output / emoji strings | Deterministic Python CAS builders | `CONFLICTS` | [`card_schema.py:L74-75`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/socratic/card_schema.py#L74-L75) |
-| **Visual Schema** | Untyped `visual_data: Optional[Dict]` | Strict `VisualSpec` schema (v1) with typed models | `PARTIAL` | [`card_schema.py:L60-63`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/socratic/card_schema.py#L60-L63) |
+| **Visual Generation** | LLM text output / emoji strings | Deterministic Python CAS builders | `CONFLICTS` | [`card_schema.py:L74-75`](../../backend/orchestrator/app/services/socratic/card_schema.py#L74-L75) |
+| **Visual Schema** | Untyped `visual_data: Optional[Dict]` | Strict `VisualSpec` schema (v1) with typed models | `PARTIAL` | [`card_schema.py:L60-63`](../../backend/orchestrator/app/services/socratic/card_schema.py#L60-L63) |
 | **6 SVG Models** | 3 ad-hoc prototypes (`NumberLine`, `PlaceValue`, `ObjectGroups`) | 6 unified SVG models (`ten_frame`, `number_line`, `base_ten_blocks`, `array_grid`, `fraction_bar`, `bar_model`) | `PARTIAL` | `frontend/src/components/widgets/` |
 | **Visual Leak Scan** | None | Multi-point parameter and label scan | `MISSING` | Target: `visual_leak_check.py` |
 | **Frontend Renderer** | Fragmented widget loading | Unified `<VisualRenderer spec={...} />` | `MISSING` | `frontend/src/components/` |

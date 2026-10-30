@@ -47,7 +47,7 @@ function cleanMd(val: any): string {
 export function resolveStepHints(
   step?: StepItem | any,
   language: Language = 'en',
-  grade: number = 2
+  _grade: number = 2
 ): ResolvedStepHints {
   const isKhmer = language === 'km';
   if (!step) {

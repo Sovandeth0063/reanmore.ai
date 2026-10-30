@@ -1,9 +1,21 @@
 import { useState } from 'react';
-import { Sparkles, RefreshCw, Circle, Star, Square, Disc } from 'lucide-react';
+import { Sparkles, RefreshCw, Circle, Star, Square, Disc, Atom, Droplet, Leaf } from 'lucide-react';
+import { Language } from '../../types';
 
 interface Props {
   groups: number[];
-  itemType?: 'apple' | 'orange' | 'star' | 'pencil' | 'cookie';
+  itemType?:
+    | 'apple'
+    | 'orange'
+    | 'star'
+    | 'pencil'
+    | 'cookie'
+    | 'atom'
+    | 'water_drop'
+    | 'leaf'
+    | 'ball'
+    | 'bubble';
+  language?: Language | undefined;
   titleKhmer?: string;
   titleEng?: string;
 }
@@ -14,13 +26,37 @@ const ITEM_ICONS = {
   star: { nameKhmer: 'ផ្កាយ', nameEng: 'Stars', color: '#FCBF49', bg: 'bg-amber-50 border-amber-200', icon: Star, iconClass: 'fill-amber-400 text-amber-500' },
   pencil: { nameKhmer: 'ខ្មៅដៃ', nameEng: 'Pencils', color: '#457B9D', bg: 'bg-blue-50 border-blue-200', icon: Square, iconClass: 'fill-blue-500 text-blue-600' },
   cookie: { nameKhmer: 'នំឃុកឃី', nameEng: 'Cookies', color: '#8D5B4C', bg: 'bg-amber-50 border-amber-300', icon: Disc, iconClass: 'fill-amber-700 text-amber-800' },
+  atom: { nameKhmer: 'អាតូម', nameEng: 'Atoms', color: '#2563EB', bg: 'bg-sky-50 border-sky-200', icon: Atom, iconClass: 'text-sky-600' },
+  water_drop: { nameKhmer: 'តំណក់ទឹក', nameEng: 'Water drops', color: '#0284C7', bg: 'bg-sky-50 border-sky-200', icon: Droplet, iconClass: 'fill-sky-400 text-sky-600' },
+  leaf: { nameKhmer: 'ស្លឹកឈើ', nameEng: 'Leaves', color: '#16A34A', bg: 'bg-green-50 border-green-200', icon: Leaf, iconClass: 'fill-green-500 text-green-600' },
+  ball: { nameKhmer: 'បាល់', nameEng: 'Balls', color: '#7C3AED', bg: 'bg-violet-50 border-violet-200', icon: Circle, iconClass: 'fill-violet-500 text-violet-600' },
+  bubble: { nameKhmer: 'ពងប៉ោង', nameEng: 'Bubbles', color: '#0891B2', bg: 'bg-cyan-50 border-cyan-200', icon: Circle, iconClass: 'fill-cyan-400 text-cyan-600' },
 };
 
-export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, titleEng }: Props) {
+const FALLBACK_ITEM = {
+  nameKhmer: 'វត្ថុ',
+  nameEng: 'Items',
+  color: '#64748B',
+  bg: 'bg-slate-50 border-slate-200',
+  icon: Circle,
+  iconClass: 'fill-slate-400 text-slate-600',
+};
+
+export function ObjectGroupsWidget({ groups, itemType = 'apple', language = 'en', titleKhmer, titleEng }: Props) {
   const [countedItems, setCountedItems] = useState<Record<string, number>>({});
   const [currentTotalCount, setCurrentTotalCount] = useState(0);
 
-  const itemInfo = ITEM_ICONS[itemType] || ITEM_ICONS.apple;
+  const itemInfo = ITEM_ICONS[itemType] || FALLBACK_ITEM;
+  const isKhmer = language === 'km';
+  const heading = isKhmer ? (titleKhmer || titleEng) : (titleEng || titleKhmer);
+
+  const itemName = (count: number) => {
+    if (isKhmer) return itemInfo.nameKhmer;
+    // English item names are stored in the plural; use the singular for 1.
+    if (count !== 1) return itemInfo.nameEng;
+    const irregular: Record<string, string> = { Leaves: 'Leaf' };
+    return irregular[itemInfo.nameEng] || itemInfo.nameEng.replace(/s$/, '');
+  };
 
   const handleTapItem = (groupIdx: number, itemIdx: number) => {
     const key = `${groupIdx}_${itemIdx}`;
@@ -47,7 +83,7 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
     <div className="w-full pt-1 select-none">
       {(titleKhmer || titleEng) && (
         <div className="text-xs font-bold text-center text-[#1B4332] mb-1.5">
-          {titleKhmer || titleEng}
+          {heading}
         </div>
       )}
       {/* Visual Baskets Container */}
@@ -59,7 +95,7 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
           >
             {/* Basket Badge */}
             <span className="text-[10px] font-black text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full border border-emerald-300 mb-2">
-              ក្រុមទី {gi + 1}
+              {isKhmer ? `ក្រុមទី ${gi + 1}` : `Group ${gi + 1}`}
             </span>
 
             {/* Apple Items Grid */}
@@ -82,7 +118,11 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
                         : 'bg-white/90 border border-gray-200 hover:bg-emerald-50 shadow-sm'
                       }
                     `}
-                    title={`Tap to count ${itemInfo.nameEng}`}
+                    title={
+                      isKhmer
+                        ? `ចុចដើម្បីរាប់ ${itemInfo.nameKhmer}`
+                        : `Tap to count ${itemName(count)}`
+                    }
                   >
                     <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${itemInfo.iconClass}`} />
                     
@@ -100,7 +140,7 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
             {/* Group Total Sub-Label */}
             <div className="mt-2 pt-1 border-t border-emerald-200/60 w-full text-center">
               <span className="text-xs sm:text-sm font-black text-[#1B4332]">
-                {count} <span className="text-[10px] font-bold text-gray-500">{itemInfo.nameKhmer}</span>
+                {count} <span className="text-[10px] font-bold text-gray-500">{itemName(count)}</span>
               </span>
             </div>
           </div>
@@ -109,7 +149,7 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
         {/* Plus / Equals Flow to Total Box */}
         <div className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-amber-300 bg-amber-50/80 min-w-[85px] sm:min-w-[100px]">
           <span className="text-[10px] font-black text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full border border-amber-400 mb-2">
-            សរុប (Total)
+            {isKhmer ? 'សរុប' : 'Total'}
           </span>
 
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl border-2 border-amber-400 border-dashed flex items-center justify-center shadow-inner my-auto">
@@ -129,11 +169,11 @@ export function ObjectGroupsWidget({ groups, itemType = 'apple', titleKhmer, tit
               onClick={handleResetCount}
               className="text-[10px] font-black text-amber-900 hover:text-amber-950 mt-2 text-center flex items-center gap-1 bg-amber-200/80 px-2 py-0.5 rounded-lg border border-amber-400 transition-colors cursor-pointer shadow-2xs"
             >
-              <RefreshCw className="w-2.5 h-2.5" /> រាប់ឡើងវិញ
+              <RefreshCw className="w-2.5 h-2.5" /> {isKhmer ? 'រាប់ឡើងវិញ' : 'Count again'}
             </button>
           ) : (
             <span className="text-[10px] font-bold text-amber-800 mt-2 text-center">
-              រាប់ទាំងអស់
+              {isKhmer ? 'រាប់ទាំងអស់' : 'Count all'}
             </span>
           )}
         </div>

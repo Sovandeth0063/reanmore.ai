@@ -311,6 +311,28 @@ class TestNewQuestionDuringActiveStep:
         res = classify_intent_sync("solve: photosynthesis needs sunlight and water", current_step=active_math_step)
         assert res.intent == IntentType.INITIAL_SOLVE
 
+    @pytest.mark.parametrize("answer", [
+        "It stays in one spot",
+        "It spreads out to fill the air",
+        "Water turns into steam",
+    ])
+    def test_conceptual_sentence_answers_remain_step_attempt(self, answer, active_science_step):
+        # Conceptual answers are often 5-8 word sentences, not single tokens.
+        res = classify_intent_sync(answer, current_step=active_science_step)
+        assert res.intent == IntentType.STEP_ATTEMPT
+
+    def test_word_problem_with_numbers_is_not_hijacked(self, active_science_step):
+        res = classify_intent_sync(
+            "Leo had 12 apples and ate 4", current_step=active_science_step
+        )
+        assert res.intent == IntentType.INITIAL_SOLVE
+
+    def test_explicit_solve_still_starts_new_problem(self, active_science_step):
+        res = classify_intent_sync(
+            "solve: plants need sunlight and water", current_step=active_science_step
+        )
+        assert res.intent == IntentType.INITIAL_SOLVE
+
     def test_khmer_question(self, active_math_step):
         res = classify_intent_sync("តើលេខបន្ទាប់ពី 19 គឺជាអ្វី?", current_step=active_math_step)
         assert res.intent == IntentType.INITIAL_SOLVE

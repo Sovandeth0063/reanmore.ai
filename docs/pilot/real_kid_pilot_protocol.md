@@ -1,5 +1,5 @@
 # Real-Kid Pilot Protocol & Teacher Observation Guide (ReanMore STEM Socratic Tutor)
-> **Target Cohort:** 6–10 Elementary Students (Grades 1–6)  
+> **Target Cohort:** 6–10 Elementary Students (Grades 2–4)  
 > **Location:** Phnom Penh / Battambang School Partner Pilot Lab  
 > **Session Length:** 20 Minutes / Student  
 > **Architecture Reference:** Architecture v2.1 Section 15.3 & Socratic Pedagogy Invariants  
@@ -22,7 +22,7 @@ The primary objective of the **ReanMore Real-Kid Pilot** is to measure learning 
 
 ## 2. Cohort Design & Demographics
 
-The pilot cohort consists of 8 students stratified across two primary cognitive tiers:
+The pilot cohort consists of 6–10 students (8 recommended) stratified across two primary cognitive tiers:
 
 | Tier | Grade Levels | Student ID Range | Target Mathematical Skills | Primary Visual Model |
 | :--- | :---: | :---: | :--- | :--- |
@@ -133,3 +133,24 @@ Upon conclusion of the pilot cohort:
 2. Calculate the **Concept Transfer Success Rate** (Target >= 80%).
 3. Verify zero leaks recorded in the telemetry database.
 4. Obtain Teacher Sign-Off and qualify system for school-wide production rollout.
+
+---
+
+## 8. Pilot Execution Checklist (non-engineering)
+
+Fill one row per item before the first session. "Artifact" is the file or record
+that proves the item is done.
+
+| # | Item | Owner | Target date | Artifact / evidence | Status |
+| :---: | :--- | :--- | :--- | :--- | :---: |
+| 1 | School partner confirmed (Phnom Penh / Battambang) | ________ | __/__/____ | Signed partner letter | `[ ]` |
+| 2 | Parental consent forms collected (all students) | ________ | __/__/____ | Scanned consent forms | `[ ]` |
+| 3 | Child assent script read + recorded per student | ________ | __/__/____ | Session log entry | `[ ]` |
+| 4 | Devices prepared: 6–10 tablets/laptops, local Ollama warm | ________ | __/__/____ | Device checklist | `[ ]` |
+| 5 | Observation rubrics printed (Section 5, one per student) | ________ | __/__/____ | Printed copies | `[ ]` |
+| 6 | Transfer-problem cards printed (Section 4, Phase 4) | ________ | __/__/____ | Printed cards | `[ ]` |
+| 7 | Telemetry DB + `generate_admin_digest.py` verified | ________ | __/__/____ | Digest output file | `[ ]` |
+| 8 | Session room + observer seating set up | ________ | __/__/____ | Photos / room plan | `[ ]` |
+| 9 | Run sessions (20 min/student, 6–10 students) | ________ | __/__/____ | Rubrics + telemetry | `[ ]` |
+| 10 | Compile `docs/digests/pilot_evaluation_cohort1.md` | ________ | __/__/____ | Digest committed | `[ ]` |
+| 11 | Teacher sign-off obtained | ________ | __/__/____ | Signed sign-off sheet | `[ ]` |

@@ -1,6 +1,6 @@
 # 🛠️ Frontend Services Architecture
 
-This folder contains all API services, dynamic AI connectors, and offline fallback providers for the ReanMore application.
+This folder contains the API services and dynamic AI connectors for the ReanMore application.
 
 ---
 
@@ -8,18 +8,18 @@ This folder contains all API services, dynamic AI connectors, and offline fallba
 
 ```
 frontend/src/services/
-├── geminiService.ts          # 🤖 Dynamic Google Gemini / Backend AI Tutor Integration
-├── ocrService.ts             # 📸 VLM Vision & Homework OCR Scanning Service
-├── translationService.ts     # 🌐 Bilingual Khmer-English Translation & Curriculum Terminology
-├── caseMatcher.ts            # 🔍 Offline Keyword & Problem Matcher (Hardcoded Fallback)
-└── hardcodedTutorProvider.ts # 💾 Offline Socratic Response Generator (Hardcoded Fallback)
+├── answerValidationService.ts # ✅ Local fast-path answer checks for step UI
+├── authService.ts             # 🔐 Session / profile persistence
+├── geminiService.ts           # 🤖 Dynamic Google Gemini / backend AI tutor integration
+├── llmControllerService.ts    # 🧭 Model routing / request control
+└── ocrService.ts               # 📸 VLM vision & homework OCR scanning (Phase 4, flag-gated)
+
+Dynamic bilingual translation lives in `src/api/translateApi.ts` (backend `/api/translate`).
 ```
 
 ---
 
-## ⚡ Dynamic vs. Hardcoded Separation
+## ⚡ Content Source
 
-- **Dynamic Services**:
-  - `geminiService.ts` and `ocrService.ts` handle live AI vision, adaptive grade prompting, and dynamic Socratic questioning.
-- **Offline / Hardcoded Fallbacks**:
-  - `caseMatcher.ts` and `hardcodedTutorProvider.ts` pair scanned samples with pre-built mock exercises in `src/data/` if the student is offline or testing mock cases.
+All Socratic content is generated dynamically by the backend prompts. There is no
+offline hardcoded case matcher or pre-built tutor response provider.

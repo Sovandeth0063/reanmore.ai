@@ -1,6 +1,6 @@
 # Phase 3 Implementation Plan: Curriculum Science RAG Engine
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Section 2, Section 11, Section 15.1)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Section 2, Section 11, Section 15.1)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Prerequisites:** Phases 0, 1A-1E, and Phase 2 complete and verified.
 
@@ -68,31 +68,31 @@ Student Science Query ("Why do leaves turn green in sunlight?")
 ## 4. Step-by-Step Implementation Steps
 
 ### Step 3.1: Offline FastEmbed & Qdrant Setup — COMPLETED ✅
-- Created [`backend/orchestrator/app/services/rag/embedder.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/rag/embedder.py):
+- Created [`backend/orchestrator/app/services/rag/embedder.py`](../../backend/orchestrator/app/services/rag/embedder.py):
   - Fast, local embedding generation via FastEmbed ONNX runtime (`BAAI/bge-small-en-v1.5`, 384 dims, ~10ms execution on CPU, $0.00 cost).
-- Created [`backend/orchestrator/app/services/rag/vector_store.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/rag/vector_store.py):
+- Created [`backend/orchestrator/app/services/rag/vector_store.py`](../../backend/orchestrator/app/services/rag/vector_store.py):
   - Persistent Qdrant vector client supporting local disk storage (`backend/data/qdrant`) and containerized Qdrant network service.
 
 ### Step 3.2: Elementary Science Knowledge Base Curation & Ingestion — COMPLETED ✅
-- Curated [`backend/ingestion/data_sources/science_curriculum_en.json`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/ingestion/data_sources/science_curriculum_en.json):
+- Curated [`backend/ingestion/data_sources/science_curriculum_en.json`](../../backend/ingestion/data_sources/science_curriculum_en.json):
   - 15 authoritative, grade-stratified textbook chapters spanning all 6 core elementary science units.
-- Created and executed [`backend/ingestion/ingest_science_curriculum.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/ingestion/ingest_science_curriculum.py):
+- Created and executed [`backend/ingestion/ingest_science_curriculum.py`](../../backend/ingestion/ingest_science_curriculum.py):
   - Indexed 15 curriculum chapters into collection `reanmore_science_curriculum`.
 
 ### Step 3.3: Socratic RAG Retriever & Grounding Node — COMPLETED ✅
-- Created [`backend/orchestrator/app/services/rag/retriever.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/rag/retriever.py):
+- Created [`backend/orchestrator/app/services/rag/retriever.py`](../../backend/orchestrator/app/services/rag/retriever.py):
   - Retrieves top-3 passages with calibrated threshold (0.55).
   - Formats textbook context block with verified citations.
-  - Wired into `initial_problem_node` in [`backend/orchestrator/app/services/socratic/graph.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/socratic/graph.py) and `controller.plan_exercise_socratic_widget`.
+  - Wired into `initial_problem_node` in [`backend/orchestrator/app/services/socratic/graph.py`](../../backend/orchestrator/app/services/socratic/graph.py) and `controller.plan_exercise_socratic_widget`.
 
 ### Step 3.4: Content Gap Telemetry Integration — COMPLETED ✅
 - In `ScienceRetriever.retrieve_grounded_context`:
   - When similarity score < 0.55 (e.g. out-of-syllabus query): dispatches `SCIENCE_OUT_OF_CURRICULUM` content gap event to `gap_events` ledger.
 
 ### Step 3.5: Science Benchmark Suite & Golden Evaluation — COMPLETED ✅
-- Curated [`backend/testing/data/golden_30_science_questions.jsonl`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/testing/data/golden_30_science_questions.jsonl): 30 golden science questions across Grades 1–6.
-- Created [`backend/testing/evaluation/science_rag_evaluator.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/testing/evaluation/science_rag_evaluator.py):
+- Curated [`backend/testing/data/golden_30_science_questions.jsonl`](../../backend/testing/data/golden_30_science_questions.jsonl): 30 golden science questions across Grades 1–6.
+- Created [`backend/testing/evaluation/science_rag_evaluator.py`](../../backend/testing/evaluation/science_rag_evaluator.py):
   - **Results:** 30 / 30 (**100.0%**) Retrieval Success Rate, **100.0%** Top-1 Chapter Match, **100.0%** Concept Recall, 0 Leaks.
-  - Digest generated: [`docs/digests/science_rag_eval_2026_10_19.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/digests/science_rag_eval_2026_10_19.md).
-- Created [`backend/testing/unit/rag/test_science_rag.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/testing/unit/rag/test_science_rag.py):
+  - Digest generated: [`docs/digests/science_rag_eval_2026_10_19.md`](../../docs/digests/science_rag_eval_2026_10_19.md).
+- Created [`backend/testing/unit/rag/test_science_rag.py`](../../backend/testing/unit/rag/test_science_rag.py):
   - **Pytest:** 5 / 5 passed (100% GREEN).

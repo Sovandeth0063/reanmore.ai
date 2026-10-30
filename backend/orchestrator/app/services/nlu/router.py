@@ -42,14 +42,38 @@ _MATH_TERMS_RE = re.compile(
     flags=re.IGNORECASE
 )
 
-# Regex patterns for Science detection
+# Regex patterns for Science detection.
+# Keep this list broad enough that ordinary elementary science questions
+# ("what is a food chain?", "what is an electric circuit?", "what do
+# elephants eat?") do not fall through to the GENERAL "I didn't catch that"
+# reply when the LLM router is unavailable.
 _SCIENCE_TERMS_RE = re.compile(
-    r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|flower|root|roots|'
-    r'cell|cells|organelle|organism|animal|animals|frog|frogs|amphibian|mammal|bird|fish|insect|predator|prey|habitat|ecosystem|'
-    r'matter|solid|solids|liquid|liquids|gas|gases|water|ice|steam|vapor|state|states|evaporation|condensation|precipitation|freeze|melting|'
-    r'gravity|gravitational|fall|falling|drop|objects?|ground|force|forces|motion|friction|magnet|magnetic|sound|light|energy|heat|'
-    r'planet|planets|earth|moon|sun|solar|star|stars|orbit|space|weather|cloud|rain|rock|soil|'
-    r'heart|lung|lungs|brain|stomach|skeleton|bone|muscle|organ|human\s+body)\b',
+    r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|seeds|flower|flowers|root|roots|'
+    r'cell|cells|organelle|organelles|organism|organisms|animal|animals|'
+    r'elephant|elephants|tiger|tigers|lion|lions|cow|cows|dog|dogs|cat|cats|rabbit|rabbits|'
+    r'snake|snakes|whale|whales|dolphin|dolphins|chicken|chickens|duck|ducks|penguin|penguins|'
+    r'butterfly|butterflies|bee|bees|ant|ants|spider|spiders|worm|worms|octopus|monkey|monkeys|'
+    r'horse|horses|sheep|goat|goats|pig|pigs|mouse|mice|deer|bear|bears|wolf|wolves|fox|foxes|'
+    r'turtle|turtles|crocodile|crocodiles|giraffe|giraffes|camel|camels|flamingo|flamingos|'
+    r'lobster|lobsters|moth|moths|slug|slugs|frog|frogs|amphibian|amphibians|mammal|mammals|'
+    r'bird|birds|fish|insect|insects|reptile|reptiles|'
+    r'vertebrate|vertebrates|invertebrate|invertebrates|backbone|backbones|spine|skeleton|'
+    r'predator|predators|prey|habitat|habitats|ecosystem|ecosystems|'
+    r'producer|producers|consumer|consumers|herbivore|herbivores|carnivore|carnivores|'
+    r'omnivore|omnivores|decomposer|decomposers|food\s+chain|food\s+chains|food\s+web|food\s+webs|'
+    r'matter|solid|solids|liquid|liquids|gas|gases|water|ice|steam|vapor|vapour|'
+    r'state|states|evaporation|condensation|precipitation|freeze|freezing|melting|'
+    r'atom|atoms|molecule|molecules|element|elements|compound|compounds|'
+    r'chemical|chemicals|reaction|reactions|molar|mole|moles|hydrogen|oxygen|carbon|nitrogen|'
+    r'acid|acids|base|bases|salt|salts|solution|solutions|mixture|mixtures|dissolve|dissolving|'
+    r'proton|protons|neutron|neutrons|electron|electrons|'
+    r'gravity|gravitational|fall|falling|drop|dropping|object|objects|ground|force|forces|'
+    r'motion|friction|magnet|magnets|magnetic|sound|light|energy|heat|mass|weight|density|'
+    r'electricity|electric|electrical|circuit|circuits|battery|batteries|bulb|bulbs|'
+    r'switch|switches|wire|wires|current|currents|conductor|conductors|insulator|insulators|'
+    r'planet|planets|earth|moon|sun|solar|orbit|space|weather|cloud|clouds|rain|rock|rocks|soil|'
+    r'heart|lung|lungs|brain|stomach|bone|bones|muscle|muscles|organ|organs|human\s+body|'
+    r'digestive|respiratory|circulatory|nervous|classification|classify|characteristics|adaptation|adaptations)\b',
     flags=re.IGNORECASE
 )
 
@@ -69,10 +93,29 @@ _MATH_SUBTOPICS = [
 
 _SCIENCE_SUBTOPICS = [
     ("plants_biology", re.compile(r'\b(?:plant|plants|leaf|leaves|chlorophyll|chloroplast|photosynthesis|seed|flower|root|roots)\b', re.I)),
-    ("animals_ecosystem", re.compile(r'\b(?:animal|animals|frog|frogs|amphibian|habitat|ecosystem|predator|prey|mammal|bird|fish|insect)\b', re.I)),
-    ("matter_chemistry", re.compile(r'\b(?:solid|solids|liquid|liquids|gas|gases|matter|ice|water|steam|vapor|state|states|evaporation|condensation|precipitation|freeze|melting)\b', re.I)),
-    ("forces_physics", re.compile(r'\b(?:gravity|gravitational|fall|falling|drop|ground|force|forces|motion|friction|magnet|magnetic|energy|sound|light)\b', re.I)),
-    ("earth_space", re.compile(r'\b(?:planet|planets|earth|moon|sun|solar|star|stars|orbit|space|weather|cloud|rain|rock|soil)\b', re.I)),
+    ("animals_ecosystem", re.compile(
+        r'\b(?:animal|animals|elephant|elephants|tiger|tigers|lion|lions|cow|cows|dog|dogs|cat|cats|'
+        r'rabbit|rabbits|snake|snakes|whale|whales|dolphin|dolphins|chicken|chickens|duck|ducks|'
+        r'penguin|penguins|butterfly|butterflies|bee|bees|ant|ants|spider|spiders|worm|worms|'
+        r'octopus|monkey|monkeys|horse|horses|sheep|goat|goats|pig|pigs|mouse|mice|deer|bear|bears|'
+        r'wolf|wolves|fox|foxes|turtle|turtles|crocodile|crocodiles|giraffe|giraffes|camel|camels|'
+        r'flamingo|flamingos|lobster|lobsters|moth|moths|slug|slugs|frog|frogs|amphibian|amphibians|'
+        r'habitat|habitats|ecosystem|ecosystems|predator|prey|mammal|mammals|bird|birds|fish|insect|insects|'
+        r'reptile|reptiles|vertebrate|invertebrate|backbone|producer|producers|consumer|consumers|'
+        r'herbivore|herbivores|carnivore|carnivores|omnivore|omnivores|decomposer|decomposers|'
+        r'food\s+chain|food\s+chains|food\s+web|food\s+webs|classification|classify|characteristics)\b', re.I)),
+    ("matter_chemistry", re.compile(
+        r'\b(?:solid|solids|liquid|liquids|gas|gases|matter|ice|water|steam|vapor|vapour|state|states|'
+        r'evaporation|condensation|precipitation|freeze|freezing|melting|atom|atoms|molecule|molecules|'
+        r'element|elements|compound|compounds|chemical|chemicals|reaction|reactions|molar|mole|moles|'
+        r'hydrogen|oxygen|carbon|nitrogen|acid|acids|base|bases|salt|salts|solution|solutions|'
+        r'mixture|mixtures|dissolve|dissolving|proton|protons|neutron|neutrons|electron|electrons)\b', re.I)),
+    ("forces_physics", re.compile(
+        r'\b(?:gravity|gravitational|fall|falling|drop|ground|force|forces|motion|friction|magnet|magnets|'
+        r'magnetic|energy|sound|light|mass|weight|density|electricity|electric|electrical|circuit|circuits|'
+        r'battery|batteries|bulb|bulbs|switch|switches|wire|wires|current|currents|conductor|conductors|'
+        r'insulator|insulators)\b', re.I)),
+    ("earth_space", re.compile(r'\b(?:planet|planets|earth|moon|sun|solar|star|stars|orbit|space|weather|cloud|clouds|rain|rock|rocks|soil)\b', re.I)),
 ]
 
 

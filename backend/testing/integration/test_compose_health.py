@@ -1,9 +1,9 @@
 """
 File: backend/testing/integration/test_compose_health.py
 Description: Configuration and topology qualification test for ReanMore deployment (Phase 6).
-             - Verifies docker-compose.yml structure, 9 container topology, and network.
-             - Verifies PostgreSQL 16 upgrade, MinIO collision-free port mapping (9100/9101),
-               Ollama continuous fallback (11434), and frontend (3000:80).
+             - Verifies docker-compose.yml structure, 4-container topology, and network.
+             - Verifies PostgreSQL 16 upgrade, Ollama continuous fallback (11434),
+               and frontend (3000:80).
              - Verifies absence of obsolete standalone OCR container.
              - Verifies Pydantic settings schema alignment.
 """
@@ -45,20 +45,15 @@ def compose_config():
     return data
 
 
-def test_compose_contains_9_reanmore_services(compose_config):
-    """Spec Section 11: Exactly 9 services in the ReanMore target deployment."""
+def test_compose_contains_4_reanmore_services(compose_config):
+    """Architecture v2.1 Section 12.1: Exactly 4 services in the streamlined MVP."""
     services = compose_config.get("services", {})
-    assert len(services) == 9, f"Expected 9 services, got {len(services)}: {list(services.keys())}"
+    assert len(services) == 4, f"Expected 4 services, got {len(services)}: {list(services.keys())}"
 
     expected_containers = {
-        "reanmore-redis",
         "reanmore-postgres",
-        "reanmore-qdrant",
-        "reanmore-minio",
         "reanmore-ollama",
         "reanmore-orchestrator",
-        "reanmore-math",
-        "reanmore-science",
         "reanmore-frontend",
     }
     actual_containers = {s.get("container_name") for s in services.values() if isinstance(s, dict)}
@@ -75,16 +70,11 @@ def test_postgres_16_alpine_upgrade(compose_config):
     assert db.get("container_name") == "reanmore-postgres"
 
 
-def test_minio_port_isolation_avoids_clash(compose_config):
-    """Spec Section 11: MinIO maps to 9100/9101 to avoid clashing with gateway on 9000."""
+def test_pruned_distributed_services_absent(compose_config):
+    """Architecture v2.1: Redis, Qdrant, MinIO are pruned from the Phase 1 MVP stack."""
     services = compose_config.get("services", {})
-    minio = services.get("minio", {})
-    assert minio.get("container_name") == "reanmore-minio"
-    ports = minio.get("ports", [])
-    assert any("9100:" in p for p in ports), "MinIO API must map to host port 9100"
-    assert any("9101:" in p for p in ports), "MinIO Console must map to host port 9101"
-    # Ensure neither maps to host 9000
-    assert not any("9000:9000" in p for p in ports), "MinIO cannot occupy host port 9000 (gateway port)"
+    for pruned in ("redis", "qdrant", "minio", "math-service", "science-service"):
+        assert pruned not in services, f"Pruned service '{pruned}' must not be in docker-compose.yml"
 
 
 def test_ollama_local_fallback_service(compose_config):

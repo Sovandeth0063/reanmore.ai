@@ -62,6 +62,8 @@ scratch/
 sample_outputs/
 postgres_data/
 qdrant_data/
+.pgdata/
+backend/.pgdata/
 
 
 # Agent Customizations & Skills (User Private)

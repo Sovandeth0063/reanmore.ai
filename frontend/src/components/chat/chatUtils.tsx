@@ -1,6 +1,57 @@
 import React from 'react';
 import { ChatMessage, StepItem } from '../../types';
 import { extractStepNumbers } from '../VisualWidget';
+import { translateApi } from '../../api';
+
+const KHMER_RANGE = /[\u1780-\u17FF]/;
+
+/**
+ * Fills the Khmer fields of mapped step items using the backend /api/translate
+ * endpoint. If translation is unavailable (or returns English), the original
+ * text is kept, so the UI degrades gracefully.
+ */
+export async function localizeStepsForKhmer(steps: StepItem[]): Promise<StepItem[]> {
+  const pending: string[] = [];
+  const add = (value?: string) => {
+    const text = (value || '').trim();
+    if (text && !KHMER_RANGE.test(text)) pending.push(text);
+  };
+
+  for (const step of steps) {
+    add(step.mission);
+    add(step.clue);
+    add(step.helpfulExample);
+    add(step.yourTurn);
+    add(step.title);
+    (step.hints || []).forEach(add);
+  }
+
+  const unique = Array.from(new Set(pending));
+  if (unique.length === 0) return steps;
+
+  const translated = await translateApi.translateBatch(unique, 'km');
+  const lookup = new Map(unique.map((text, i) => [text, translated[i] || text]));
+  const t = (value?: string) => lookup.get((value || '').trim()) || value || '';
+
+  return steps.map((step) => ({
+    ...step,
+    questionKhmer: t(step.mission),
+    socraticPromptKhmer: t(step.yourTurn),
+    hint1: { ...step.hint1, khmer: t(step.hints?.[0]) },
+    hint2: { ...step.hint2, khmer: t(step.hints?.[1]) },
+    hint3: {
+      ...step.hint3,
+      titleKhmer: t(step.hint3?.titleEng),
+      exampleKhmer: t(step.hints?.[2]),
+    },
+    explainDifferently: {
+      ...step.explainDifferently,
+      simpleKhmer: t(step.mission),
+      analogyTitle: t(step.title),
+      analogyKhmer: t(step.helpfulExample),
+    },
+  }));
+}
 
 // Helper: Render inline markdown (bold, italic, code) and newlines
 export function renderFormattedInline(text: string): React.ReactNode {
@@ -114,8 +165,10 @@ export function extractStepWidgetFromMessage(msg: ChatMessage): ExtractedStepWid
           visualData:
             rawActiveStep.visualData ||
             (rawActiveStep as any).visual_data ||
-            (w as any).visual_data ||
-            (w as any).visualData,
+            // A widget-level visual belongs to the first step; don't show it later.
+            (activeIdx === 0
+              ? (w as any).visual_data || (w as any).visualData
+              : undefined),
         }
       : rawActiveStep;
     const totalSteps = w.total_steps || w.steps.length;
@@ -242,6 +295,11 @@ export function mapWidgetToStepItems(widget: any): StepItem[] {
     const hints = Array.isArray(s.hints) ? s.hints : [];
     const clue = s.clue || hints[0] || 'Please review the question and hints carefully.';
     const example = s.helpful_example || hints[1] || 'Try thinking one step at a time!';
+    const acceptableAnswers = Array.isArray(s.acceptable_answers)
+      ? s.acceptable_answers
+      : Array.isArray(s.acceptableAnswers)
+      ? s.acceptableAnswers
+      : undefined;
     return {
       id: `step-${stepNum}`,
       stepNumber: stepNum,
@@ -253,6 +311,7 @@ export function mapWidgetToStepItems(widget: any): StepItem[] {
       inputFormat,
       options,
       correctAnswer: expectedAns,
+      acceptableAnswers,
       expectedAnswer: expectedAns,
       expected_answer: expectedAns,
       mission,
@@ -261,7 +320,11 @@ export function mapWidgetToStepItems(widget: any): StepItem[] {
       helpfulExample: example,
       yourTurn,
       hints: [hints[0] || clue, hints[1] || example, hints[2] || ''],
-      visualData: s.visual_data || s.visualData || widget?.visual_data || widget?.visualData,
+      // Each step owns its visual; the widget-level visual belongs to step 1 only.
+      visualData:
+        s.visual_data ||
+        s.visualData ||
+        (idx === 0 ? widget?.visual_data || widget?.visualData : undefined),
       status: idx === 0 ? 'in_progress' : 'locked',
       hint1: { khmer: hints[0] || clue, eng: hints[0] || clue },
       hint2: { khmer: hints[1] || example, eng: hints[1] || example },

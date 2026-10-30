@@ -154,7 +154,7 @@ All system, learner, and curriculum gaps are triaged into PostgreSQL `gap_events
 ```text
 .
 ├── backend/
-│   ├── docker-compose.yml          # Streamlined 4-container stack (Postgres, Orchestrator, Ollama)
+│   ├── docker-compose.yml          # 4-container stack (Postgres, Ollama, Orchestrator, Frontend)
 │   ├── docker-compose.full.yml     # Distributed profile (Redis, Qdrant, MinIO)
 │   ├── orchestrator/               # Core FastAPI gateway & Socratic engine
 │   │   ├── app/
@@ -219,10 +219,11 @@ All system, learner, and curriculum gaps are triaged into PostgreSQL `gap_events
    ```bash
    cp .env.example .env
    ```
-3. Start the core backend containers (PostgreSQL + Orchestrator):
+3. Start the 4-container stack (PostgreSQL, Orchestrator, Frontend; add `--profile container-ollama` to containerize the model):
    ```bash
    docker compose up -d
    ```
+   The frontend is served at [http://localhost:3000](http://localhost:3000).
    > *Note:* If you do not have Ollama installed on your host OS, launch the containerized profile:  
    > `docker compose --profile container-ollama up -d`
 
@@ -254,16 +255,24 @@ All system, learner, and curriculum gaps are triaged into PostgreSQL `gap_events
 
 ## 🧪 Testing & Verification
 
-Run the end-to-end integration test suite to verify chitchat, 3-step Socratic math decomposition, kid-friendly hints, and science inquiry:
+Backend (from `backend/`):
 
-```bash
-python -u "C:\Users\ASUS\.gemini\antigravity-ide\brain\b0c2651c-8980-4cc9-8939-d558edb01450\scratch\test_endpoints.py"
+```powershell
+& .venv\Scripts\python.exe -m pytest -q                 # 649 passed
+& .venv\Scripts\python.exe testing\evaluation\golden_verifier.py        # 50/50 worksheets
+& .venv\Scripts\python.exe testing\evaluation\adversarial_evaluator.py  # 100/100 probes, 0 leaks
+& .venv\Scripts\python.exe testing\tools\run_release_gate.py            # pre-release gate
 ```
 
-To run the automated pre-release qualification gate:
-```bash
-python backend/testing/tools/run_release_gate.py
+Frontend (from `frontend/`):
+
+```powershell
+npm test        # vitest: real test runner (not a build)
+npm run build   # production bundle
 ```
+
+> Tests are pinned to the in-process mock LLM provider (`backend/testing/conftest.py`),
+> so the suite is deterministic and does not require Ollama, Gemini, or a database.
 
 ---
 

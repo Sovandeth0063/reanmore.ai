@@ -70,7 +70,7 @@ def test_api_step_navigation():
     assert "Step 2" in nav_data["feedback_message"]
 
 
-def test_api_get_session():
+def test_api_get_session(stub_socratic_llm):
     session_id = "test_endpoint_get_session"
     # Query first
     client.post("/api/query", json={

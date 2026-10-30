@@ -665,7 +665,7 @@ reanmore/
 |       |   \-- adversarial_100_leak_cases.jsonl
 |       |-- bench_concurrency.py        # Multi-student concurrent load benchmark
 |       \-- unit/
-|           |-- test_leak_guard_v2.py
+|           |-- adversarial_evaluator.py
 |           |-- test_visual_specs.py
 |           |-- test_parse_verifier.py
 |           \-- test_quota_guard.py
@@ -1298,7 +1298,7 @@ reanmore/
 |       |   \-- adversarial_100_leak_cases.jsonl
 |       |-- bench_concurrency.py        # Multi-student concurrent load benchmark
 |       \-- unit/
-|           |-- test_leak_guard_v2.py
+|           |-- adversarial_evaluator.py
 |           |-- test_visual_specs.py
 |           |-- test_parse_verifier.py
 |           \-- test_quota_guard.py

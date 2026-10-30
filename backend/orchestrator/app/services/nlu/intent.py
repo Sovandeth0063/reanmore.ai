@@ -323,7 +323,18 @@ def disambiguate_step_input(
 
     word_count = len(q.split())
     extracted_word_count = len(extracted.split()) if extracted else 0
-    is_short = word_count <= 4 or (extracted and extracted_word_count <= 4)
+    # Conceptual answers are often full short sentences ("It stays in one spot").
+    # While a step is active, treat a short declarative message as an attempt.
+    # Digit-bearing statements and explicit new-problem requests are excluded so
+    # a freshly typed word problem is not swallowed as an answer.
+    starts_new_problem = bool(re.match(
+        r'^\s*(?:solve|calculate|compute|new\s+problem|another\s+problem)\b',
+        q, re.I
+    ))
+    is_short = (
+        (word_count <= 8 and not starts_new_problem and not re.search(r'\d', q))
+        or (extracted and extracted_word_count <= 4)
+    )
     has_math_op = any(op in q for op in ['+', '-', '*', '/', '=', '×', '÷'])
 
     if is_short and not has_math_op:

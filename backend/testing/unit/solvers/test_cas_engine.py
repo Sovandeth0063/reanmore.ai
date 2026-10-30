@@ -75,3 +75,25 @@ def test_parse_binary_arithmetic():
     assert res_mult is not None
     assert res_mult["op"] == "*"
     assert res_mult["answer"] == Fraction(12, 1)
+
+
+def test_parse_binary_arithmetic_conversational_wrappers():
+    res = parse_binary_arithmetic("what 2+2")
+    assert res is not None
+    assert res["answer"] == Fraction(4, 1)
+
+    res_apostrophe = parse_binary_arithmetic("what's 8 + 6?")
+    assert res_apostrophe is not None
+    assert res_apostrophe["answer"] == Fraction(14, 1)
+
+    res_no_apostrophe = parse_binary_arithmetic("whats 6 x 7")
+    assert res_no_apostrophe is not None
+    assert res_no_apostrophe["op"] == "*"
+    assert res_no_apostrophe["answer"] == Fraction(42, 1)
+
+    res_please = parse_binary_arithmetic("please solve 9 - 4")
+    assert res_please is not None
+    assert res_please["answer"] == Fraction(5, 1)
+
+    # Narrative text must still be rejected.
+    assert parse_binary_arithmetic("Dara has 2 apples and 2 more.") is None

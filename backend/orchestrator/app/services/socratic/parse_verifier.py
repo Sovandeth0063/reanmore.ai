@@ -10,7 +10,11 @@ from typing import Optional, Dict, Any, List, Tuple
 from fractions import Fraction
 from dataclasses import dataclass
 
-from app.services.socratic.math_engine.cas import evaluate_exact, format_exact_fraction
+from app.services.socratic.math_engine.cas import (
+    evaluate_exact,
+    format_exact_fraction,
+    strip_arithmetic_wrappers,
+)
 
 logger = logging.getLogger("orchestrator.socratic.parse_verifier")
 
@@ -53,19 +57,16 @@ def is_pure_arithmetic_expression(text: str) -> bool:
     """
     if not text or not text.strip():
         return False
-    # Strip common command prefixes
-    cleaned = re.sub(
-        r"^(?:solve|calculate|what\s+is|how\s+much\s+is|compute|find\s+the\s+sum\s+of|find\s+the\s+value\s+of)\s*",
-        "",
-        text.strip(),
-        flags=re.IGNORECASE
-    )
-    cleaned = re.sub(r"[=\?_\[\]\(\)\s]+$", "", cleaned).strip()
-    cleaned = re.sub(r"[\[\]_\?]+", " ", cleaned)
-    tokens = [w for w in re.findall(r"[a-zA-Z]{2,}", cleaned) if w.lower() not in ("plus", "minus", "times", "divided", "by", "and")]
+    # Strip conversational wrappers ("what", "what's", "please solve", ...)
+    # and word operators so bare child-typed expressions stay arithmetic.
+    cleaned = strip_arithmetic_wrappers(text)
+    if not cleaned:
+        return False
+    cleaned = re.sub(r"[\[\]_\s]+", " ", cleaned).strip()
+    tokens = [w for w in re.findall(r"[a-zA-Z]{2,}", cleaned)]
     if tokens:
         return False
-    has_operator = bool(re.search(r"[\+\-\*\/\.xX×÷\^]", cleaned))
+    has_operator = bool(re.search(r"[\+\-\*\/\.\^]", cleaned))
     has_digit = bool(re.search(r"\d", cleaned))
     return has_operator and has_digit
 

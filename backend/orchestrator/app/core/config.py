@@ -68,9 +68,13 @@ class Settings(BaseSettings):
     SAFEGUARDING_DISPATCH_TIMEOUT_SEC: float = 3.0
 
     # Feature Flags & Deferrals (Spec Section 1 & Section 16 Decision)
-    # Khmer language processing & translation deferred to v2.2 for English-first launch stability
-    ENABLE_KHMER_LANGUAGE: bool = False
+    # Shipped in MVP: Khmer UI toggle + dynamic /api/translate (LLM, with English fallback).
+    # Deferred to v2.2: Khmer segmentation, parallel prompts, MoEYS ingestion, word-problem parser.
+    ENABLE_KHMER_LANGUAGE: bool = True
     ENABLE_VOICE_STT: bool = False
+    # Worksheet photo OCR is deferred to Phase 4 (Architecture v2.1 Section 16).
+    # The /api/upload endpoints return 404 unless this is explicitly enabled.
+    ENABLE_API_OCR: bool = False
 
     # Microservice monitoring & circuit breaker configuration 
     HEALTH_CHECK_INTERVAL_SEC: int = 60

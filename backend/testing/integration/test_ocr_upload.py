@@ -33,7 +33,24 @@ def client():
     return TestClient(app)
 
 
-def test_ocr_upload_degraded_when_scanner_offline(client):
+@pytest.fixture
+def ocr_enabled(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ENABLE_API_OCR", True)
+
+
+def test_ocr_endpoint_disabled_by_default(client):
+    """OCR is a Phase 4 feature and must be off in the Phase 1 MVP build."""
+    response = client.post(
+        "/api/upload/ocr",
+        files={"file": ("worksheet.png", io.BytesIO(b"x"), "image/png")},
+    )
+    assert response.status_code == 404
+    assert "deferred to Phase 4" in response.json()["detail"]
+
+
+def test_ocr_upload_degraded_when_scanner_offline(client, ocr_enabled):
     """Test image upload endpoint returns honest degraded response when scanner is offline."""
     fake_image_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
     file = io.BytesIO(fake_image_bytes)
@@ -52,7 +69,7 @@ def test_ocr_upload_degraded_when_scanner_offline(client):
     assert len(data["exercises"]) == 0
 
 
-def test_ocr_upload_unsupported_file_type(client):
+def test_ocr_upload_unsupported_file_type(client, ocr_enabled):
     """Test upload rejection for unsupported file formats."""
     fake_file = io.BytesIO(b"malicious executable data")
 
@@ -165,7 +182,7 @@ def test_ocr_extractor_section_grouped_multi_exercise():
     assert "Which one would you like to solve first?" in parsed["prompt_message"]
 
 
-def test_upload_select_exercise_handoff(client):
+def test_upload_select_exercise_handoff(client, ocr_enabled):
     """Test selecting a chosen exercise hands off directly into the Socratic stepper session."""
     payload = {
         "exercise_id": "ex_1",

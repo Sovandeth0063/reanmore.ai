@@ -28,7 +28,9 @@ from app.core.tutoring_config import (
     SAFE_PRAISE_FALLBACK_ENG,
     SAFE_PRAISE_FALLBACK_KHMER,
     SAFE_CLUE_FALLBACK_ENG,
-    SAFE_CLUE_FALLBACK_KHMER
+    SAFE_CLUE_FALLBACK_KHMER,
+    SAFE_CLUE_FALLBACK_SCIENCE_ENG,
+    SAFE_CLUE_FALLBACK_SCIENCE_KHMER,
 )
 from app.services.socratic.safe_math import safe_eval_ast, safe_eval_float
 
@@ -324,6 +326,35 @@ def _token_matches_value(
     return False, None
 
 
+_MATH_SUBJECT_ALIASES = frozenset({"", "math", "mathematics", "arithmetic"})
+
+
+def _clue_fallback(tutor_reply: str, subject: Optional[str]) -> str:
+    """Picks an answer-safe nudge that fits the subject of the exercise."""
+    is_khmer = _contains_khmer(tutor_reply)
+    subject_l = (subject or "").strip().lower()
+    if subject_l in _MATH_SUBJECT_ALIASES:
+        return SAFE_CLUE_FALLBACK_KHMER if is_khmer else SAFE_CLUE_FALLBACK_ENG
+    return SAFE_CLUE_FALLBACK_SCIENCE_KHMER if is_khmer else SAFE_CLUE_FALLBACK_SCIENCE_ENG
+
+
+def _future_leak_fallback(
+    tutor_reply: str, subject: Optional[str], is_step_solved: bool
+) -> str:
+    """A solved step may be praised; an unsolved one must be nudged instead.
+
+    The old fallback always praised the student, so an intercepted first-step
+    reply could tell a student who had answered nothing "That is correct!".
+    """
+    if is_step_solved:
+        return (
+            SAFE_PRAISE_FALLBACK_KHMER
+            if _contains_khmer(tutor_reply)
+            else SAFE_PRAISE_FALLBACK_ENG
+        )
+    return _clue_fallback(tutor_reply, subject)
+
+
 def check_tutor_response_leak(
     tutor_reply: str,
     target_answer: str,
@@ -334,7 +365,8 @@ def check_tutor_response_leak(
     attempts_count: int = 1,
     unsolved_step_values: Optional[List[str]] = None,
     final_answer: Optional[str] = None,
-    problem_text: Optional[str] = None
+    problem_text: Optional[str] = None,
+    subject: Optional[str] = None,
 ) -> Tuple[bool, str, str]:
     """
     Evaluates tutor reply for answer leakage and guessing game proximity signals.
@@ -353,6 +385,8 @@ def check_tutor_response_leak(
         unsolved_step_values: List of answer values for future unsolved steps
         final_answer:         Problem final answer
         problem_text:         Original problem text to exempt stated numbers
+        subject:              Active subject (math/science/...) so a quarantined
+                              reply gets subject-appropriate fallback wording
 
     Returns:
         (is_leak_detected: bool, final_reply: str, reason: str)
@@ -407,6 +441,24 @@ def check_tutor_response_leak(
             elif tok_v is None and tok.lower() not in {target_answer.lower()} | {u.lower() for u in (unsolved_step_values or [])}:
                 exempted_tokens.add(tok)
 
+        # Words already named in the problem statement are given information,
+        # exactly like its numbers. Without this, a step target such as
+        # "sunlight" in "why do plants need sunlight?" made the active step's
+        # own mission text look like an answer leak.
+        problem_l = problem_text.lower()
+        for word in re.findall(r"[a-z][a-z'\-]+", problem_l):
+            exempted_tokens.add(word)
+        for target in [target_answer, *(unsolved_step_values or []), final_answer or ""]:
+            target_l = str(target or "").strip().lower()
+            # Numeric targets already go through the disclosure-window-aware
+            # operand allowlist above; this exemption is for word concepts only.
+            if (
+                target_l
+                and not re.search(r"\d", target_l)
+                and re.search(rf"\b{re.escape(target_l)}\b", problem_l)
+            ):
+                exempted_tokens.add(target_l)
+
     # ─────────────────────────────────────────────────────────────────────────
     # 1. Multi-Step Praise Shield:
     # Even if current step is solved, check future unsolved steps & final answer!
@@ -435,7 +487,7 @@ def check_tutor_response_leak(
         if fut_val is not None:
             leaked, leaked_tok = _token_matches_value(cleaned_reply, fut_val, exempted_tokens, problem_operands=given_operands)
             if leaked:
-                fallback = SAFE_PRAISE_FALLBACK_KHMER if _contains_khmer(tutor_reply) else SAFE_PRAISE_FALLBACK_ENG
+                fallback = _future_leak_fallback(tutor_reply, subject, is_step_solved)
                 return True, fallback, f"unsolved_future_step_leak_detected ({leaked_tok})"
         else:
             # Word concept target
@@ -446,7 +498,7 @@ def check_tutor_response_leak(
                 and w_target not in exempted_tokens
                 and re.search(rf"\b{re.escape(w_target)}\b", cleaned_reply, re.IGNORECASE)
             ):
-                fallback = SAFE_PRAISE_FALLBACK_KHMER if _contains_khmer(tutor_reply) else SAFE_PRAISE_FALLBACK_ENG
+                fallback = _future_leak_fallback(tutor_reply, subject, is_step_solved)
                 return True, fallback, f"unsolved_future_concept_leak_detected ({w_target})"
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -463,7 +515,7 @@ def check_tutor_response_leak(
     # 3. Check current step leakage:
     # ─────────────────────────────────────────────────────────────────────────
     target_val = _extract_target_value(target_answer)
-    clue_fallback = SAFE_CLUE_FALLBACK_KHMER if _contains_khmer(tutor_reply) else SAFE_CLUE_FALLBACK_ENG
+    clue_fallback = _clue_fallback(tutor_reply, subject)
 
     if target_val is None:
         # Non-numeric target (e.g. word concept 'chloroplast', 'gas', 'liquid', 'vertebrate')

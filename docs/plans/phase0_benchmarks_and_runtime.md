@@ -1,6 +1,6 @@
 # Phase 0 Implementation Plan: Benchmarks, Runtime & Concurrency Control
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Sections 5.3, 5.5, 6, 12.2, 15.1, Appendix E, Appendix G)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Sections 5.3, 5.5, 6, 12.2, 15.1, Appendix E, Appendix G)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Completion Date:** 2026-10-19  
 > **Prerequisites:** Workspace Python environment (`.venv`), Ollama installed locally or in container.
@@ -22,12 +22,12 @@ Phase 0 establishes the local runtime foundation on the target workstation (AMD 
 
 | Component | Target Specification | Phase 0 Verified Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- |
-| **Primary Provider** | Local resident Ollama (`qwen3.5:4b`) | `qwen3.5:4b` verified resident in local Ollama (3.38 GB) | [`config.py:L20-30`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/core/config.py#L20-L30) |
-| **Concurrency Gate** | Bounded semaphore `asyncio.Semaphore(1)` | Enforced via `self._semaphore = asyncio.Semaphore(1)` | [`manager.py:L31-35`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/llm/manager.py#L31-L35) |
-| **Streaming Timeout** | 6.0 s first-token deadline; 15.0 s turn cap | Enforced via `asyncio.wait_for(..., timeout=self._total_turn_timeout)` | [`manager.py:L166-177`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/llm/manager.py#L166-L177) |
-| **Token Ceiling** | Strictly 220 tokens (`num_predict: 220`) | `LLM_NUM_PREDICT = 220` configured in `config.py` | [`config.py:L32`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/core/config.py#L32) |
-| **Failover Ladder** | Single retry -> Skill Template fallback -> Resting notice | 1-retry loop with 300ms backoff in `manager.py` | [`manager.py:L160-180`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/llm/manager.py#L160-L180) |
-| **Concurrency Bench** | `backend/testing/bench_concurrency.py` | Automated CLI benchmark script executed | [`bench_concurrency.py:L1-195`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/testing/bench_concurrency.py#L1-L195) |
+| **Primary Provider** | Local resident Ollama (`qwen3.5:4b`) | `qwen3.5:4b` verified resident in local Ollama (3.38 GB) | [`config.py:L20-30`](../../backend/orchestrator/app/core/config.py#L20-L30) |
+| **Concurrency Gate** | Bounded semaphore `asyncio.Semaphore(1)` | Enforced via `self._semaphore = asyncio.Semaphore(1)` | [`manager.py:L31-35`](../../backend/orchestrator/app/services/llm/manager.py#L31-L35) |
+| **Streaming Timeout** | 6.0 s first-token deadline; 15.0 s turn cap | Enforced via `asyncio.wait_for(..., timeout=self._total_turn_timeout)` | [`manager.py:L166-177`](../../backend/orchestrator/app/services/llm/manager.py#L166-L177) |
+| **Token Ceiling** | Strictly 220 tokens (`num_predict: 220`) | `LLM_NUM_PREDICT = 220` configured in `config.py` | [`config.py:L32`](../../backend/orchestrator/app/core/config.py#L32) |
+| **Failover Ladder** | Single retry -> Skill Template fallback -> Resting notice | 1-retry loop with 300ms backoff in `manager.py` | [`manager.py:L160-180`](../../backend/orchestrator/app/services/llm/manager.py#L160-L180) |
+| **Concurrency Bench** | `backend/testing/bench_concurrency.py` | Automated CLI benchmark script executed | [`bench_concurrency.py:L1-195`](../../backend/testing/bench_concurrency.py#L1-L195) |
 
 ---
 

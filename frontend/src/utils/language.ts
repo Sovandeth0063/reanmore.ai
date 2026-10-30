@@ -3,21 +3,21 @@ import { Language } from '../types';
 /**
  * Returns Khmer text if language is 'km', otherwise English text.
  */
-export function t(_lang: Language, _khmer: string, english: string): string {
-  return english;
+export function t(lang: Language, khmer: string, english: string): string {
+  return lang === 'km' ? khmer : english;
 }
 
 /**
  * Strips bilingual parenthetical content when in single-language mode.
  * Example: "ការបូក ឬ ការគុណ (Addition or Multiplication)" -> "Addition or Multiplication"
  */
-export function cleanBilingualOption(option: string, _lang?: Language): string {
+export function cleanBilingualOption(option: string, lang: Language = 'en'): string {
   if (!option) return '';
-  
+
   // Matches "Khmer text (English text)"
   const match = option.match(/^(.+?)\s*[\(\（]([^)\）]+)[\)\）]$/);
   if (match) {
-    return match[2].trim();
+    return (lang === 'km' ? match[1] : match[2]).trim();
   }
   return option;
 }

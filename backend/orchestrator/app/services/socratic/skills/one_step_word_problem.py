@@ -13,6 +13,14 @@ class OneStepWordProblemSkill:
 
     def make_distinct_example(self, problem: Dict[str, Any], forbidden: set) -> Dict[str, Any]:
         candidates = [
+            {"total": 3, "part1": 1, "part2": 2, "char": "Dara", "item": "balls"},
+            {"total": 4, "part1": 1, "part2": 3, "char": "Maya", "item": "ducks"},
+            {"total": 5, "part1": 2, "part2": 3, "char": "Sokha", "item": "books"},
+            {"total": 6, "part1": 3, "part2": 3, "char": "Vannak", "item": "stickers"},
+            {"total": 7, "part1": 3, "part2": 4, "char": "Chann", "item": "crayons"},
+            {"total": 8, "part1": 3, "part2": 5, "char": "Kolab", "item": "oranges"},
+            {"total": 9, "part1": 4, "part2": 5, "char": "Rithy", "item": "pencils"},
+            {"total": 10, "part1": 4, "part2": 6, "char": "Bopha", "item": "mangoes"},
             {"total": 14, "part1": 6, "part2": 8, "char": "Bopha", "item": "mangoes"},
             {"total": 15, "part1": 6, "part2": 9, "char": "Chann", "item": "crayons"},
             {"total": 16, "part1": 7, "part2": 9, "char": "Vannak", "item": "stickers"},
@@ -20,7 +28,15 @@ class OneStepWordProblemSkill:
             {"total": 20, "part1": 7, "part2": 13, "char": "Kolab", "item": "oranges"},
             {"total": 22, "part1": 8, "part2": 14, "char": "Rithy", "item": "erasers"},
         ]
-        for c in candidates:
+        # Keep the worked example at a similar difficulty to the child's problem.
+        if "a" in problem and "b" in problem:
+            target = int(problem["a"]) + int(problem["b"])
+        else:
+            target = int(problem.get("total", 0)) or (
+                int(problem.get("part1", 0)) + int(problem.get("part2", 0))
+            )
+        ordered = sorted(candidates, key=lambda c: abs(c["total"] - target))
+        for c in ordered:
             if {c["total"], c["part1"], c["part2"]}.isdisjoint(forbidden):
                 return c
         return {

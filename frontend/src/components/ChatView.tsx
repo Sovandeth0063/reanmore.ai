@@ -19,6 +19,7 @@ import { updateActivity, findActiveActivity } from '../utils/reportUtils';
 import {
   mapWidgetToStepItems,
   extractStepWidgetFromMessage,
+  localizeStepsForKhmer,
   thinkingTextsEng,
   thinkingTextsKhmer,
 } from './chat/chatUtils';
@@ -64,7 +65,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onSelectExercise,
   onExerciseComplete,
 }) => {
-  const isKhmer = false;
+  const isKhmer = profile.language === 'km';
   const activeSession = activeSessionProp ?? sessions.find((s) => s.id === activeSessionId);
   const messages = activeSession?.messages ?? [];
   const latestMessagesRef = useRef<ChatMessage[]>(messages);
@@ -73,6 +74,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [messages]);
 
   const [activeProblem, setActiveProblem] = useState<HomeworkProblem | undefined>(initialProblem);
+
+  // When the UI is Khmer, translate dynamic step content via /api/translate.
+  // Text that is already Khmer (or an unavailable endpoint) is left untouched.
+  useEffect(() => {
+    if (profile.language !== 'km') return;
+    const steps = activeProblem?.steps;
+    if (!steps || steps.length === 0) return;
+    let cancelled = false;
+    localizeStepsForKhmer(steps).then((localized) => {
+      if (cancelled || localized === steps) return;
+      setActiveProblem((prev) => (prev ? { ...prev, steps: localized } : prev));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile.language, activeProblem?.id, activeProblem?.steps?.length]);
+
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(() => {
     if (initialProblem?.id && activeSession?.problemStepProgress?.[initialProblem.id]) {
       return activeSession.problemStepProgress[initialProblem.id].currentStepIndex ?? 0;
@@ -656,8 +674,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
-      textEng: `[Step ${stepNum}]: ${studentAnswer}`,
-      textKhmer: `[ជំហានទី ${stepNum}]: ${studentAnswer}`,
+      textEng: studentAnswer,
+      textKhmer: studentAnswer,
+      stepNumber: stepNum,
+      stepTotal: activeProblem?.steps?.length,
       problemId: activeProblem?.id,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
@@ -803,11 +823,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputQuery('');
     shouldAutoScrollToBottomRef.current = true;
 
-    const isBinaryMath = /^\s*\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?\s*(?:=\s*\??)?\s*$/.test(
-      userText
+    // Accept conversational wrappers like "what 2+2" / "what's 8 + 6?" so
+    // simple questions are treated as a fresh arithmetic problem.
+    const bareMath = userText
+      .replace(
+        /^(?:please\s+)?(?:what(?:'s|’s|\s+is|\s+are)?|whats|how\s+much\s+is|how\s+many\s+is|solve|calculate|compute)\s*/i,
+        ''
+      )
+      .replace(/[?=.\s]+$/, '')
+      .trim();
+    const isBinaryMath = /^\d+(?:\.\d+)?\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?$/.test(
+      bareMath
     );
     const isNewProblemPhrase =
-      /^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference|new\s+problem|another\s+problem)\b/i.test(
+      /^(?:solve|calculate|compute|what(?:'s|’s|\s+is|\s+are)?(?=\s*\d)|whats(?=\s*\d)|how\s+much\s+is\s+\d+|how\s+many\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference|new\s+problem|another\s+problem)\b/i.test(
         userText
       );
     const expectedAns = String(

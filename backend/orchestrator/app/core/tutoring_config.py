@@ -96,6 +96,18 @@ SAFE_CLUE_FALLBACK_KHMER: Final[str] = (
     "តើអ្នកអាចប្រើប្រមាណវិធីអ្វីបន្តទៀត?"
 )
 
+# Subject-aware variants: the same guard protects every subject, so an
+# intercepted science reply must not be replaced by arithmetic wording.
+SAFE_CLUE_FALLBACK_SCIENCE_ENG: Final[str] = (
+    "💡 You're on the right track! Look back at the clue in this step and think "
+    "about the science idea it points to. What do you notice?"
+)
+
+SAFE_CLUE_FALLBACK_SCIENCE_KHMER: Final[str] = (
+    "💡 អ្នកដើរត្រូវផ្លូវហើយ! សូមពិនិត្យតម្រុយក្នុងជំហាននេះ ហើយគិតអំពីគំនិតវិទ្យាសាស្ត្រ"
+    "ដែលវាបង្ហាញ។ តើអ្នកកត់សម្គាល់ឃើញអ្វី?"
+)
+
 NEAR_MISS_FEEDBACK_ENG: Final[str] = (
     "💡 You are very close! Take another look at your calculation."
 )

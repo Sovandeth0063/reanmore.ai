@@ -87,7 +87,7 @@ export default function App() {
     const unsubscribe = AuthService.subscribe((account) => {
       setCurrentUser(account);
       if (account) {
-        setProfile({ ...account.profile, language: 'en' });
+        setProfile(account.profile);
       }
     });
     return unsubscribe;
@@ -329,9 +329,17 @@ export default function App() {
     : (sessions.find(s => s.id === activeSessionId) ?? draftSession ?? sessions[0] ?? createBlankDraftSession(profile.name));
 
   const handleUpdateProfile = (updated: Partial<UserProfile>) => {
-    const sanitized = { ...updated, language: 'en' as const };
-    AuthService.updateProfile(sanitized);
+    const sanitized = { ...updated };
+    if (currentUser) {
+      AuthService.updateProfile(sanitized);
+    }
     setProfile((prev: UserProfile) => ({ ...prev, ...sanitized }));
+  };
+
+  const handleToggleLanguage = () => {
+    handleUpdateProfile({
+      language: profile.language === 'km' ? 'en' : 'km',
+    });
   };
 
   const handleOpenAuth = (requiredRole?: UserRole) => {
@@ -644,6 +652,8 @@ export default function App() {
         }}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
+        language={profile.language}
+        onToggleLanguage={handleToggleLanguage}
       />
 
       <main className={`relative z-10 flex-1 min-h-0 w-full mx-auto ${activeTab === 'chat' ? 'w-full px-1.5 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 h-full overflow-hidden flex flex-col' : 'max-w-7xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8'}`}>

@@ -1,13 +1,14 @@
 """
-Unit tests for ReanMore v2.1 Feature Flags & Language Deferral (Phase 7).
+Unit tests for ReanMore v2.1 Feature Flags & Language Support (Phase 7).
 Verifies that:
-1. When ENABLE_KHMER_LANGUAGE is False (default):
+1. v2.1 defaults: Khmer UI toggle + /api/translate are ON; OCR and voice STT are OFF.
+2. When ENABLE_KHMER_LANGUAGE is False:
    - detect_language returns "english" unconditionally
    - translate_to_khmer returns the original text untouched
    - /api/translate returns HTTP 501 Not Implemented
-2. When ENABLE_KHMER_LANGUAGE is True:
+3. When ENABLE_KHMER_LANGUAGE is True:
    - detect_language recognizes Khmer Unicode and Khmenglish
-3. Voice STT is disabled by default in v2.1.
+4. Voice STT is disabled by default in v2.1.
 """
 
 import os
@@ -46,8 +47,9 @@ client = TestClient(app)
 
 def test_default_feature_flags():
     """Verify v2.1 default feature flag states."""
-    assert getattr(settings, "ENABLE_KHMER_LANGUAGE", False) is False
+    assert getattr(settings, "ENABLE_KHMER_LANGUAGE", False) is True
     assert getattr(settings, "ENABLE_VOICE_STT", False) is False
+    assert getattr(settings, "ENABLE_API_OCR", False) is False
 
 
 def test_detect_language_when_disabled():

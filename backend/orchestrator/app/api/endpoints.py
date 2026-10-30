@@ -27,6 +27,7 @@ from app.infrastructure.database import (
     get_student_telemetry_stats,
 )
 from app.services.socratic.graph import socratic_graph, _is_answer_equivalent
+from app.services.socratic.math_engine.cas import strip_arithmetic_wrappers
 from app.services.socratic.validate_answer import validate_student_answer
 from app.services.socratic.card_schema import StepWidgetPayload
 from app.services.socratic.prompts.controller import socratic_prompt_controller as prompt_controller
@@ -305,12 +306,19 @@ async def handle_query(
         # 2. Pipeline Stage 1 & 2: Normalize
         normalized_query = normalize_query(raw_query)
 
-        # Check if incoming query is a standalone arithmetic calculation (e.g. '4 + 5 =', '4 + 5 + 6 =') or explicit solve request
+        # Check if incoming query is a standalone arithmetic calculation (e.g. '4 + 5 =', 'what 2+2') or explicit solve request
         is_fraction_literal = bool(re.match(r'^\s*-?\d+/\d+\s*$', normalized_query))
-        has_binary_math = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?(?:\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?)+(?:\s*=\s*\??)?\s*$', normalized_query))
+        math_candidate = strip_arithmetic_wrappers(normalized_query)
+        has_binary_math = not is_fraction_literal and bool(re.search(r'^\s*\d+(?:\.\d+)?(?:\s*[\+\-\*\/xX×÷]\s*\d+(?:\.\d+)?)+(?:\s*=\s*\??)?\s*$', math_candidate))
         expected_ans_str = str(active_step_dict.get("expected_answer") or "").strip() if active_step_dict else ""
         is_step_ans_match = bool(expected_ans_str and normalized_query.strip() == expected_ans_str)
-        is_explicit_solve = bool(re.match(r'^(?:solve|calculate|what\s+is\s+\d+|how\s+much\s+is\s+\d+|find\s+the\s+sum|find\s+the\s+difference)\b', normalized_query, re.I))
+        is_explicit_solve = bool(re.match(
+            r"^(?:solve|calculate|compute|"
+            r"what(?:['’]?s|\s+is|\s+are)?(?=\s*\d)|whats(?=\s*\d)|"
+            r"how\s+much\s+is\s+\d+|how\s+many\s+is\s+\d+|"
+            r"find\s+the\s+(?:sum|difference)|new\s+problem|another\s+problem)",
+            normalized_query, re.I
+        ))
         is_standalone_new_math = has_binary_math and not is_step_ans_match
 
         # If query is an unambiguous new problem, override and reset active state
@@ -840,7 +848,11 @@ async def submit_step_answer(request: StepAnswerRequest):
             is_correct = bool(
                 expected_ans is not None
                 and str(expected_ans).strip()
-                and _is_answer_equivalent(request.student_answer, str(expected_ans))
+                and _is_answer_equivalent(
+                    request.student_answer,
+                    str(expected_ans),
+                    target_step.get("acceptable_answers"),
+                )
             )
 
         target_step["student_answer"] = request.student_answer

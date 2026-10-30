@@ -18,6 +18,51 @@ logger = logging.getLogger("orchestrator.socratic.math_engine.cas")
 
 MAX_MAGNITUDE = 10_000_000
 
+# Conversational openers children commonly type before a bare expression,
+# e.g. "what 2+2", "what's 8 + 6?", "please solve 4 x 3".
+_CONVERSATIONAL_PREFIX_RE = re.compile(
+    r"""
+    ^\s*
+    (?:(?:please|pls|hey|hi|hello|ok|okay|so|um|uh)[\s,]+)*
+    (?:(?:can|could|would)\s+you\s+(?:please\s+)?)?
+    (?:(?:help\s+me\s+)?(?:solve|calculate|compute|evaluate|work\s+out|tell\s+me|
+        find(?:\s+the\s+(?:sum|difference|value|answer)(?:\s+of)?)?)\s*)?
+    (?:(?:what(?:['’]?s|\s+is|\s+are)?|whats|
+        how\s+much\s+is|how\s+many\s+is|how\s+many\s+are)\s*)?
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+_TRAILING_ARITHMETIC_NOISE_RE = re.compile(r"(?:\s*=\s*\?*|\s*\?+|\s*[.!]+)\s*$")
+
+
+def strip_arithmetic_wrappers(text: str) -> str:
+    """
+    Removes conversational padding around a bare arithmetic expression and
+    normalizes word/symbol operators.
+
+    This keeps "what 2+2", "what's 8 + 6?" and "please solve 4 x 3" on the
+    deterministic arithmetic path instead of letting them be mistaken for
+    narrative word problems.
+    """
+    if not text:
+        return ""
+
+    cleaned = text.strip()
+    # Word operators become symbols before any leftover-word check.
+    cleaned = re.sub(r"\bplus\b", "+", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bminus\b", "-", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:times|multiplied\s+by)\b", "*", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:divided\s+by|divide\s+by)\b", "/", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace("×", "*").replace("÷", "/").replace("−", "-")
+    # Only treat "x" as multiplication when it sits between two digits,
+    # so words like "box" are never mangled.
+    cleaned = re.sub(r"(?<=\d)\s*[xX]\s*(?=\d)", "*", cleaned)
+
+    cleaned = _CONVERSATIONAL_PREFIX_RE.sub("", cleaned, count=1).strip()
+    cleaned = _TRAILING_ARITHMETIC_NOISE_RE.sub("", cleaned).strip()
+    return cleaned
+
 
 def format_exact_fraction(val: Fraction) -> str:
     """Formats a Fraction as an elementary-friendly string (integer, clean decimal, or fraction)."""
@@ -114,18 +159,9 @@ def parse_binary_arithmetic(query: str) -> Optional[Dict[str, Any]]:
     Detects and parses two-operand elementary arithmetic expressions (+, -, *, /).
     Returns dict with a, b, op, and exact answer if matched.
     """
-    clean = (
-        query
-        .replace("×", "*")
-        .replace("÷", "/")
-        .replace("x", "*")
-        .replace("plus", "+")
-        .replace("minus", "-")
-        .replace("times", "*")
-        .strip()
-    )
+    clean = strip_arithmetic_wrappers(query)
     # Match standard patterns like '8 + 6', '15 + 27', '14 - 6', '4 * 3', '24 / 6'
-    match = re.search(r"^\s*(\d+(?:\.\d+)?|\d+/\d+)\s*([\+\-\*\/])\s*(\d+(?:\.\d+)?|\d+/\d+)\s*(?:=\s*\??)?\s*$", clean)
+    match = re.search(r"^(\d+(?:\.\d+)?|\d+/\d+)\s*([\+\-\*\/])\s*(\d+(?:\.\d+)?|\d+/\d+)$", clean)
     if not match:
         return None
 

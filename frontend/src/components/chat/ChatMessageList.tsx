@@ -94,6 +94,14 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
           ? msg.textKhmer || msg.textEng || ''
           : msg.textEng || msg.textKhmer || '';
 
+        // Older messages stored the step inline ("[Step 1]: 2 and 2"); lift it out
+        // of the text so it can be shown as a pill above the bubble instead.
+        const legacyStepMatch = isUser
+          ? displayText.match(/^\[\s*(?:Step|ជំហានទី|ជំហាន)\s*(\d+)\s*\]\s*:?\s*/i)
+          : null;
+        const stepNumber = msg.stepNumber ?? (legacyStepMatch ? parseInt(legacyStepMatch[1], 10) : undefined);
+        const bubbleText = legacyStepMatch ? displayText.slice(legacyStepMatch[0].length) : displayText;
+
         const stepCardData = !isUser ? extractStepWidgetFromMessage(msg) : null;
 
         return (
@@ -135,8 +143,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                   visualData={
                     stepCardData.activeStep?.visualData ||
                     (stepCardData.activeStep as any)?.visual_data ||
-                    (stepCardData.widget as any)?.visual_data ||
-                    (stepCardData.widget as any)?.visualData ||
+                    // Widget-level visuals belong to step 1 only.
+                    (stepCardData.activeIdx === 0
+                      ? (stepCardData.widget as any)?.visual_data ||
+                        (stepCardData.widget as any)?.visualData
+                      : undefined) ||
                     activeProblem?.visualData ||
                     (activeProblem as any)?.visual_data
                   }
@@ -162,20 +173,38 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
               </div>
             ) : (
               <div
-                className={`max-w-[88%] sm:max-w-[80%] min-w-0 p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] text-xs sm:text-sm md:text-base leading-relaxed break-words overflow-hidden ${
-                  isUser
-                    ? 'bg-[#1B4332] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
-                    : msg.isSafetyRefusal
-                    ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
-                    : 'bg-white text-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                className={`flex flex-col gap-1.5 max-w-[88%] sm:max-w-[80%] min-w-0 ${
+                  isUser ? 'items-end' : 'items-start'
                 }`}
               >
-                <div className="font-black text-xs sm:text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">
-                  {formatMessageText(displayText)}
+                {isUser && stepNumber !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 max-w-full px-2.5 py-1 bg-white text-[#1B4332] rounded-full border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332] animate-fadeIn">
+                    <span className="w-4 h-4 bg-[#1B4332] text-white rounded-full flex items-center justify-center text-[9px] font-black shrink-0">
+                      {stepNumber}
+                    </span>
+                    <span className="text-[10px] font-black uppercase tracking-wide truncate">
+                      {isKhmer
+                        ? `ជំហានទី ${stepNumber}${msg.stepTotal ? ` នៃ ${msg.stepTotal}` : ''}`
+                        : `Step ${stepNumber}${msg.stepTotal ? ` of ${msg.stepTotal}` : ''}`}
+                    </span>
+                  </span>
+                )}
+                <div
+                  className={`max-w-full min-w-0 p-2.5 sm:p-4 md:p-5 rounded-xl sm:rounded-3xl border-2 sm:border-3 border-[#1B4332] text-xs sm:text-sm md:text-base leading-relaxed break-words overflow-hidden ${
+                    isUser
+                      ? 'bg-[#1B4332] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-right'
+                      : msg.isSafetyRefusal
+                      ? 'bg-[#2D6A4F] text-white shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                      : 'bg-white text-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] speech-tail-left'
+                  }`}
+                >
+                  <div className="font-black text-xs sm:text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">
+                    {formatMessageText(bubbleText)}
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] mt-1.5 block text-right font-black opacity-80">
+                    {msg.timestamp}
+                  </span>
                 </div>
-                <span className="text-[9px] sm:text-[10px] mt-1.5 block text-right font-black opacity-80">
-                  {msg.timestamp}
-                </span>
               </div>
             )}
           </div>

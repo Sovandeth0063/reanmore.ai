@@ -31,9 +31,6 @@ export default defineConfig(() => {
             if (id.includes("/src/data/")) {
               return "content-data";
             }
-            if (id.includes("/src/services/translationService")) {
-              return "content-i18n";
-            }
             if (!id.includes("node_modules")) {
               return undefined;
             }

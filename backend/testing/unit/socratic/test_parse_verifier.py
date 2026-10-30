@@ -55,6 +55,22 @@ def test_unclear_or_insufficient_numbers():
     assert res.problem_type == "unclear"
 
 
+def test_conversational_arithmetic_wrappers_are_not_word_problems():
+    from app.services.socratic.parse_verifier import is_pure_arithmetic_expression
+
+    for text in [
+        "what 2+2",
+        "what's 2 + 2",
+        "whats 5+3?",
+        "please solve 4 x 3",
+        "how much is 6 + 7?",
+    ]:
+        assert is_pure_arithmetic_expression(text) is True, text
+        res = verify_and_parse_word_problem(text)
+        assert res.problem_type == "arithmetic", text
+        assert res.is_valid is False
+
+
 def test_pure_arithmetic_expressions_are_not_word_problems():
     from app.services.socratic.parse_verifier import is_pure_arithmetic_expression
     

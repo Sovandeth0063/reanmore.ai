@@ -1,6 +1,6 @@
 # Phase 2 Implementation Plan: Golden Verification (50 Worksheets) & Real-Kid Pilot Protocol
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Section 15, 15.1, 15.2, Appendix H, Repository Layout)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Section 15, 15.1, 15.2, Appendix H, Repository Layout)  
 > **Status:** APPROVED IMPLEMENTATION PLAN  
 > **Prerequisites:** Phases 0 and 1A through 1E complete and verified.
 

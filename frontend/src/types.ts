@@ -116,6 +116,10 @@ export interface ChatMessage {
   imageUri?: string | undefined;
   problem?: HomeworkProblem | undefined;
   activeStepIndex?: number | undefined;
+  /** Step this message belongs to (e.g. a student's answer to Step 1). */
+  stepNumber?: number | undefined;
+  /** Total number of steps in the exercise, when known. */
+  stepTotal?: number | undefined;
   isSafetyRefusal?: boolean | undefined;
   stepWidget?: any;
   suggestedChips?: string[] | undefined;

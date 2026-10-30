@@ -4,6 +4,7 @@ import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, Volume2 } f
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
 import { fastValidateStepAnswer } from '../services/answerValidationService';
+import { expectsNumericAnswer } from '../utils/answerNormalization';
 
 interface StepCardProps {
   step: StepItem;
@@ -20,13 +21,14 @@ export const StepCard: React.FC<StepCardProps> = ({
   step,
   isCompleted = false,
   onNextStep,
-  language = 'km',
+  language = 'en',
   visualData,
   onAnswerSubmit,
   onOpenHints,
   onOpenExplainDifferently,
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
+  const showNumberPad = expectsNumericAnswer(step);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect' | 'near_miss'>('none');
   const [typedAnswer, setTypedAnswer] = useState('');
@@ -169,6 +171,7 @@ export const StepCard: React.FC<StepCardProps> = ({
             <VisualWidget
               visualData={visualData}
               step={step}
+              language={language}
               onSelect={(val) => {
                 const singleVal = Array.isArray(val) ? val[0] || '' : val;
                 setTypedAnswer(singleVal);
@@ -218,36 +221,42 @@ export const StepCard: React.FC<StepCardProps> = ({
         </div>
       ) : (
         <form onSubmit={handleFormSubmit} className="space-y-2 sm:space-y-3">
-          {/* Quick Number Tap Chips for Young Learners */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((digit) => (
+          {/* Quick Number Tap Chips for Young Learners — numeric steps only */}
+          {showNumberPad && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => setTypedAnswer((prev) => prev + digit)}
+                  disabled={isSubmitting || feedback === 'correct'}
+                  className="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-[#A7CDB4] text-[#1B4332] font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs sm:text-sm active:translate-y-0.5 shrink-0 cursor-pointer"
+                >
+                  {digit}
+                </button>
+              ))}
               <button
-                key={digit}
                 type="button"
-                onClick={() => setTypedAnswer((prev) => prev + digit)}
-                disabled={isSubmitting || feedback === 'correct'}
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-[#A7CDB4] text-[#1B4332] font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs sm:text-sm active:translate-y-0.5 shrink-0 cursor-pointer"
+                onClick={() => setTypedAnswer((prev) => prev.slice(0, -1))}
+                disabled={isSubmitting || feedback === 'correct' || !typedAnswer}
+                className="px-2 h-8 sm:h-9 bg-white hover:bg-red-50 text-red-600 font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs shrink-0 cursor-pointer"
+                title="Delete"
               >
-                {digit}
+                ⌫
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setTypedAnswer((prev) => prev.slice(0, -1))}
-              disabled={isSubmitting || feedback === 'correct' || !typedAnswer}
-              className="px-2 h-8 sm:h-9 bg-white hover:bg-red-50 text-red-600 font-black rounded-lg border-2 border-[#1B4332] shadow-[1px_1px_0px_#1B4332] flex items-center justify-center text-xs shrink-0 cursor-pointer"
-              title="Delete"
-            >
-              ⌫
-            </button>
-          </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={typedAnswer}
               onChange={(e) => setTypedAnswer(e.target.value)}
-              placeholder={isKhmer ? 'វាយចម្លើយ ឬចុចលេខខាងលើ...' : 'Type or tap numbers above...'}
+              placeholder={
+                showNumberPad
+                  ? (isKhmer ? 'វាយចម្លើយ ឬចុចលេខខាងលើ...' : 'Type or tap numbers above...')
+                  : (isKhmer ? 'វាយចម្លើយរបស់អ្នក...' : 'Type your answer...')
+              }
               className="flex-1 p-2.5 sm:p-3.5 bg-[#E8F5E9] rounded-xl sm:rounded-2xl border-2 sm:border-3 border-[#1B4332] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] font-black text-xs sm:text-sm md:text-base text-[#1B4332] focus:outline-none focus:bg-white"
             />
             <button

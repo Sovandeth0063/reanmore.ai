@@ -1,6 +1,6 @@
 import React from 'react';
-import { UserProfile, UserAccount, UserRole } from '../types';
-import { Home, BookOpen, User, Award } from 'lucide-react';
+import { UserProfile, UserAccount, UserRole, Language } from '../types';
+import { Home, BookOpen, User, Award, Languages } from 'lucide-react';
 import logoWhiteImg from '../assets/logo_white.png';
 
 export type TabType = 'home' | 'chat' | 'profile' | 'report';
@@ -12,6 +12,8 @@ interface HeaderProps {
   onSelectTab: (tab: TabType) => void;
   onOpenAuth?: (requiredRole?: UserRole) => void;
   onLogout?: () => void;
+  language?: Language;
+  onToggleLanguage?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -22,16 +24,12 @@ const NAV_ITEMS = [
 ];
 
 export const Header: React.FC<HeaderProps> = ({
-  profile,
-  currentUser,
   activeTab,
   onSelectTab,
-  onOpenAuth,
-  onLogout,
+  language = 'en',
+  onToggleLanguage,
 }) => {
-  const isKhmer = false;
-  const role = currentUser?.role || profile.role || 'student';
-  const isParent = role === 'parent';
+  const isKhmer = language === 'km';
   const isChat = activeTab === 'chat';
 
   return (
@@ -55,6 +53,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Navigation & Auth */}
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {onToggleLanguage && (
+              <button
+                type="button"
+                onClick={onToggleLanguage}
+                title={isKhmer ? 'Switch to English' : 'ប្តូរទៅភាសាខ្មែរ'}
+                aria-label={isKhmer ? 'Switch to English' : 'Switch to Khmer'}
+                className="flex items-center gap-1 px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl font-black text-[10px] sm:text-xs bg-[#2D6A4F] text-white border-2 border-[#1B4332] hover:bg-[#40916C] cursor-pointer"
+              >
+                <Languages className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>{isKhmer ? 'EN' : 'ខ្មែរ'}</span>
+              </button>
+            )}
             <nav className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
               {NAV_ITEMS.map((item) => {
                 const isActive = activeTab === item.key;

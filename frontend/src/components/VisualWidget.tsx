@@ -4,12 +4,10 @@
  * All widgets HIDE answers before exercise completion.
  */
 import { useState } from 'react';
-import { VisualData, StepItem } from '../types';
+import { VisualData, StepItem, Language } from '../types';
 import { NumberLineWidget } from './widgets/NumberLineWidget';
 import { PlaceValueWidget } from './widgets/PlaceValueWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
-import { AnimalFeatureCard } from './widgets/AnimalFeatureCard';
-import { AnimalGroupCard } from './widgets/AnimalGroupCard';
 import { MultipleChoiceWidget } from './widgets/MultipleChoiceWidget';
 import { ObjectGroupsWidget } from './widgets/ObjectGroupsWidget';
 import { VisualRenderer } from './visual/VisualRenderer';
@@ -34,6 +32,7 @@ import {
 interface Props {
   visualData: VisualData | null;
   step?: StepItem | undefined;
+  language?: Language | undefined;
   onSelect?: ((selected: string | string[]) => void) | undefined;
 }
 
@@ -94,10 +93,11 @@ export function extractStepNumbers(step?: StepItem, defaultGroups?: number[]): n
   return [];
 }
 
-export function VisualWidget({ visualData, step, onSelect }: Props) {
+export function VisualWidget({ visualData, step, language, onSelect }: Props) {
   if (!visualData) return null;
 
   const v = visualData as Record<string, any>;
+  const isKhmer = language === 'km';
 
   // Route deterministic VisualSpec models from Architecture v2.1 to pure SVG VisualRenderer
   if (
@@ -131,6 +131,7 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
         <ObjectGroupsWidget
           groups={activeGroups}
           itemType={v.item_type || v.itemType || 'apple'}
+          language={language}
           titleKhmer={v.title_khmer || v.titleKhmer}
           titleEng={v.title_eng || v.titleEng}
         />
@@ -271,19 +272,11 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
         </div>
       );
 
+    // Legacy hardcoded animal widgets are intentionally unsupported. The planner
+    // must express animal questions as classification_split / multiple_choice data.
     case 'animal_feature_card':
-      return (
-        <AnimalFeatureCard
-          animal={v.animal ?? ''}
-          emoji=""
-          features={v.features ?? []}
-          step={step}
-          onSelect={(val) => onSelect?.(val)}
-        />
-      );
-
     case 'animal_group_card':
-      return <AnimalGroupCard group={v.group ?? ''} emoji="" />;
+      return null;
 
     case 'multiple_choice_images':
       return (
@@ -303,31 +296,50 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
         />
       );
 
-    case 'producer_consumer_sort':
+    case 'producer_consumer_sort': {
+      const pickBilingual = (text: string) => {
+        const match = text.match(/^(.+?)\s*[\(\（]([^)\）]+)[\)\）]$/);
+        if (!match) return text;
+        return isKhmer ? match[1].trim() : match[2].trim();
+      };
+      // Items must come from the planner; there is no hardcoded example set.
+      const rawItems: unknown = v.items;
+      const items = (Array.isArray(rawItems) ? rawItems : [])
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map(pickBilingual);
+      if (items.length < 2) return null;
       return (
         <div className="w-full pt-1 select-none">
           <div className="text-xs sm:text-sm font-black text-[#1B4332] mb-2 flex items-center gap-1.5">
             <GitCompare className="w-4 h-4 text-[#2D6A4F]" />
-            <span>ចាត់ថ្នាក់អ្នកផលិត និងអ្នកស៊ី (Sort: Producers vs Consumers):</span>
+            <span>
+              {isKhmer
+                ? 'ចាត់ថ្នាក់អ្នកផលិត និងអ្នកស៊ី៖'
+                : 'Sort: Producers vs Consumers:'}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-2">
             <div className="border-2 border-dashed border-emerald-500 bg-white/80 rounded-2xl p-3 min-h-[70px] flex flex-col items-center shadow-xs">
               <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
                 <Sprout className="w-3.5 h-3.5 text-emerald-700" />
-                <span>អ្នកផលិត (Producers)</span>
+                <span>{isKhmer ? 'អ្នកផលិត' : 'Producers'}</span>
               </span>
-              <span className="text-[10px] text-emerald-700 font-bold mt-1 text-center">បង្កើតអាហារដោយខ្លួនឯង (Makes own food)</span>
+              <span className="text-[10px] text-emerald-700 font-bold mt-1 text-center">
+                {isKhmer ? 'បង្កើតអាហារដោយខ្លួនឯង' : 'Makes own food'}
+              </span>
             </div>
             <div className="border-2 border-dashed border-amber-500 bg-white/80 rounded-2xl p-3 min-h-[70px] flex flex-col items-center shadow-xs">
               <span className="text-xs font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
                 <Activity className="w-3.5 h-3.5 text-amber-700" />
-                <span>អ្នកស៊ី (Consumers)</span>
+                <span>{isKhmer ? 'អ្នកស៊ី' : 'Consumers'}</span>
               </span>
-              <span className="text-[10px] text-amber-700 font-bold mt-1 text-center">ស៊ីសារពាង្គកាយដទៃ (Eats others)</span>
+              <span className="text-[10px] text-amber-700 font-bold mt-1 text-center">
+                {isKhmer ? 'ស៊ីសារពាង្គកាយដទៃ' : 'Eats other living things'}
+              </span>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap justify-center">
-            {((v.items as string[]) || ['ស្មៅ (Grass)', 'ទន្សាយ (Rabbit)', 'ដើមស្រូវ (Rice Plant)', 'ឥន្ទ្រី (Eagle)']).map((item: string, i: number) => (
+            {items.map((item: string, i: number) => (
               <span key={i} className="px-2.5 py-1 bg-white border border-emerald-300 rounded-xl text-xs font-black text-[#1B4332] shadow-xs cursor-pointer hover:bg-emerald-50">
                 {item}
               </span>
@@ -335,67 +347,128 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
           </div>
         </div>
       );
+    }
 
-    case 'classification_split':
+    case 'classification_split': {
+      // Categories are always generated per question by the planner. There is
+      // deliberately no fallback panel: a payload without categories renders
+      // nothing rather than showing a hardcoded answer key.
+      const categories: string[] = Array.isArray(v.categories)
+        ? (v.categories as unknown[])
+            .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+            .slice(0, 2)
+        : [];
+      if (categories.length < 2) return null;
+
+      const heading = isKhmer ? 'ជ្រើសរើសក្រុមត្រឹមត្រូវ៖' : 'Choose the correct group:';
+      const cardStyles = [
+        {
+          border: 'border-blue-200',
+          badge: 'bg-blue-100 border-blue-300 text-blue-800',
+          title: 'text-blue-900',
+        },
+        {
+          border: 'border-rose-200',
+          badge: 'bg-rose-100 border-rose-300 text-rose-800',
+          title: 'text-rose-900',
+        },
+      ];
+
+      // Cards are only answer choices when the backend could identify which
+      // label matches the hidden answer. Otherwise they stay decorative so a
+      // tap can never submit the wrong group.
+      const stepOptions = Boolean(step?.options && step.options.length > 0);
+      const knownAnswers =
+        (step as any)?.acceptableAnswers || (step as any)?.acceptable_answers || [];
+      const canTapCards =
+        Boolean(onSelect) &&
+        !stepOptions &&
+        Array.isArray(knownAnswers) &&
+        knownAnswers.length > 0;
+
       return (
         <div className="w-full pt-1 select-none">
           <div className="text-xs sm:text-sm font-black text-[#1B4332] mb-2 flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-[#2D6A4F]" />
-            <span>សត្វមានឆ្អឹងកង និងឥតឆ្អឹងកង (Vertebrate vs Invertebrate):</span>
+            <span>{heading}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/90 border-2 border-blue-200 rounded-2xl p-3 text-center shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-300 text-blue-800 font-black text-xs flex items-center justify-center mx-auto mb-1.5">
-                VERT
-              </div>
-              <div className="text-xs sm:text-sm font-black text-blue-900">សត្វមានឆ្អឹងកង (Vertebrate)</div>
-              <div className="text-[10px] text-blue-700 font-bold mt-0.5">មានឆ្អឹងខ្នងទ្រទ្រង់ខ្លួន (Has Backbone)</div>
-            </div>
-            <div className="bg-white/90 border-2 border-rose-200 rounded-2xl p-3 text-center shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-300 text-rose-800 font-black text-xs flex items-center justify-center mx-auto mb-1.5">
-                INVERT
-              </div>
-              <div className="text-xs sm:text-sm font-black text-rose-900">សត្វឥតឆ្អឹងកង (Invertebrate)</div>
-              <div className="text-[10px] text-rose-700 font-bold mt-0.5">គ្មានឆ្អឹងខ្នង (No Backbone)</div>
-            </div>
+            {categories.map((category: string, i: number) => {
+              const style = cardStyles[i];
+              const cardInner = (
+                <>
+                  <div
+                    className={`w-9 h-9 rounded-xl border ${style.badge} font-black text-xs flex items-center justify-center mx-auto mb-1.5`}
+                  >
+                    {String.fromCharCode(65 + i)}
+                  </div>
+                  <div className={`text-xs sm:text-sm font-black ${style.title}`}>{category}</div>
+                </>
+              );
+              return canTapCards ? (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSelect?.(category)}
+                  aria-label={`Choose group ${String.fromCharCode(65 + i)}: ${category}`}
+                  className={`bg-white/90 border-2 ${style.border} rounded-2xl p-3 text-center shadow-xs cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]`}
+                >
+                  {cardInner}
+                </button>
+              ) : (
+                <div
+                  key={i}
+                  className={`bg-white/90 border-2 ${style.border} rounded-2xl p-3 text-center shadow-xs`}
+                >
+                  {cardInner}
+                </div>
+              );
+            })}
           </div>
+          {canTapCards && (
+            <p className="text-[10px] sm:text-xs font-bold text-[#2D6A4F] text-center mt-1.5">
+              {isKhmer ? 'ចុចក្រុមមួយដើម្បីឆ្លើយ' : 'Tap a group to answer'}
+            </p>
+          )}
         </div>
       );
+    }
 
     case 'food_chain':
       return (
         <div className="w-full pt-1 select-none">
           <div className="text-xs sm:text-sm font-black text-[#1B4332] mb-2 flex items-center gap-1.5">
             <Sprout className="w-4 h-4 text-[#2D6A4F]" />
-            <span>ខ្សែច្រវាក់អាហារ (Ecosystem Food Chain):</span>
+            <span>{isKhmer ? 'ខ្សែច្រវាក់អាហារ៖' : 'Ecosystem Food Chain:'}</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 justify-center flex-wrap py-1">
             <div className="flex flex-col items-center bg-white/90 border-2 border-emerald-300 p-2 sm:p-2.5 rounded-2xl min-w-[70px] sm:min-w-[80px] shadow-xs">
               <Sprout className="w-7 h-7 text-emerald-600 mb-1" />
               <span className="text-[10px] sm:text-xs font-black text-emerald-900 mt-1">
-                {v.hide_target_word ? '???' : 'អ្នកផលិត'}
+                {v.hide_target_word ? '???' : isKhmer ? 'អ្នកផលិត' : 'Producer'}
               </span>
-              <span className="text-[9px] text-emerald-700 font-bold">Producer</span>
             </div>
 
             <ArrowRight className="w-5 h-5 text-emerald-600 animate-pulse shrink-0" />
 
             <div className="flex flex-col items-center bg-white/90 border-2 border-amber-300 p-2 sm:p-2.5 rounded-2xl min-w-[70px] sm:min-w-[80px] shadow-xs">
               <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-[10px] mb-1">
-                HERB
+                {isKhmer ? 'រុក្ខជាតិ' : 'HERB'}
               </div>
-              <span className="text-[10px] sm:text-xs font-black text-amber-900 mt-1">អ្នកស៊ីសត្វល្អិត</span>
-              <span className="text-[9px] text-amber-700 font-bold">Herbivore</span>
+              <span className="text-[10px] sm:text-xs font-black text-amber-900 mt-1">
+                {isKhmer ? 'អ្នកស៊ីរុក្ខជាតិ' : 'Herbivore'}
+              </span>
             </div>
 
             <ArrowRight className="w-5 h-5 text-amber-600 animate-pulse shrink-0" />
 
             <div className="flex flex-col items-center bg-white/90 border-2 border-rose-300 p-2 sm:p-2.5 rounded-2xl min-w-[70px] sm:min-w-[80px] shadow-xs">
               <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center font-black text-[10px] mb-1">
-                APEX
+                {isKhmer ? 'សាច់' : 'APEX'}
               </div>
-              <span className="text-[10px] sm:text-xs font-black text-rose-900 mt-1">អ្នកស៊ីសាច់</span>
-              <span className="text-[9px] text-rose-700 font-bold">Apex Predator</span>
+              <span className="text-[10px] sm:text-xs font-black text-rose-900 mt-1">
+                {isKhmer ? 'អ្នកស៊ីសាច់' : 'Apex Predator'}
+              </span>
             </div>
           </div>
         </div>
@@ -406,26 +479,34 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
         <div className="w-full pt-1 select-none">
           <div className="text-xs sm:text-sm font-black text-[#1B4332] mb-2 flex items-center gap-1.5">
             <Sprout className="w-4 h-4 text-[#2D6A4F]" />
-            <span>ផ្នែកផ្សេងៗនៃរុក្ខជាតិ (Plant Anatomy):</span>
+            <span>{isKhmer ? 'ផ្នែកផ្សេងៗនៃរុក្ខជាតិ៖' : 'Plant Anatomy:'}</span>
           </div>
           <div className="flex flex-col items-center gap-1.5 max-w-xs mx-auto py-1">
             <div className="w-full py-1.5 px-3 bg-pink-100/90 border-2 border-pink-300 rounded-xl text-center text-xs font-black text-pink-900 shadow-xs flex items-center justify-between">
-              <span>ផ្កា (Flower)</span>
-              <span className="text-[10px] text-pink-700 font-bold">បន្តពូជ (Reproduction)</span>
+              <span>{isKhmer ? 'ផ្កា' : 'Flower'}</span>
+              <span className="text-[10px] text-pink-700 font-bold">
+                {isKhmer ? 'បន្តពូជ' : 'Reproduction'}
+              </span>
             </div>
             <div className="w-full py-1.5 px-3 bg-emerald-100/90 border-2 border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-900 shadow-xs flex items-center justify-between">
-              <span>ស្លឹក (Leaves)</span>
-              <span className="text-[10px] text-emerald-700 font-bold">ធ្វើរស្មីសំយោគ (Photosynthesis)</span>
+              <span>{isKhmer ? 'ស្លឹក' : 'Leaves'}</span>
+              <span className="text-[10px] text-emerald-700 font-bold">
+                {isKhmer ? 'ធ្វើរស្មីសំយោគ' : 'Photosynthesis'}
+              </span>
             </div>
             <div className="w-1.5 h-4 bg-amber-600 rounded" />
             <div className="w-full py-1.5 px-3 bg-amber-100/90 border-2 border-amber-300 rounded-xl text-center text-xs font-black text-amber-900 shadow-xs flex items-center justify-between">
-              <span>ដើម (Stem)</span>
-              <span className="text-[10px] text-amber-700 font-bold">ដឹកនាំទឹក និងសារធាតុ (Transport)</span>
+              <span>{isKhmer ? 'ដើម' : 'Stem'}</span>
+              <span className="text-[10px] text-amber-700 font-bold">
+                {isKhmer ? 'ដឹកនាំទឹក និងសារធាតុ' : 'Transports water and nutrients'}
+              </span>
             </div>
             <div className="w-1.5 h-3 bg-orange-600 rounded" />
             <div className="w-full py-1.5 px-3 bg-orange-100/90 border-2 border-orange-300 rounded-xl text-center text-xs font-black text-orange-900 shadow-xs flex items-center justify-between">
-              <span>ឫស (Roots)</span>
-              <span className="text-[10px] text-orange-700 font-bold">ស្រូបយកទឹក និងជី (Absorption)</span>
+              <span>{isKhmer ? 'ឫស' : 'Roots'}</span>
+              <span className="text-[10px] text-orange-700 font-bold">
+                {isKhmer ? 'ស្រូបយកទឹក និងជី' : 'Absorbs water and nutrients'}
+              </span>
             </div>
           </div>
         </div>
@@ -433,18 +514,17 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
 
     case 'circuit':
     case 'circuit_simulator':
-      return <InteractiveCircuitWidget v={v} />;
+      return <InteractiveCircuitWidget v={v} isKhmer={isKhmer} />;
 
     case 'equation_balance':
     case 'balance_scale':
-      return <EquationBalanceWidget v={v} />;
+      return <EquationBalanceWidget v={v} isKhmer={isKhmer} />;
 
     case 'tape_diagram':
-    case 'bar_model':
-      return <TapeDiagramWidget v={v} />;
+      return <TapeDiagramWidget v={v} isKhmer={isKhmer} />;
 
     case 'geometry_angle':
-      return <GeometryAngleWidget v={v} />;
+      return <GeometryAngleWidget v={v} isKhmer={isKhmer} />;
 
     default:
       return null;
@@ -453,7 +533,7 @@ export function VisualWidget({ visualData, step, onSelect }: Props) {
 
 /* ── Interactive Sub-Widgets ── */
 
-function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
+function InteractiveCircuitWidget({ v, isKhmer }: { v: Record<string, any>; isKhmer: boolean }) {
   const [isSwitchClosed, setIsSwitchClosed] = useState(Boolean(v.switch_closed));
 
   return (
@@ -461,7 +541,9 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Zap className="w-4 h-4 text-amber-600" />
-          <span className="text-xs font-black text-[#1B4332]">សៀគ្វីអគ្គិសនី (Electric Circuit):</span>
+          <span className="text-xs font-black text-[#1B4332]">
+            {isKhmer ? 'សៀគ្វីអគ្គិសនី៖' : 'Electric Circuit:'}
+          </span>
         </div>
 
         <button
@@ -472,7 +554,9 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
               : 'bg-rose-100 text-rose-800 border-rose-300'
           }`}
         >
-          {isSwitchClosed ? 'កុងតាក់បិទ (ON)' : 'កុងតាក់បើក (OFF)'}
+          {isKhmer
+            ? isSwitchClosed ? 'កុងតាក់បិទ' : 'កុងតាក់បើក'
+            : isSwitchClosed ? 'Switch: ON' : 'Switch: OFF'}
         </button>
       </div>
 
@@ -480,7 +564,9 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
         {/* Battery */}
         <div className="flex flex-col items-center">
           <BatteryMedium className="w-8 h-8 text-emerald-400" />
-          <span className="text-[9px] font-black text-emerald-400 mt-0.5">ថ្មពិល</span>
+          <span className="text-[9px] font-black text-emerald-400 mt-0.5">
+            {isKhmer ? 'ថ្មពិល' : 'Battery'}
+          </span>
         </div>
 
         {/* Animated Current Wires */}
@@ -493,7 +579,9 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
           ) : (
             <ToggleLeft className="w-8 h-8 text-slate-400" />
           )}
-          <span className="text-[9px] font-black text-sky-300 mt-0.5">កុងតាក់</span>
+          <span className="text-[9px] font-black text-sky-300 mt-0.5">
+            {isKhmer ? 'កុងតាក់' : 'Switch'}
+          </span>
         </div>
 
         <div className={`h-1 flex-1 mx-2 transition-all duration-500 ${isSwitchClosed ? 'bg-amber-400 shadow-[0_0_8px_#F59E0B]' : 'bg-slate-600'}`} />
@@ -507,7 +595,9 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
             )}
           </div>
           <span className={`text-[9px] font-black mt-0.5 ${isSwitchClosed ? 'text-yellow-300' : 'text-slate-400'}`}>
-            {isSwitchClosed ? 'អំពូលភ្លឺ' : 'អំពូលរលត់'}
+            {isKhmer
+              ? isSwitchClosed ? 'អំពូលភ្លឺ' : 'អំពូលរលត់'
+              : isSwitchClosed ? 'Bulb: ON' : 'Bulb: OFF'}
           </span>
         </div>
       </div>
@@ -515,7 +605,7 @@ function InteractiveCircuitWidget({ v }: { v: Record<string, any> }) {
   );
 }
 
-function EquationBalanceWidget({ v }: { v: Record<string, any> }) {
+function EquationBalanceWidget({ v, isKhmer }: { v: Record<string, any>; isKhmer: boolean }) {
   const leftWeights = v.left_weights ?? 5;
   const rightWeights = v.right_weights ?? 15;
   const unknownCount = v.unknown_count ?? 2;
@@ -525,7 +615,7 @@ function EquationBalanceWidget({ v }: { v: Record<string, any> }) {
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-black text-[#1B4332] flex items-center gap-1.5">
           <Scale className="w-4 h-4 text-[#2D6A4F]" />
-          <span>ជញ្ជីងសមីការ (Equation Balance):</span>
+          <span>{isKhmer ? 'ជញ្ជីងសមីការ៖' : 'Equation Balance:'}</span>
         </span>
         <span className="text-[11px] font-black text-emerald-800 bg-white/80 px-2 py-0.5 rounded-md border border-emerald-300">
           {unknownCount}x + {leftWeights} = {rightWeights}
@@ -536,7 +626,9 @@ function EquationBalanceWidget({ v }: { v: Record<string, any> }) {
         <div className="flex items-end justify-around h-24 border-b-4 border-slate-700 pb-1">
           {/* Left Pan */}
           <div className="flex flex-col items-center bg-emerald-50 border-2 border-emerald-300 p-2 rounded-xl min-w-[90px] shadow-xs">
-            <span className="text-[9px] font-black text-emerald-800 mb-0.5">ថាសឆ្វេង (Left)</span>
+            <span className="text-[9px] font-black text-emerald-800 mb-0.5">
+              {isKhmer ? 'ថាសឆ្វេង' : 'Left side'}
+            </span>
             <div className="flex gap-1 items-center">
               {Array.from({ length: unknownCount }).map((_, i) => (
                 <span key={i} className="w-5 h-5 bg-emerald-600 text-white rounded-md flex items-center justify-center text-[10px] font-black shadow-xs">
@@ -558,7 +650,9 @@ function EquationBalanceWidget({ v }: { v: Record<string, any> }) {
 
           {/* Right Pan */}
           <div className="flex flex-col items-center bg-amber-50 border-2 border-amber-300 p-2 rounded-xl min-w-[90px] shadow-xs">
-            <span className="text-[9px] font-black text-amber-800 mb-0.5">ថាសស្តាំ (Right)</span>
+            <span className="text-[9px] font-black text-amber-800 mb-0.5">
+              {isKhmer ? 'ថាសស្តាំ' : 'Right side'}
+            </span>
             <span className="px-2 py-0.5 bg-amber-400 text-slate-900 rounded-md text-xs font-black shadow-xs">
               {rightWeights}
             </span>
@@ -569,7 +663,7 @@ function EquationBalanceWidget({ v }: { v: Record<string, any> }) {
   );
 }
 
-function TapeDiagramWidget({ v }: { v: Record<string, any> }) {
+function TapeDiagramWidget({ v, isKhmer }: { v: Record<string, any>; isKhmer: boolean }) {
   const parts = (v.parts as number[]) || [3, 2];
   const total = parts.reduce((a, b) => a + b, 0);
 
@@ -578,10 +672,10 @@ function TapeDiagramWidget({ v }: { v: Record<string, any> }) {
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-black text-[#1B4332] flex items-center gap-1.5">
           <Ruler className="w-4 h-4 text-[#2D6A4F]" />
-          <span>គំរូរបារប្រភាគ (Tape Model):</span>
+          <span>{isKhmer ? 'គំរូរបារប្រភាគ៖' : 'Tape Model:'}</span>
         </span>
         <span className="text-[11px] font-black text-indigo-800 bg-white/80 px-2 py-0.5 rounded-md border border-indigo-300">
-          សរុប = {total}
+          {isKhmer ? `សរុប = ${total}` : `Total = ${total}`}
         </span>
       </div>
 
@@ -602,7 +696,7 @@ function TapeDiagramWidget({ v }: { v: Record<string, any> }) {
   );
 }
 
-function GeometryAngleWidget({ v }: { v: Record<string, any> }) {
+function GeometryAngleWidget({ v, isKhmer }: { v: Record<string, any>; isKhmer: boolean }) {
   const angleA = v.angle_a ?? 60;
   const angleB = v.angle_b ?? 70;
   const unknownAngle = v.unknown ?? '?';
@@ -612,7 +706,9 @@ function GeometryAngleWidget({ v }: { v: Record<string, any> }) {
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-black text-[#1B4332] flex items-center gap-1.5">
           <Triangle className="w-4 h-4 text-[#2D6A4F]" />
-          <span>មុំត្រីកោណ (Angles Sum = 180°):</span>
+          <span>
+            {isKhmer ? 'មុំត្រីកោណ (សរុប = 180°)៖' : 'Triangle Angles (Sum = 180°):'}
+          </span>
         </span>
       </div>
 

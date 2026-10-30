@@ -1,9 +1,9 @@
 # ReanMore v2.1: Current Status & Pending Features Roadmap
 
-> **Authoritative Architecture:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md)  
-> **Collaborator Guide:** [`docs/plans/README.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/plans/README.md)  
+> **Authoritative Architecture:** [`ReanMore_Architecture_v2.1.md`](ReanMore_Architecture_v2.1.md)  
+> **Collaborator Guide:** [`plans/README.md`](plans/README.md)  
 > **Target Release:** v2.1 (English-first MVP, 100% Offline Local Model, 4-Container Stack)  
-> **Verification Status:** **100% Green Unit Tests (624/624) + Verified Live Browser Walkthroughs ✅**
+> **Verification Status:** **649/649 backend tests + 50/50 golden worksheets + 100/100 adversarial probes (2026-10-30) ✅**
 
 ---
 
@@ -13,7 +13,7 @@ ReanMore is an offline-first, $0.00 cloud inference Socratic STEM homework tutor
 
 Instead of dumping direct answers, ReanMore decomposes problems into 2–4 bite-sized pedagogical milestones, enforces 3-tier progressive hints paired with **deterministic SVG visual models** (Ten-Frames, Number Lines, Base-Ten Blocks, Array Grids, Fraction Bars, Bar Models), and strictly quarantines premature answers via **Leak Guard v2**.
 
-This document summarizes **what has been completed and verified** and provides the comprehensive engineering roadmap for **what is left (OCR photo ingress, bilingual Khmer NLP/translation, and classroom field testing)**.
+This document summarizes **what has been completed and verified** and the roadmap for **what is left: classroom field testing plus two explicitly deferred features (OCR photo ingress, full Khmer NLP)**. The Khmer UI toggle and dynamic `/api/translate` ship in v2.1; Khmer segmentation/parser/MoEYS ingestion do not.
 
 ---
 
@@ -38,7 +38,10 @@ flowchart TD
         F1["Feature A: Local Worksheet Photo Ingress (Docling v2 / Offline VLM)"]
         F2["Feature B: Bilingual Khmer NLP & Translation (Script Segmentation & MoEYS)"]
         F3["Feature C: Live Classroom Field Observation Trial (6-10 Students)"]
-        F4["Feature D: Legacy Microservice Pruning (Archive math_service & science_service)"]
+    end
+
+    subgraph DONE_LATE ["✅ COMPLETED (this close-out)"]
+        F4["Legacy Microservices Archived (legacy/microservices) + 4-Container Compose"]
     end
 
     COMPLETED --> PENDING
@@ -88,39 +91,43 @@ flowchart TD
 
 ## 4. Pending Features Roadmap (Staff Left to Do)
 
-### Feature 1: Worksheet Photo Ingress & OCR Pipeline (Phase 4)
-* **Status:** `PARTIAL (FUNCTIONAL MVP BUILT; REAL-WORLD BENCHMARKING & TESTING IN PROGRESS) 🟡`
-* **What is Already Built & Working:**
-  * **Frontend Camera & Upload Ingress**: Complete camera viewfinder snapshot, image upload, and interactive crop box in [`HomeworkScanner.tsx`](file:///d:/User/Science_chatbot/frontend/src/components/HomeworkScanner.tsx).
-  * **Multi-Exercise Parsing**: Robust extraction of multi-part worksheet problems, exercise numbers, options, subjects, and grade detection in [`ocrService.ts`](file:///d:/User/Science_chatbot/frontend/src/services/ocrService.ts).
-  * **Interactive Worksheet Stepper**: Scanned questions directly populate the frontend `WorksheetQueue` stepper so students can solve problems one by one.
-  * **PII Redaction Filter**: Automatic student name/header masking in [`ingress.py`](file:///d:/User/Science_chatbot/backend/orchestrator/app/services/ocr/ingress.py).
-  * **Graceful Degradation**: Clear fallback notices and manual entry when the vision service is unavailable.
-* **Why It is Classified as Partial (Areas for Ongoing Testing & Improvement):**
-  1. **No Strict Need for 100% Offline Weight Imposition**: The system works with fast vision endpoints; forcing local student devices to download 4–8 GB local offline vision models (Docling/Qwen-VL) is an optional deployment mode rather than a prerequisite.
-  2. **Real-World Classroom Stress Testing**: Needs broader testing across varied lighting, phone camera angles, crumpled paper, and shadows.
-  3. **Messy Handwritten Digit Recognition**: Fine-tuning for young children's faint pencil/pen handwriting on paper.
+### Feature 1: Worksheet Photo Ingress & OCR Pipeline (Phase 4 — DEFERRED)
+* **Status:** `DEFERRED — OUT OF THE v2.1 MVP`
+* **Decision (2026-10-30):** The OCR stack is parked, not shipped. The `/api/upload/ocr`
+  and `/api/upload/select` endpoints return `404` unless `ENABLE_API_OCR=true`, which
+  defaults to `false`. OCR is not part of any MVP claim.
+* **Why deferred:** the VLM path was both disabled and dependent on a cloud endpoint
+  (`OLLAMA_BASE_URL=https://ollama.com`), which contradicts the offline/$0-inference
+  MVP promise. Shipping it requires a local VLM, the BE-11 prompt-injection sanitizer,
+  and a classroom handwriting stress test.
+* **Prototype retained (not wired into the MVP UI):** camera/crop ingress,
+  multi-exercise parsing, PII header masking, and graceful degradation. These are
+  unit-tested but not reachable while the flag is off.
+* **Re-entry criteria for Phase 4:** local VLM benchmark on classroom photos,
+  sanitizer + adversarial stress results, and an explicit scope decision.
 
 ---
 
-### Feature 2: Bilingual Khmer NLP & Translation (v2.2 Scope)
-* **Status:** `PENDING (Phase 5 / v2.2)`
-* **Current Foundation:**
-  * v2.1 MVP is 100% English-first to ensure high generation speed and zero hallucinations on 6 GB VRAM workstations.
-  * Basic Khmer numeral mapping (១, ២, ៣ ↔ 1, 2, 3) and affirmative/negative stubs exist in [`graph.py`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/socratic/graph.py).
-* **Remaining Engineering Work:**
-  1. **Unspaced Khmer Script Segmentation & Tokenization**: Integrate `khmer-nltk` / CRF word-boundary tokenizers to accurately parse unspaced Khmer text.
-  2. **Bilingual Parallel Socratic Prompts**: Complete formal Khmer translations for all 7 math skill templates, guiding prompts, on-card clues, and 3-tier hints.
-  3. **MoEYS Official Textbook Ingestion**: Ingest official Ministry of Education, Youth and Sport (MoEYS) Grade 1–6 Science and Math textbooks into the local Qdrant vector database.
-  4. **Khmer Math Word Problem Parser**: Entity, subject, and quantity extraction for Khmer word problem stories (e.g. សុខា មានស្វាយ ៥ ផ្លែ... Sokha has 5 mangoes).
-  5. **Dynamic UI Language Toggle**: Full bilingual language switcher in the frontend header with culturally warm student particles (ប្អូន, កូន, ចាស/បាទ).
+### Feature 2: Khmer UI Toggle + Translation (v2.1) & Full Khmer NLP (v2.2)
+* **Shipped in v2.1:**
+  * Header/profile language toggle (EN ↔ ខ្មែរ), persisted in the student profile.
+  * Static bilingual UI strings render from each component's Khmer/English pairs.
+  * Dynamic step content is translated through the existing `POST /api/translate`
+    endpoint (`frontend/src/api/translateApi.ts` + `localizeStepsForKhmer`), with
+    graceful fallback to English when the model is unavailable.
+  * `ENABLE_KHMER_LANGUAGE` now defaults to `true`.
+* **Explicitly deferred to v2.2 (out of MVP):**
+  1. **Unspaced Khmer Script Segmentation & Tokenization** (`khmer-nltk` / CRF).
+  2. **Parallel Socratic Prompt Set** authored natively in Khmer for all skills and hint tiers.
+  3. **MoEYS Official Textbook Ingestion** into the local vector store.
+  4. **Khmer Math Word Problem Parser** (entity/quantity extraction from Khmer stories).
 
 ---
 
 ### Feature 3: Physical Classroom Field Observation Trial
 * **Status:** `READY FOR FIELD EXECUTION`
 * **Current Foundation:**
-  * 8-student testing protocol, parent/teacher consent templates, and teacher observation rubric complete in [`docs/pilot/`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/pilot/).
+  * 8-student testing protocol, parent/teacher consent templates, and teacher observation rubric complete in [`docs/pilot/`](../docs/pilot/).
   * 50 golden elementary math worksheets evaluation suite verified 100% green.
 * **Remaining Work:**
   1. Coordinate with a Phnom Penh elementary school to run an in-person pilot session with 6–10 students in Grades 2–4.
@@ -129,30 +136,42 @@ flowchart TD
 ---
 
 ### Feature 4: Legacy Microservice Pruning (Tech Debt Cleanup)
-* **Status:** `READY FOR ARCHIVAL`
-* **Current Foundation:**
-  * Standalone microservices in `backend/services/math_service/` (:9001) and `backend/services/science_service/` (:9002) have been fully superseded by in-process SymPy CAS and in-process FastEmbed RAG.
-* **Remaining Work:**
-  1. Archive the legacy microservice folders into a git branch (`legacy/microservices`).
-  2. Remove deprecated directories from the active repository tree to keep the codebase lean.
+* **Status:** `COMPLETED (2026-10-30)`
+* **What changed:**
+  * `backend/services/math_service/` and `backend/services/science_service/` moved to
+    [`legacy/microservices/`](../legacy/README.md) with their two dependent test files.
+  * Stale root-level copies (`orchestrator/`, `testing/`, `services/`, `ingestion/`) and
+    the old 7-service `docker-compose.legacy.yml` moved to `legacy/stray-root/`.
+  * The active `backend/docker-compose.yml` is the 4-container stack; the compose
+    qualification test now asserts exactly 4 services (Postgres, Ollama, Orchestrator,
+    Frontend).
+* **Verification:** full backend suite still green after the move (649 passed).
 
 ---
 
 ## 5. Verification Commands for Collaborators
 
 ```powershell
-# 1. Run Full Unit Test Suite (624 tests)
-& .venv\Scripts\python.exe -m pytest backend/testing/unit/ -v
+# From backend/
+cd backend
 
-# 2. Run 50 Golden Math Worksheets Benchmark
-& .venv\Scripts\python.exe backend/testing/evaluation/golden_worksheet_evaluator.py
+# 1. Full backend suite (649 tests: unit + integration)
+& .venv\Scripts\python.exe -m pytest -q
 
-# 3. Run 30 Golden Science Curriculum RAG Benchmark
-& .venv\Scripts\python.exe backend/testing/evaluation/science_rag_evaluator.py
+# 2. 50 Golden Math Worksheets Benchmark
+& .venv\Scripts\python.exe testing\evaluation\golden_verifier.py
 
-# 4. Run 100 Adversarial Leak Guard Probes
-& .venv\Scripts\python.exe -m pytest backend/testing/unit/guardrails/test_leak_guard_v2.py -v
+# 3. 100 Adversarial Leak Guard Probes
+& .venv\Scripts\python.exe testing\evaluation\adversarial_evaluator.py
 
-# 5. Run Live End-to-End Orchestrator API Verification
-python scratch/test_endpoints.py
+# 4. 30 Golden Science Curriculum RAG Benchmark
+& .venv\Scripts\python.exe testing\evaluation\science_rag_evaluator.py
+
+# 5. Pre-release qualification gate
+& .venv\Scripts\python.exe testing\tools\run_release_gate.py
+
+# From frontend/
+cd ..\frontend
+npm test        # vitest (19 tests)
+npm run build   # production bundle
 ```

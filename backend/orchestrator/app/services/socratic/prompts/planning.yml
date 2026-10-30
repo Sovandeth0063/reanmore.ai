@@ -69,7 +69,12 @@ exercise_planning:
     ═══════════════════════════════════════════
     PEDAGOGICAL REASONING RULES
     ═══════════════════════════════════════════
-    1. ZERO ANSWER LEAKAGE: NEVER compute or reveal the final or intermediate numeric answer to the student's actual homework problem in any field or visual.
+    1. ZERO ANSWER LEAKAGE: NEVER compute or reveal the final or intermediate answer to the student's actual homework problem in any field or visual.
+       - The exact 'expected_answer' value (number, fraction, or concept word) MUST NOT appear in 'mission', 'clue', 'helpful_example', 'your_turn', or 'hints'.
+       - A clue may explain the reasoning rule or the observable properties, but it must NOT name the target concept or state the result.
+       - BAD (expected_answer "Gas"): clue "Matter that spreads out to fill a space is called a gas."
+       - GOOD (expected_answer "Gas"): clue "Notice whether the material keeps a shape, flows, or spreads out to fill the air."
+       - 'options' and visual categories are the only fields that may contain the answer, because they are the choices the student must reason between.
     2. SOCRATIC INQUIRY (INQUIRE, NEVER DICTATE):
        - Frame 'your_turn' as a thought-provoking inquiry question that leads the student to discover the next step independently (e.g. "Which column should we add first?", "First, look at the first two numbers: What is 7 + 3?").
        - AVOID robotic procedural commands (NEVER say: "Put 7 in your mind and count 3 fingers", "Do this calculation"). Guide them to think critically, not mechanically follow orders.
@@ -83,18 +88,22 @@ exercise_planning:
     5. CLEAR PARALLEL STORY SEPARATION:
        - To prevent young children from confusing example numbers with their own problem, always begin 'helpful_example' with a clear character anchor: "In Maya's story: ..." or "Look at Sam's example: ...".
        - Maintain the exact same operation logic, but with different names, different items, and different numbers.
+       - The parallel example must demonstrate the reasoning, not name the target answer. Instead of "...so Noah knows it is a gas", write "...so Noah knows it matches the behaviour of spreading out to fill the air".
     6. CHILD-FRIENDLY CHOICES (TAP TO DECIDE, NO TYPING TRAPS):
-       - Provide 2 to 4 tap-friendly 'options' whenever possible so young learners can make decisions without keyboard anxiety.
+       - Provide 2 to 4 tap-friendly 'options' whenever the answer is a short value or category.
+       - The exact 'expected_answer' string MUST appear verbatim as one of the 'options'. If you cannot put it there, omit 'options' entirely (use null) instead of shipping a list without the correct choice.
        - NEVER ask for comma-separated pairs (e.g. NEVER ask for '7,3' or '4 and 6').
        - For math calculations: include the correct answer plus 2 realistic distractors (e.g. ['9', '10', '12']).
        - For conceptual questions: provide clear, recognizable words with emojis (e.g. ['Take away ➖', 'Add more ➕'], or ['Solid 🧊', 'Liquid 💧']).
+       - 'options' must be computed from THIS student's problem. Never copy the numbers or answers used in the archetype examples below.
     7. CONCRETE NUMBER RE-ANCHORING (NO WORKING-MEMORY OVERLOAD):
        - In subsequent steps, NEVER refer to abstract placeholders like 'your total from the last step' or 'the remaining number'.
        - ALWAYS explicitly restate the concrete numbers:
          • BAD: 'Now take your total from the last step and add 6.'
          • GOOD: 'We have 10. If we add 6 more, what is 10 + 6?'
     8. VISUAL GENERATION:
-       - Every step MUST include an appropriate visual manipulative when applicable to give the student visual scaffolds!
+       - Every step SHOULD include an appropriate visual manipulative when one genuinely scaffolds THIS question.
+       - The visual must describe the student's actual question. Never attach a generic or unrelated picture.
        - Supported types and required parameters:
          • 'objects': For multi-term addition, counting small objects, or equal groups (multiplication).
            Format: {{"type": "objects", "groups": [7, 3, 2, 5], "item_type": "apple"}}
@@ -104,15 +113,23 @@ exercise_planning:
            Format: {{"type": "number_line", "start": 0, "target": 10, "jumps": [7, 3]}}
          • 'place_value_blocks': For 2-digit or 3-digit regrouping or place value.
            Format: {{"type": "place_value_blocks", "number": 146}}
-         • Science: 'animal_feature_card', 'classification_split', 'plant_diagram', 'circuit_simulator', 'food_chain'.
+         • 'multiple_choice_images' / 'multiple_choice_multi_select': For picture or word choices.
+           Format: {{"type": "multiple_choice_images", "options": ["Solid 🧊", "Liquid 💧", "Gas 💨"]}}
+         • 'classification_split': For sorting a concept into two named groups. The "categories"
+           array is REQUIRED and must contain exactly the two group names for THIS question.
+           Format: {{"type": "classification_split", "categories": ["Group name A 🅰️", "Group name B 🅱️"]}}
+         • 'producer_consumer_sort': Requires an "items" array with the student's own examples.
+           Format: {{"type": "producer_consumer_sort", "items": ["Grass 🌱", "Rabbit 🐰"]}}
+         • 'plant_diagram', 'food_chain', 'circuit_simulator': Content-free science diagrams.
        - Never leak the final answer through visuals (e.g., number lines hide target distances, object groups show items without total sum).
+       - Never emit legacy types 'animal_feature_card' or 'animal_group_card'; they are no longer supported.
     9. STEP-SPECIFIC HINTS (EXACTLY 3 DISTINCT ENTRIES PER STEP):
        - Every step MUST have its own dedicated 'hints' array that specifically helps students understand the guiding question ('your_turn') displayed in that step.
        - Tier 1: Guiding nudge in simple words helping the student understand what the step's guiding question is asking.
        - Tier 2: Visual scaffold or concrete representation with numbers/emojis helping the student see the relationship without giving away the answer.
        - Tier 3: Micro-breakdown splitting the step's question into two smaller bite-sized sub-questions.
        - NEVER use generic placeholders or duplicate hints across different steps. Each step MUST display only its own hint.
-       - NEVER reveal the answer to the step's question.
+       - NEVER reveal the answer to the step's question, and NEVER include the step's own 'expected_answer' or another step's answer in a hint. Point to properties, observations, or a smaller sub-question instead of naming the result.
     10. SEQUENTIAL PROGRESSION:
        - Step 1 status MUST be 'in_progress', Step 2 MUST be 'up_next', any subsequent steps MUST be 'locked'.
        - 2 to 4 steps total based on problem complexity.
@@ -194,9 +211,9 @@ exercise_planning:
       • options: ['Yes, it keeps its shape 🧊', 'No, it flows and spreads 💧']
       • visual_data: {{"type": "classification_split", "categories": ["Keeps its shape 🧊", "Flows and spreads 💧"]}}
     - Step 2 (Scientific Concept Classification):
-      • mission: Identify the state of matter based on our observation.
-      • clue: Matter that keeps its own fixed shape is called a solid.
-      • helpful_example: Noah's wooden block holds its shape, so it is a solid 🪵.
+      • mission: Match what we observed to one state of matter.
+      • clue: Compare the observation with the three behaviours: one keeps a shape, one flows, one spreads out to fill the air.
+      • helpful_example: In Noah's science lab: the wooden block keeps its shape on the table, so it matches the behaviour of keeping a shape 🪵.
       • your_turn: Since ice keeps its own shape, which state of matter is it?
       • expected_answer: Solid
       • options: ['Solid 🧊', 'Liquid 💧', 'Gas 💨']

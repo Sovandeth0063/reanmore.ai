@@ -35,6 +35,15 @@ VALIDATION_CORRECT = "correct"
 VALIDATION_PARTIAL = "partial"
 VALIDATION_INCORRECT = "incorrect"
 
+# Tap options are decorated with emojis ("Gas 💨"); ignore them when grading.
+_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]"
+)
+
+
+def _strip_emoji(text: Any) -> str:
+    return re.sub(r"\s+", " ", _EMOJI_RE.sub(" ", str(text or ""))).strip()
+
 
 @dataclass
 class RevealState:
@@ -230,8 +239,11 @@ def validate_student_answer(
     3. Check exact match, cross-language booleans, numeric equivalence.
     4. Near-miss non-directional invariant: Identical clue for all wrong guesses in T +/- 1.
     """
-    s_raw = (student_attempt or "").strip()
-    e_raw = (expected_answer or "").strip()
+    s_raw = _strip_emoji(student_attempt)
+    e_raw = _strip_emoji(expected_answer)
+
+    if acceptable_answers:
+        acceptable_answers = [_strip_emoji(acc) for acc in acceptable_answers]
 
     if not s_raw or not e_raw:
         return ValidationOutcome(

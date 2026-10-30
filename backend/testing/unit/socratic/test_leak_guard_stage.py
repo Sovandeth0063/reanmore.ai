@@ -299,6 +299,85 @@ class TestLangGraphOutputLeakGuardStage:
         assert output.get("leak_quarantined") is not True
         assert output["feedback_message"] == clean_feedback
 
+    def test_compile_response_node_quarantines_leaked_step_hints(self):
+        """Hints rendered directly by the step cards must satisfy the leak guard."""
+        step1 = SocraticStep(
+            step_number=1,
+            title="Name the State",
+            status="in_progress",
+            mission="Match the observation to a state of matter",
+            clue="Notice how the steam spreads out to fill the air",
+            helpful_example="In Maya's lab, a balloon spreads out to fill with air.",
+            your_turn="Since steam spreads out to fill the air, which state of matter is it?",
+            expected_answer="Gas",
+            hints=[
+                "Steam is a gas that floats away.",
+                "Solids keep a shape and liquids flow. What about steam?",
+                "Does steam keep a shape like a rock? No. Does it stay in a puddle? No. It spreads out.",
+            ],
+        )
+        widget = StepWidgetPayload(
+            total_steps=1,
+            current_step_index=0,
+            completed_steps=[],
+            steps=[step1],
+        )
+
+        state = {
+            "session_id": "test_sess_003",
+            "step_widget": widget.model_dump(),
+            "feedback_message": None,
+            "active_hint": None,
+            "is_problem_complete": False,
+            "validation_outcome": "INCORRECT",
+            "is_reveal_state": False,
+            "current_hint_tier": 1,
+            "is_safe": True,
+        }
+
+        output = compile_response_node(state)
+
+        assert output.get("leak_quarantined") is True
+        hints = output["step_widget"]["steps"][0]["hints"]
+        assert all("gas" not in h.lower() for h in hints)
+
+    def test_compile_response_node_quarantines_leaked_card_text(self):
+        """Mission, clue, and parallel example must not name the expected answer."""
+        step1 = SocraticStep(
+            step_number=1,
+            title="Name the State",
+            status="in_progress",
+            mission="Name the gas that steam becomes.",
+            clue="Matter that spreads out to fill a space is called a gas.",
+            helpful_example="The balloon fills with air, so Noah knows it is a gas.",
+            your_turn="Since steam spreads out to fill the air, which state of matter is it?",
+            expected_answer="Gas",
+        )
+        widget = StepWidgetPayload(
+            total_steps=1,
+            current_step_index=0,
+            completed_steps=[],
+            steps=[step1],
+        )
+        state = {
+            "session_id": "test_sess_004",
+            "step_widget": widget.model_dump(),
+            "feedback_message": None,
+            "active_hint": None,
+            "is_problem_complete": False,
+            "validation_outcome": "INCORRECT",
+            "is_reveal_state": False,
+            "current_hint_tier": 0,
+            "is_safe": True,
+        }
+
+        output = compile_response_node(state)
+
+        assert output.get("leak_quarantined") is True
+        rendered = output["step_widget"]["steps"][0]
+        for field in ("mission", "clue", "helpful_example"):
+            assert "gas" not in rendered[field].lower(), field
+
 
 # =========================================================================
 # 5. Adversarial Leak Benchmark Runner (120 items, Target: 0% leaks)

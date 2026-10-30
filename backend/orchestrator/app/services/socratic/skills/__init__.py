@@ -1,6 +1,8 @@
 """
 File: orchestrator/app/services/socratic/skills/__init__.py
-Description: Package initializer for the 6 Core Elementary Math Skill Templates:
+Description: Package initializer for the Core Elementary Math Skill Templates:
+             - add_within_10 (simplest sums, registered before make-a-ten)
+             - sub_within_10 (simplest differences, registered before hop-back)
              - add_within_20
              - sub_within_20
              - add_2digit_regroup
@@ -12,10 +14,13 @@ Description: Package initializer for the 6 Core Elementary Math Skill Templates:
 
 from app.services.socratic.skills.base import Skill, StepTemplate, SkillRegistry, skill_registry
 
-# Import all skills to trigger registration in singleton skill_registry
-# Word problem skill is registered first so word problems are routed appropriately
+# Import all skills to trigger registration in singleton skill_registry.
+# Order matters: the first matching skill wins. Word problems are routed first,
+# then very simple sums, then the more abstract strategies.
 from app.services.socratic.skills import (
     one_step_word_problem,
+    add_within_10,
+    sub_within_10,
     add_within_20,
     sub_within_20,
     add_2digit_regroup,

@@ -1,6 +1,6 @@
 # Phase 1C Implementation Plan: Leak Guard v2 & Pedagogical Invariants
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Section 10.1, Appendix H)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Section 10.1, Appendix H)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Prerequisites:** Phase 1A & Phase 1B complete.
 
@@ -22,11 +22,11 @@ Phase 1C upgrades `backend/orchestrator/app/services/guardrails/leak_guard.py` t
 
 | Component | Current Implementation (Leak Guard v1) | Target Specification (Leak Guard v2) | Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Problem Operands** | Blocked if problem numbers collide with active/unsolved targets | Explicitly allowlisted operands from student problem text | `CONFLICTS` | [`leak_guard.py:L305-330`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/guardrails/leak_guard.py#L305-L330) |
-| **Disclosure Phrasing** | Broad regex matching on "equals" / "gives you" anywhere in text | Narrowed 6-token distance window before digit or number-word | `CONFLICTS` | [`leak_guard.py:L78-82`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/guardrails/leak_guard.py#L78-L82) |
+| **Problem Operands** | Blocked if problem numbers collide with active/unsolved targets | Explicitly allowlisted operands from student problem text | `CONFLICTS` | [`leak_guard.py:L305-330`](../../backend/orchestrator/app/services/guardrails/leak_guard.py#L305-L330) |
+| **Disclosure Phrasing** | Broad regex matching on "equals" / "gives you" anywhere in text | Narrowed 6-token distance window before digit or number-word | `CONFLICTS` | [`leak_guard.py:L78-82`](../../backend/orchestrator/app/services/guardrails/leak_guard.py#L78-L82) |
 | **Parallel Examples** | Can trigger false leak if example uses standard math syntax | Structural validation of `helpful_example` block | `MISSING` | Target: `leak_guard.py:validate_structural_example` |
 | **Visual Model Leak** | Not scanned | Multi-point parameter, label, and alt-text inspection | `MISSING` | Target: `leak_guard.py:scan_visual_spec` |
-| **Telemetry Logging** | Logs to stdout / file logger only | Logs `LEAK_BLOCKED` event directly to `gap_events` table | `PARTIAL` | [`leak_guard.py:L35-36`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/guardrails/leak_guard.py#L35-L36) |
+| **Telemetry Logging** | Logs to stdout / file logger only | Logs `LEAK_BLOCKED` event directly to `gap_events` table | `PARTIAL` | [`leak_guard.py:L35-36`](../../backend/orchestrator/app/services/guardrails/leak_guard.py#L35-L36) |
 
 ---
 

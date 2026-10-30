@@ -1,6 +1,6 @@
 # Phase 1E Implementation Plan: Streamlined 4-Container Topology & Frontend Integration
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Sections 2, 5.4, 5.5, 9, 12.1, 12.2)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Sections 2, 5.4, 5.5, 9, 12.1, 12.2)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Prerequisites:** Phases 1A through 1D complete.
 
@@ -20,10 +20,10 @@ Phase 1E consolidates the system infrastructure from a brittle 9-container proto
 
 | Component | Current Implementation | Target Specification | Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Container Count** | 9 distributed containers (Redis, Qdrant, MinIO, Math, Science, etc.) | 4 containers (Orchestrator, Postgres, Ollama, Frontend) | `CONFLICTS` | [`docker-compose.yml:L1-136`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/docker-compose.yml#L1-L136) |
-| **Turn Locking** | Redis distributed mutex | Per-session in-memory `asyncio.Lock` + Postgres advisory lock | `PARTIAL` | [`session.py:L1-80`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/session.py#L1-L80) |
-| **Quota Cache** | Redis fast-path counters + Postgres fallback | PostgreSQL ledger as single source of truth | `PARTIAL` | [`quota_guard.py:L18-24`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/orchestrator/app/services/quota/quota_guard.py#L18-L24) |
-| **Frontend Stepper** | Ad-hoc widget mounting | Unified stepper integrating `<VisualRenderer />` | `PARTIAL` | [`App.tsx:L1-200`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/frontend/src/App.tsx#L1-L200) |
+| **Container Count** | 9 distributed containers (Redis, Qdrant, MinIO, Math, Science, etc.) | 4 containers (Orchestrator, Postgres, Ollama, Frontend) | `CONFLICTS` | [`docker-compose.yml:L1-136`](../../backend/docker-compose.yml#L1-L136) |
+| **Turn Locking** | Redis distributed mutex | Per-session in-memory `asyncio.Lock` + Postgres advisory lock | `PARTIAL` | [`session.py:L1-80`](../../backend/orchestrator/app/services/session.py#L1-L80) |
+| **Quota Cache** | Redis fast-path counters + Postgres fallback | PostgreSQL ledger as single source of truth | `PARTIAL` | [`quota_guard.py:L18-24`](../../backend/orchestrator/app/services/quota/quota_guard.py#L18-L24) |
+| **Frontend Stepper** | Ad-hoc widget mounting | Unified stepper integrating `<VisualRenderer />` | `PARTIAL` | [`App.tsx:L1-200`](../../frontend/src/App.tsx#L1-L200) |
 
 ---
 

@@ -37,6 +37,11 @@ from app.services.telemetry.gap_recorder import log_gap_event
 
 logger = logging.getLogger("orchestrator.socratic.graph")
 
+# Emojis are decoration on tap options ("Gas 💨"); they must never decide correctness.
+_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]"
+)
+
 hint_engine = HintEngine()
 clarifier = SocraticClarifier()
 controller = SocraticPromptController()
@@ -58,7 +63,11 @@ def _get_widget_from_state(state: TutorState) -> Optional[StepWidgetPayload]:
     return None
 
 
-def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
+def _is_answer_equivalent(
+    student_attempt: str,
+    expected_answer: str,
+    acceptable_answers: Optional[List[str]] = None,
+) -> bool:
     """
     Elementary answer equivalence checker supporting numbers, fractions, word names,
     unit stripping, and Khmer-English cross-language equivalence.
@@ -71,8 +80,16 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
     # Khmer digit conversion map (KEEP)
     khmer_digits = str.maketrans("០១២៣៤៥៦៧៨៩", "0123456789")
 
-    s_clean = student_attempt.strip().lower().translate(khmer_digits)
-    e_clean = expected_answer.strip().lower().translate(khmer_digits)
+    s_clean = re.sub(
+        r"\s+",
+        " ",
+        _EMOJI_RE.sub(" ", student_attempt.strip().lower().translate(khmer_digits)),
+    ).strip()
+    e_clean = re.sub(
+        r"\s+",
+        " ",
+        _EMOJI_RE.sub(" ", expected_answer.strip().lower().translate(khmer_digits)),
+    ).strip()
 
     # 1. Exact match (KEEP)
     if s_clean == e_clean:
@@ -102,8 +119,6 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
         return True
 
     # 4. Input normalization: word_to_num mapping (KEEP)
-    from typing import Optional
-    import re
     from app.services.socratic.safe_math import safe_eval_ast
 
     word_to_num = {
@@ -169,6 +184,7 @@ def _is_answer_equivalent(student_attempt: str, expected_answer: str) -> bool:
         val_outcome = validate_student_answer(
             student_attempt=s_clean,
             expected_answer=e_clean,
+            acceptable_answers=acceptable_answers,
             subject="science"
         )
         if val_outcome and val_outcome.is_correct:
@@ -243,6 +259,9 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
 
     import re
 
+    subject_l = (subject or "").strip().lower()
+    is_math_subject = subject_l in ("", "math", "mathematics", "arithmetic")
+
     # Strip exercise prefix like "1. ", "1) ", "លំហាត់ទី ១: " so it doesn't pollute numbers
     clean_p_math = re.sub(r"^\s*(?:exercise|លំហាត់ទី|លំហាត់)?\s*\d+[\.\)\:\-]\s*", "", p_lower)
     nums = [int(n) for n in re.findall(r"\b\d+\b", clean_p_math)]
@@ -257,8 +276,29 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
         item_type = "star"
     elif any(k in combined for k in ["pencil", "pencils", "ខ្មៅដៃ"]):
         item_type = "pencil"
+    elif any(k in combined for k in ["atom", "atoms", "អាតូម"]):
+        item_type = "atom"
+    elif any(k in combined for k in ["water drop", "drop of water", "water droplet", "តំណក់ទឹក"]):
+        item_type = "water_drop"
 
-    # 1. Multiplication / Equal Groups
+    # 0. Science quantity visual: atom counts (e.g. H2O -> 2 hydrogen + 1 oxygen).
+    # Arithmetic-only visuals below must not hijack chemistry/biology questions.
+    if not is_math_subject:
+        atom_counts = re.findall(
+            r"\b(\d{1,2})\s*(?:hydrogen|oxygen|carbon|nitrogen|sodium|chlorine|h|o|c|n)\b",
+            combined,
+        )
+        if atom_counts:
+            groups = [int(n) for n in atom_counts[:4]]
+            if groups and all(1 <= n <= 30 for n in groups):
+                return {
+                    "type": "objects",
+                    "groups": groups,
+                    "item_type": "atom",
+                    "purpose": "show_atom_counts_without_revealing_total"
+                }
+
+    # 1. Multiplication / Equal Groups (math only)
     # Examples: "5 boxes with 8 apples each", "4 baskets of 6 apples", "5 x 8", "3 bags of 5 cookies"
     is_mult_expr = bool(re.search(r"\b\d+\s*(?:[*x×]|times|ដង|គុណ)\s*\d+\b", combined))
     has_groups_kw = any(k in combined for k in [
@@ -266,7 +306,7 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
         "group", "groups", "each", "every", "នីមួយៗ", "កន្ត្រក", "ប្រអប់", "កញ្ចប់", "ក្រុម", "ថង់", "ជួរ"
     ])
 
-    if (is_mult_expr or has_groups_kw) and len(nums) >= 2:
+    if is_math_subject and (is_mult_expr or has_groups_kw) and len(nums) >= 2:
         n1, n2 = nums[0], nums[1]
         if 1 <= n1 <= 12 and 1 <= n2 <= 30:
             groups = [n2] * n1
@@ -285,8 +325,8 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
                 "purpose": "scaffold_equal_groups_multiplication"
             }
 
-    # 2. Number Line for Adding/Subtracting or Missing Addends on number line (<= 120)
-    if any(k in combined for k in ["number line", "បន្ទាត់ចំនួន", "jump", "distance", "reach", "missing", "___", "["]) and len(nums) >= 2:
+    # 2. Number Line for Adding/Subtracting or Missing Addends on number line (<= 120) (math only)
+    if is_math_subject and any(k in combined for k in ["number line", "បន្ទាត់ចំនួន", "jump", "distance", "reach", "missing", "___", "["]) and len(nums) >= 2:
         start_val = nums[0]
         jump_val = nums[1]
         if start_val + jump_val <= 120 and (start_val >= 20 or jump_val >= 10 or "reach" in combined or "missing" in combined or "number line" in combined or "បន្ទាត់ចំនួន" in combined):
@@ -298,8 +338,8 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
                 "purpose": "help_student_visualize_movement_on_number_line"
             }
 
-    # 3. Object Groups for multi-addition or counting small objects (e.g. 4 + 5 + 6 or 7 + 3 + 2 + 5)
-    if any(k in combined for k in ["+", "plus", "add", "combine", "total", "altogether", "apples", "cookies", "stars", "បូក", "និង", "សរុប", "ទាំងអស់"]) and len(nums) >= 2:
+    # 3. Object Groups for multi-addition or counting small objects (math only)
+    if is_math_subject and any(k in combined for k in ["+", "plus", "add", "combine", "total", "altogether", "apples", "cookies", "stars", "បូក", "និង", "សរុប", "ទាំងអស់"]) and len(nums) >= 2:
         if all(1 <= n <= 30 for n in nums[:4]):
             return {
                 "type": "objects",
@@ -308,8 +348,8 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
                 "purpose": "show_separate_groups_without_revealing_sum"
             }
 
-    # 4. Place Value Blocks (e.g. 146, hundreds, tens, ones)
-    if any(k in combined for k in ["place value", "hundreds", "tens", "ones", "digits", "decompose", "ខ្ទង់រយ", "ខ្ទង់ដប់", "ខ្ទង់រាយ", "តម្លៃលេខតាមខ្ទង់"]) and len(nums) >= 1:
+    # 4. Place Value Blocks (e.g. 146, hundreds, tens, ones) (math only)
+    if is_math_subject and any(k in combined for k in ["place value", "hundreds", "tens", "ones", "digits", "decompose", "ខ្ទង់រយ", "ខ្ទង់ដប់", "ខ្ទង់រាយ", "តម្លៃលេខតាមខ្ទង់"]) and len(nums) >= 1:
         target_num = nums[0] if nums[0] >= 10 else (nums[1] if len(nums) > 1 else 10)
         return {
             "type": "place_value_blocks",
@@ -317,33 +357,9 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
             "purpose": "scaffold_base_10_decomposition"
         }
 
-    # 5. Animal features & classification (clean, no raw emojis)
-    if any(k in combined for k in ["flamingo", "bird", "feathers", "wings", "beak", "ហ្វ្លាមីងហ្គោ"]):
-        return {
-            "type": "animal_feature_card",
-            "animal": "flamingo",
-            "emoji": "",
-            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
-        }
-    if any(k in combined for k in ["lobster", "crab", "shell", "claws", "invertebrate", "បង្កង"]):
-        return {
-            "type": "animal_feature_card",
-            "animal": "lobster",
-            "emoji": "",
-            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
-        }
-    if any(k in combined for k in ["camel", "hump", "desert", "អូដ្ឋ"]):
-        return {
-            "type": "animal_feature_card",
-            "animal": "camel",
-            "emoji": "",
-            "features": ["vertebrate", "feathers", "hump_on_back", "pincers", "wings"]
-        }
-    if any(k in combined for k in ["vertebrate", "invertebrate", "backbone", "bones", "ឆ្អឹងកង", "ឆ្អឹងខ្នង"]):
-        return {
-            "type": "classification_split",
-            "purpose": "visualize_vertebrate_vs_invertebrate"
-        }
+    # 5. Animal classification visuals are intentionally NOT synthesized here.
+    # The legacy animal widgets carried a per-animal answer key; the planner now
+    # supplies classification/choice data per question instead.
 
     # 6. Photosynthesis / Plants
     if any(k in combined for k in ["plant", "leaf", "leaves", "photosynthesis", "roots", "stem", "sunlight", "រុក្ខជាតិ", "ស្លឹក", "រស្មីសំយោគ"]):
@@ -352,7 +368,7 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
             "purpose": "show_plant_anatomy_and_photosynthesis"
         }
 
-    # 7. Ecosystem / Food chain / Producer vs Consumer
+    # 7. Ecosystem / Food chain
     if any(k in combined for k in ["producer", "consumer", "herbivore", "carnivore", "food chain", "eats", "ខ្សែច្រវាក់អាហារ", "អ្នកផលិត", "អ្នកប្រើប្រាស់"]):
         if "chain" in combined or "arrow" in combined or "ខ្សែច្រវាក់" in combined:
             return {
@@ -360,11 +376,6 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
                 "hide_target_word": True,
                 "purpose": "trace_energy_flow_in_ecosystem"
             }
-        return {
-            "type": "producer_consumer_sort",
-            "items": ["ស្មៅ (Grass)", "ទន្សាយ (Rabbit)", "ដើមស្រូវ (Rice Plant)", "ឥន្ទ្រី (Eagle)"],
-            "purpose": "sort_producers_and_consumers"
-        }
 
     # 8. Electric Circuits
     if any(k in combined for k in ["circuit", "battery", "switch", "bulb", "electricity", "wire", "សៀគ្វី", "ថ្មពិល", "កុងតាក់", "អំពូល"]):
@@ -374,8 +385,8 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
             "purpose": "interactive_open_closed_circuit"
         }
 
-    # 9. Balance scale for simple equations
-    if ("=" in problem_text or "balance" in combined or "equal" in combined or "ស្មើ" in combined) and len(nums) >= 2:
+    # 9. Balance scale for simple equations (math only)
+    if is_math_subject and ("=" in problem_text or "balance" in combined or "equal" in combined or "ស្មើ" in combined) and len(nums) >= 2:
         return {
             "type": "equation_balance",
             "left": nums[0],
@@ -384,6 +395,319 @@ def synthesize_visual_data_for_step(problem_text: str, step_dict: Dict[str, Any]
         }
 
     return None
+
+
+_COUNTING_CONTEXT_RE = re.compile(
+    r"\b(?:count|counting|how\s+many|how\s+much|altogether|in\s+all|total|sum|"
+    r"group|groups|each|every|add|adding|plus|combine|combined|left|remain|remaining|"
+    r"apples?|oranges?|cookies?|cand(?:y|ies)|stickers?|pencils?|balls?|books?|toys?|"
+    r"atoms?|molecules?|protons?|neutrons?|electrons?)\b",
+    re.IGNORECASE,
+)
+
+
+def _step_visual_text(problem_text: str, step_dict: Dict[str, Any]) -> str:
+    """Everything the student can see for this step, used for relevance checks."""
+    bits = [str(problem_text or "")]
+    for key in ("title", "mission", "clue", "your_turn", "concept"):
+        value = step_dict.get(key)
+        if value:
+            bits.append(str(value))
+    return " ".join(bits)
+
+
+def _text_numbers(text: str) -> List[float]:
+    return [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", text or "")]
+
+
+def _as_number(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _matches_any_text_number(value: Any, text_numbers: List[float]) -> bool:
+    number = _as_number(value)
+    if number is None:
+        return False
+    return any(abs(number - candidate) < 1e-9 for candidate in text_numbers)
+
+
+def _extract_bar_numbers(v: Dict[str, Any]) -> Tuple[Optional[float], List[Optional[float]]]:
+    params = v.get("params") if isinstance(v.get("params"), dict) else {}
+    whole = v.get("whole", params.get("whole"))
+    raw_parts = v.get("parts", params.get("parts", params.get("segments")))
+    if not isinstance(raw_parts, (list, tuple)):
+        return _as_number(whole), []
+    return _as_number(whole), [_as_number(part) for part in raw_parts]
+
+
+# Emojis carry no meaning for answer matching; strip them before comparing labels.
+_OPTION_STOPWORDS = frozenset({
+    "a", "an", "the", "it", "its", "is", "are", "was", "were", "be", "been",
+    "being", "to", "into", "in", "on", "of", "for", "with", "and", "or", "but",
+    "as", "at", "by", "from", "that", "this", "these", "those", "does", "do",
+    "did", "will", "would", "can", "could", "should", "has", "have", "had",
+    "than", "then", "so", "if", "not", "no", "yes", "out", "off", "over",
+    "very", "just", "also",
+})
+
+
+def _stem_token(token: str) -> str:
+    """Very light plural/verb stemmer so 'flows' matches 'flow'."""
+    if token.endswith("ies") and len(token) > 4:
+        return token[:-3] + "y"
+    for suffix in ("ing", "ed", "es"):
+        if token.endswith(suffix) and len(token) - len(suffix) >= 3:
+            return token[: -len(suffix)]
+    if token.endswith("s") and not token.endswith("ss") and len(token) > 3:
+        return token[:-1]
+    return token
+
+
+def _option_tokens(text: Any) -> set:
+    cleaned = _EMOJI_RE.sub(" ", str(text or ""))
+    tokens = re.findall(r"[a-z0-9]+(?:['\-][a-z0-9]+)*", cleaned.lower())
+    return {
+        _stem_token(t)
+        for t in tokens
+        if len(t) > 1 and t not in _OPTION_STOPWORDS
+    }
+
+
+def _best_classification_label(tokens: set, labels: List[str]) -> Optional[str]:
+    """Pick the label whose wording best matches ``tokens`` (None if unclear)."""
+    if not tokens:
+        return None
+    scored: List[Tuple[float, str]] = []
+    for label in labels:
+        label_tokens = _option_tokens(label)
+        if not label_tokens:
+            continue
+        shared = tokens & label_tokens
+        if not shared:
+            continue
+        # Balance how much of the label and of the reference text are covered,
+        # so a very short category cannot win just by being short.
+        score = 0.5 * (len(shared) / len(label_tokens)) + 0.5 * (
+            len(shared) / len(tokens)
+        )
+        scored.append((score, label))
+
+    if not scored:
+        return None
+    scored.sort(key=lambda item: item[0], reverse=True)
+    best_score, best_label = scored[0]
+    if best_score < 0.34:
+        return None
+    # Ambiguous overlap: refuse to guess rather than accept the wrong group.
+    if len(scored) > 1 and abs(scored[0][0] - scored[1][0]) < 0.05:
+        return None
+    return best_label
+
+
+def classification_acceptable_answers(
+    expected_answer: Any,
+    visual_data: Optional[Dict[str, Any]],
+) -> Optional[List[str]]:
+    """Return the tappable ``classification_split`` label(s) matching the answer.
+
+    The planner writes the hidden answer in its own words, so the correct card is
+    chosen by token overlap with ``expected_answer`` — never by a fixed index.
+    Only that label is accepted; the other card stays wrong. When the wording is
+    too different to be confident, no label is returned and the cards stay
+    decorative rather than risking a wrong answer.
+    """
+    if not isinstance(visual_data, dict):
+        return None
+    if str(visual_data.get("type") or "").strip().lower() != "classification_split":
+        return None
+    categories = visual_data.get("categories")
+    if not isinstance(categories, (list, tuple)):
+        return None
+    labels = [c for c in categories if isinstance(c, str) and c.strip()]
+    if len(labels) < 2:
+        return None
+
+    best_label = _best_classification_label(_option_tokens(expected_answer), labels)
+    if best_label is None:
+        return None
+
+    plain_label = _EMOJI_RE.sub("", best_label).strip()
+    answers = [best_label]
+    if plain_label and plain_label != best_label:
+        answers.append(plain_label)
+    return answers
+
+
+def sanitize_visual_data(
+    visual_data: Optional[Dict[str, Any]],
+    problem_text: str,
+    step_dict: Dict[str, Any],
+    subject: str = "math",
+) -> Optional[Dict[str, Any]]:
+    """Drops off-topic or answer-leaking visuals emitted by the planner.
+
+    The LLM planner occasionally attaches an unrelated picture (for example an
+    apple-counting basket to a gravity question) or a legacy widget that does
+    not fit the question. Visuals must scaffold the *current* question, so each
+    type is checked against the problem and step text before it reaches the UI.
+    """
+    if not isinstance(visual_data, dict):
+        return None
+
+    v = dict(visual_data)
+    vtype = str(v.get("type") or "").strip().lower().replace("-", "_")
+    if not vtype:
+        return None
+    v["type"] = vtype
+
+    combined = _step_visual_text(problem_text, step_dict).lower()
+    subject_l = (subject or "").strip().lower()
+    is_math_subject = subject_l in ("", "math", "mathematics", "arithmetic")
+    numbers = _text_numbers(combined)
+    has_numbers = bool(numbers)
+    has_counting_context = has_numbers and bool(_COUNTING_CONTEXT_RE.search(combined))
+    has_binary_math = bool(re.search(r"\d+(?:\.\d+)?\s*[+\-*/x×÷]\s*\d+", combined))
+
+    def _has(pattern: str) -> bool:
+        return bool(re.search(pattern, combined, re.IGNORECASE))
+
+    # --- Counting object baskets -----------------------------------------
+    if vtype in ("objects", "number_groups", "number_grouping"):
+        raw_groups = v.get("groups") or v.get("numbers")
+        if not isinstance(raw_groups, (list, tuple)) or not raw_groups:
+            return None
+        groups: List[int] = []
+        for raw in raw_groups[:12]:
+            number = _as_number(raw)
+            if number is None or number <= 0 or number > 30:
+                return None
+            groups.append(int(number) if number.is_integer() else number)
+        if not (has_counting_context or has_binary_math):
+            return None
+        v["groups"] = groups
+        return v
+
+    # --- Arithmetic visuals ----------------------------------------------
+    if vtype == "number_line":
+        if not (is_math_subject and has_numbers):
+            return None
+        return v
+
+    if vtype == "place_value_blocks":
+        target = _as_number(v.get("number"))
+        if not is_math_subject or target is None or target < 10:
+            return None
+        return v
+
+    if vtype == "base_ten_blocks":
+        if not (is_math_subject and has_numbers):
+            return None
+        return v
+
+    if vtype in ("bar_model", "tape_diagram"):
+        if not is_math_subject:
+            return None
+        whole, parts = _extract_bar_numbers(v)
+        if not parts:
+            return None
+        known_parts = [part for part in parts if part is not None]
+        if not known_parts or any(part < 0 for part in known_parts):
+            return None
+        # Parallel worked examples may intentionally use different numbers.
+        if v.get("mode") in ("example", "reveal"):
+            return v
+        if not has_numbers:
+            return None
+        if not any(_matches_any_text_number(part, numbers) for part in known_parts) and not (
+            whole is not None and _matches_any_text_number(whole, numbers)
+        ):
+            return None
+        return v
+
+    if vtype in ("equation_balance", "balance_scale"):
+        if not (is_math_subject and has_numbers):
+            return None
+        if not _has(r"(?:=|balance|equation|ស្មើ)"):
+            return None
+        return v
+
+    if vtype == "geometry_angle":
+        if not (is_math_subject and has_numbers and _has(r"(?:angle|triangle|មុំ|ត្រីកោណ)")):
+            return None
+        return v
+
+    # --- Science visuals -------------------------------------------------
+    if vtype == "plant_diagram":
+        # Judge relevance from the question itself, not the step wording: a
+        # step in an animal-diet exercise can mention "plants"/"leaves" without
+        # the lesson being about plant anatomy.
+        problem_l = str(problem_text or "").lower()
+        plant_focus = re.search(
+            r"\b(?:photosynthesis|chlorophyll|chloroplast|plant|plants|leaf|leaves|"
+            r"root|roots|stem|stems|flower|flowers|seed|seeds|sunlight|stomata)\b",
+            problem_l,
+        )
+        if not plant_focus:
+            return None
+        animal_eating = re.search(
+            r"\b(?:eat|eats|eating|diet|feed|feeds|food)\b", problem_l
+        ) and re.search(
+            r"\b(?:animal|animals|elephant|elephants|tiger|tigers|lion|lions|cow|cows|"
+            r"dog|dogs|cat|cats|rabbit|rabbits|snake|snakes|whale|whales|dolphin|dolphins|"
+            r"bird|birds|fish|insect|insects|mammal|mammals|herbivore|herbivores|"
+            r"omnivore|omnivores)\b",
+            problem_l,
+        )
+        if animal_eating and not re.search(
+            r"\b(?:photosynthesis|chlorophyll|chloroplast)\b", problem_l
+        ):
+            return None
+        return v
+
+    if vtype == "food_chain":
+        if not _has(r"\b(?:food\s+chain|food\s+web|ecosystem|predator|prey|eat|eats|diet|energy\s+flow)\b"):
+            return None
+        return v
+
+    if vtype == "producer_consumer_sort":
+        items = v.get("items")
+        if not isinstance(items, (list, tuple)) or len(items) < 2:
+            return None
+        if not _has(r"\b(?:producer|producers|consumer|consumers|herbivore|carnivore|ecosystem|food\s+chain|food\s+web)\b"):
+            return None
+        return v
+
+    if vtype == "classification_split":
+        categories = v.get("categories")
+        if not isinstance(categories, (list, tuple)) or len(categories) < 2:
+            return None
+        if not all(isinstance(c, str) and c.strip() for c in categories):
+            return None
+        return v
+
+    # Legacy widgets rendered a hardcoded per-animal answer key. They are
+    # rejected outright; the planner must use classification/choice data.
+    if vtype in ("animal_feature_card", "animal_group_card"):
+        return None
+
+    if vtype in ("circuit", "circuit_simulator"):
+        if not _has(r"\b(?:circuit|electric|electrical|electricity|battery|bulb|switch|wire|current)\b"):
+            return None
+        return v
+
+    # Multiple-choice and calendar widgets carry their own question/options.
+    if vtype.startswith("multiple_choice"):
+        options = v.get("options")
+        if not isinstance(options, (list, tuple)) or not options:
+            return None
+        return v
+
+    # Unknown/new widget types are kept for forward compatibility; the frontend
+    # renders nothing for types it does not recognise.
+    return v
 
 
 def initial_problem_node(state: TutorState) -> Dict[str, Any]:
@@ -460,7 +784,9 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                         total_steps=len(coerced_steps),
                         current_step_index=0,
                         completed_steps=[],
-                        visual_data=coerced_steps[0].visual_data if coerced_steps else None,
+                        # Each step carries its own visual; a widget-level copy of
+                        # step 1 would keep showing on every later step.
+                        visual_data=None,
                         steps=coerced_steps
                     )
                     return {
@@ -532,6 +858,20 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                         v_data["start"] = v_data.get("start", synth.get("start", 0))
                         v_data["target"] = synth.get("target", 10)
 
+                # Only keep visuals that actually scaffold this question/step.
+                v_data = sanitize_visual_data(v_data, problem, raw, subject)
+                if v_data is None and synth:
+                    v_data = sanitize_visual_data(synth, problem, raw, subject)
+
+                # Classification cards are tappable answer choices: expose only the
+                # label that matches the hidden answer so the tap can be validated.
+                extra_step_fields: Dict[str, Any] = {}
+                acceptable = classification_acceptable_answers(
+                    raw.get("expected_answer"), v_data
+                )
+                if acceptable:
+                    extra_step_fields["acceptable_answers"] = acceptable
+
                 coerced_steps.append(SocraticStep(
                     step_number=raw.get("step_number", 1),
                     title=raw.get("title", ""),
@@ -543,15 +883,20 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                     expected_answer=raw.get("expected_answer", ""),
                     concept=raw.get("concept", ""),
                     hints=raw.get("hints", []),
+                    options=raw.get("options") or None,
                     current_hint_level=0,
-                    visual_data=v_data
+                    visual_data=v_data,
+                    **extra_step_fields
                 ))
-            first_v_data = coerced_steps[0].visual_data if coerced_steps else None
+            first_step_dict = coerced_steps[0].model_dump() if coerced_steps else {}
+            top_v_data = sanitize_visual_data(
+                widget_dict.get("visual_data"), problem, first_step_dict, subject
+            )
             widget = StepWidgetPayload(
                 total_steps=len(coerced_steps),
                 current_step_index=0,
                 completed_steps=[],
-                visual_data=widget_dict.get("visual_data") or first_v_data,
+                visual_data=top_v_data,
                 steps=coerced_steps
             )
             return {
@@ -574,6 +919,24 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
     # 2b. FALLBACK PATH — two-step breakdown → generate_step_card pipeline
     logger.info("exercise_planning unavailable or returned invalid data; using legacy breakdown pipeline.")
     steps_data = controller.breakdown_problem_into_steps(problem, grade_level=grade_level)
+    if not steps_data:
+        # The LLM is the only content source. Never fabricate steps here.
+        logger.warning("No LLM step breakdown available; returning no step widget.")
+        return {
+            "problem_text": problem,
+            "total_steps_count": 0,
+            "step_widget": None,
+            "current_step_index": 0,
+            "active_hint": None,
+            "current_hint_tier": 0,
+            "feedback_message": (
+                "I couldn't build the step-by-step exercise just now. "
+                "Please try again in a moment."
+            ),
+            "is_problem_complete": False,
+            "is_problem_solved": False,
+            "clarification_needed": False,
+        }
     socratic_steps: List[SocraticStep] = []
 
     def _safe_str(val: Any) -> str:
@@ -612,28 +975,33 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
                     "Count step-by-step or draw it on scratch paper to see the answer!"
                 ]
 
-        v_data = synthesize_visual_data_for_step(problem, s, subject)
+        v_data = sanitize_visual_data(
+            synthesize_visual_data_for_step(problem, s, subject), problem, s, subject
+        )
         socratic_steps.append(SocraticStep(
             step_number=step_num,
             title=_safe_str(s.get("title", f"Step {step_num}")),
             status="in_progress" if idx == 0 else ("up_next" if idx == 1 else "locked"),
-            mission=_safe_str(card_content.get("mission")),
-            clue=_safe_str(card_content.get("clue")),
-            helpful_example=_safe_str(card_content.get("helpful_example")),
-            your_turn=_safe_str(card_content.get("your_turn")),
-            expected_answer=s.get("expected_answer", str(step_num)),
+            mission=_safe_str(card_content.get("mission") or s.get("mission", "")),
+            clue=_safe_str(card_content.get("clue") or s.get("clue", "")),
+            helpful_example=_safe_str(card_content.get("helpful_example") or ""),
+            your_turn=_safe_str(card_content.get("your_turn") or s.get("your_turn", "")),
+            # Never fabricate an expected answer. If the LLM omitted it, keep it
+            # empty (the grader then reports a mismatch instead of grading against
+            # an invented value such as the step number).
+            expected_answer=_safe_str(s.get("expected_answer") or ""),
             concept=s.get("concept", ""),
             hints=step_hints,
             current_hint_level=0,
             visual_data=v_data
         ))
 
-    first_v_data = socratic_steps[0].visual_data if socratic_steps else None
     widget = StepWidgetPayload(
         total_steps=len(socratic_steps),
         current_step_index=0,
         completed_steps=[],
-        visual_data=first_v_data,
+        # Step-level visuals only: a widget-level copy of step 1 leaks into later steps.
+        visual_data=None,
         steps=socratic_steps
     )
 
@@ -1054,6 +1422,27 @@ def deflect_node(state: TutorState) -> Dict[str, Any]:
     }
 
 
+# Content-free nudges used when a generated step hint is quarantined. They
+# carry no subject answer and preserve the three progressive hint tiers.
+_SAFE_STEP_HINTS: Tuple[str, ...] = (
+    "💡 Look back at what you observed. Which detail stands out first?",
+    "🎨 Picture the situation in your mind. What changes, and what stays the same?",
+    "🧩 Split the question into two small parts. What can you check first?",
+)
+
+# Content-free replacements for card fields that name the step's expected
+# answer outright. The LLM prompt forbids this; this is the deterministic
+# backstop so a leaky card can never be rendered.
+_SAFE_CARD_TEXT: Dict[str, str] = {
+    "mission": "Think carefully about what this step is asking you to notice.",
+    "clue": "Compare what you observed with each choice before you decide.",
+    "helpful_example": (
+        "In a similar story, the learner compares what they observe with each "
+        "choice before deciding."
+    ),
+}
+
+
 def compile_response_node(state: TutorState) -> Dict[str, Any]:
     """
     Compiles final SocraticResponse with synchronized Markdown and JSON widget.
@@ -1084,6 +1473,7 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
     target_answer = ""
     active_step = None
     problem_text = state.get("problem_text")
+    response_subject = state.get("subject") or state.get("detected_subject")
 
     if widget and state.get("is_safe") is not False:
         active_step = widget.get_active_step()
@@ -1112,7 +1502,8 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
                 attempts_count=attempts_count,
                 unsolved_step_values=unsolved_targets,
                 final_answer=final_answer,
-                problem_text=problem_text
+                problem_text=problem_text,
+                subject=response_subject,
             )
             if is_leak:
                 logger.warning(f"[OutputLeakGuard] Intercepted feedback leak: {reason}. Quarantining.")
@@ -1131,12 +1522,86 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
                 attempts_count=attempts_count,
                 unsolved_step_values=unsolved_targets,
                 final_answer=final_answer,
-                problem_text=problem_text
+                problem_text=problem_text,
+                subject=response_subject,
             )
             if is_leak_hint:
                 logger.warning(f"[OutputLeakGuard] Intercepted hint leak: {reason_hint}. Quarantining.")
                 leak_detected = True
                 active_hint = sanitized_hint
+
+        # Scan every pre-computed hint on every step card. The frontend renders
+        # these arrays directly, so a leaking hint would otherwise bypass the
+        # active_hint scan above.
+        for scan_step in widget.steps:
+            step_solved = bool(
+                scan_step.status == "completed"
+                or (scan_step.step_number - 1) in widget.completed_steps
+            )
+            if not scan_step.expected_answer:
+                continue
+
+            # Card text obeys the same rule: a clue or parallel example that
+            # names the target answer teaches the label instead of the reasoning.
+            for card_field in ("mission", "clue", "helpful_example"):
+                card_text = getattr(scan_step, card_field, "") or ""
+                if not card_text:
+                    continue
+                is_leak_card, _, reason_card = check_tutor_response_leak(
+                    tutor_reply=card_text,
+                    target_answer=str(scan_step.expected_answer),
+                    is_step_solved=step_solved,
+                    is_reveal_state=is_reveal_state,
+                    current_hint_tier=0,
+                    step_number=scan_step.step_number,
+                    attempts_count=attempts_count,
+                    problem_text=problem_text,
+                    subject=response_subject,
+                )
+                if is_leak_card:
+                    logger.warning(
+                        f"[OutputLeakGuard] Intercepted card leak in step "
+                        f"{scan_step.step_number} field '{card_field}': {reason_card}. "
+                        "Replacing with content-free text."
+                    )
+                    leak_detected = True
+                    setattr(scan_step, card_field, _SAFE_CARD_TEXT[card_field])
+
+            other_targets = [
+                t.expected_answer
+                for t in widget.steps
+                if t is not scan_step
+                and t.expected_answer
+                and not (
+                    t.status == "completed"
+                    or (t.step_number - 1) in widget.completed_steps
+                )
+            ]
+            for h_idx, h_text in enumerate(list(scan_step.hints or [])):
+                if not h_text:
+                    continue
+                is_leak_h, sanitized_h, reason_h = check_tutor_response_leak(
+                    tutor_reply=h_text,
+                    target_answer=str(scan_step.expected_answer),
+                    is_step_solved=step_solved,
+                    is_reveal_state=is_reveal_state,
+                    current_hint_tier=current_hint_tier,
+                    step_number=scan_step.step_number,
+                    attempts_count=attempts_count,
+                    unsolved_step_values=other_targets,
+                    final_answer=final_answer,
+                    problem_text=problem_text,
+                    subject=response_subject,
+                )
+                if is_leak_h:
+                    logger.warning(
+                        f"[OutputLeakGuard] Intercepted step hint leak "
+                        f"(step {scan_step.step_number}, tier {h_idx + 1}): {reason_h}. Quarantining."
+                    )
+                    leak_detected = True
+                    # Use a tier-specific, content-free nudge: a generic clue
+                    # fallback would make all three tiers identical.
+                    scan_step.hints[h_idx] = _SAFE_STEP_HINTS[min(h_idx, 2)]
 
         # Scan visual_data for active step
         if active_step and active_step.visual_data:
@@ -1190,7 +1655,8 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
                 attempts_count=attempts_count,
                 unsolved_step_values=unsolved_targets,
                 final_answer=final_answer,
-                problem_text=problem_text
+                problem_text=problem_text,
+                subject=response_subject,
             )
             if is_md_leak:
                 logger.warning(f"[OutputLeakGuard] Intercepted markdown leak: {md_reason}. Sanitizing.")
@@ -1202,6 +1668,11 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
         "feedback_message": feedback,
         "active_hint": active_hint,
     }
+    # Persist the guarded widget. Sanitized step hints and visuals only take
+    # effect if the cleaned copy is written back to graph state, which is what
+    # the API returns to the frontend.
+    if widget is not None:
+        updates["step_widget"] = widget.model_dump()
     if leak_detected:
         updates["leak_quarantined"] = True
 
@@ -1211,6 +1682,14 @@ def compile_response_node(state: TutorState) -> Dict[str, Any]:
 # -------------------------------------------------------------------------
 # Routing Edges
 # -------------------------------------------------------------------------
+
+_CONCEPTUAL_QUESTION_RE = re.compile(
+    r"\b(?:mean|meaning|definition|define|explain|"
+    r"what\s+(?:is|are)\s+(?:a|an)\s+\w+|"
+    r"how\s+does\s+\w+\s+work)\b",
+    re.IGNORECASE,
+)
+
 
 def route_by_intent(state: TutorState) -> str:
     intent = state.get("detected_intent", StudentIntent.INITIAL_QUESTION.value)
@@ -1224,6 +1703,14 @@ def route_by_intent(state: TutorState) -> str:
     elif intent == "NAVIGATION_JUMP":
         return "navigate_step"
     elif intent in (StudentIntent.REQUEST_CLARIFICATION.value, "AMBIGUOUS", "CLARIFY", "REQUEST_CLARIFICATION"):
+        # A definition/explanation question with no active exercise is a new
+        # learning request, not an ambiguous answer. Starting a Socratic
+        # explanation is far more useful than the generic "I didn't catch
+        # that!" clarification reply.
+        if not state.get("step_widget") and _CONCEPTUAL_QUESTION_RE.search(
+            str(state.get("raw_user_input") or "")
+        ):
+            return "initial_problem"
         return "clarify"
     elif intent in (StudentIntent.STEP_ANSWER_ATTEMPT.value, "STEP_ATTEMPT", "STEP_ANSWER_ATTEMPT"):
         return "classify_intent"

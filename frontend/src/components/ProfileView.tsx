@@ -37,7 +37,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const [draftName, setDraftName] = useState(profile.name);
   const [draftGrade, setDraftGrade] = useState<Grade>(profile.grade);
-  const [draftLanguage, setDraftLanguage] = useState<Language>('en');
+  const [draftLanguage, setDraftLanguage] = useState<Language>(profile.language ?? 'en');
   const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | undefined>(profile.avatarUrl);
   const [isSaved, setIsSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,24 +45,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   useEffect(() => {
     setDraftName(profile.name);
     setDraftGrade(profile.grade);
-    setDraftLanguage('en');
+    setDraftLanguage(profile.language ?? 'en');
     setDraftAvatarUrl(profile.avatarUrl);
   }, [profile]);
 
-  const isKhmer = false;
+  const isKhmer = profile.language === 'km';
   const role = currentUser?.role || profile.role || 'student';
   const isParent = role === 'parent';
 
   const hasChanges =
     draftName !== profile.name ||
     draftGrade !== profile.grade ||
+    draftLanguage !== profile.language ||
     draftAvatarUrl !== profile.avatarUrl;
 
   const handleSave = () => {
     onUpdateProfile({
       name: draftName,
       grade: draftGrade,
-      language: 'en',
+      language: draftLanguage,
       avatarUrl: draftAvatarUrl,
     });
     setIsSaved(true);
@@ -336,19 +337,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Language Card (English Fixed in v2.1) */}
+        {/* Language Card: UI locale toggle; dynamic translation uses /api/translate */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border-3 border-[#1B4332] shadow-[4px_4px_0px_#1B4332] p-4 sm:p-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-black text-base sm:text-lg text-[#1B4332] flex items-center gap-2 font-heading">
               <Globe className="w-5 h-5 text-[#1B4332] shrink-0" />
-              <span>Language</span>
+              <span>{isKhmer ? 'ភាសា' : 'Language'}</span>
             </h3>
-            <span className="px-3 py-1 bg-[#1B4332] text-white rounded-xl text-xs font-black border-2 border-[#1B4332] shadow-[1.5px_1.5px_0px_#1B4332]">
-              English (EN)
-            </span>
+            <div className="flex items-center gap-1.5">
+              {(['en', 'km'] as Language[]).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setDraftLanguage(lang)}
+                  className={`px-3 py-1 rounded-xl text-xs font-black border-2 border-[#1B4332] cursor-pointer ${
+                    draftLanguage === lang
+                      ? 'bg-[#1B4332] text-white shadow-[1.5px_1.5px_0px_#1B4332]'
+                      : 'bg-white text-[#1B4332] hover:bg-[#A7CDB4]'
+                  }`}
+                >
+                  {lang === 'en' ? 'English' : 'ខ្មែរ'}
+                </button>
+              ))}
+            </div>
           </div>
           <p className="text-xs font-bold text-[#1B4332]/80">
-            English is the default application display language.
+            {isKhmer
+              ? 'ភាសាខ្មែរបកប្រែអត្ថបទថាមវន្តតាមរយៈ /api/translate។ ការកែច្នៃភាសាខ្មែរពេញលេញនឹងមកដល់ v2.2។'
+              : 'Khmer translates dynamic text via /api/translate. Full Khmer NLP (segmentation, prompts, parser) is deferred to v2.2.'}
           </p>
         </div>
 

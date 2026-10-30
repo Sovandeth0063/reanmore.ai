@@ -21,7 +21,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   requiredRole,
   initialMode = 'select',
 }) => {
-  const isKhmer = false;
+  const isKhmer = language === 'km';
   const accounts = AuthService.getAccounts();
   const current = AuthService.getCurrentUser();
 

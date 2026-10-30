@@ -1,6 +1,6 @@
 # Phase 1A Implementation Plan: In-Process Math Engine & Skill Templates
 
-> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/docs/ReanMore_Architecture_v2.1.md) (Sections 5.2, 7.1, 7.2, 8, Appendix C)  
+> **Target Spec:** [`docs/ReanMore_Architecture_v2.1.md`](../../docs/ReanMore_Architecture_v2.1.md) (Sections 5.2, 7.1, 7.2, 8, Appendix C)  
 > **Status:** COMPLETED & VERIFIED ✅  
 > **Prerequisites:** Phase 0 complete; `sympy` available in Python environment.
 
@@ -20,9 +20,9 @@ Phase 1A eliminates the separate math microservice and Google Gemini dependency 
 
 | Component | Current Implementation | Target Specification | Status | Evidence (`file:line`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Solver Architecture** | Separate HTTP microservice (:9001) | In-process Python module inside orchestrator | `CONFLICTS` | [`docker-compose.yml:L84-95`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/docker-compose.yml#L84-L95) |
-| **Word Problem Solver** | Google Gemini cloud API call (`google.generativeai`) | In-process SymPy CAS + Parse Verifier + Skill Templates | `CONFLICTS` | [`algebra.py:L12-21`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/services/math_service/app/solvers/algebra.py#L12-L21) |
-| **Decomposition Logic** | Generic 2-step ("Identify Numbers" -> "Calculate") | Pedagogical milestones (Make a ten, Trade 10 ones, etc.) | `CONFLICTS` | [`algebra.py:L93-100`](file:///e:/Competition/Khmer%20Enterprise/Science_chatbot/backend/services/math_service/app/solvers/algebra.py#L93-L100) |
+| **Solver Architecture** | Separate HTTP microservice (:9001) | In-process Python module inside orchestrator | `CONFLICTS` | [`docker-compose.yml:L84-95`](../../backend/docker-compose.yml#L84-L95) |
+| **Word Problem Solver** | Google Gemini cloud API call (`google.generativeai`) | In-process SymPy CAS + Parse Verifier + Skill Templates | `CONFLICTS` | [`algebra.py:L12-21`](../../backend/services/math_service/app/solvers/algebra.py#L12-L21) |
+| **Decomposition Logic** | Generic 2-step ("Identify Numbers" -> "Calculate") | Pedagogical milestones (Make a ten, Trade 10 ones, etc.) | `CONFLICTS` | [`algebra.py:L93-100`](../../backend/services/math_service/app/solvers/algebra.py#L93-L100) |
 | **Parallel Example** | Often re-uses problem numbers or relies on LLM | `make_distinct_example()` with strictly non-overlapping numbers | `MISSING` | Target: `skills/base.py` |
 | **Parse Verification** | Basic regex matching on digits | 7-stage parse verifier with child confirmation prompt | `MISSING` | Target: `parse_verifier.py` |
 

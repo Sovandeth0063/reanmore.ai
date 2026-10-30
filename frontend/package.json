@@ -7,9 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:hints": "tsx scripts/validate-hints.ts",
-    "test:english": "tsx scripts/validate-english-pedagogy.ts",
-    "test": "tsx scripts/validate-hints.ts && tsx scripts/validate-english-pedagogy.ts"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
@@ -32,6 +31,7 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^5.0.5"
   }
 }

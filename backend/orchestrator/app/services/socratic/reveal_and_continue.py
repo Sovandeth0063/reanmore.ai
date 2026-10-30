@@ -73,70 +73,29 @@ def _build_worked_example(
 ) -> str:
     """
     Generates a worked example for a SIMILAR problem, not the exact one.
-    Uses the step mission to detect subject (math/science) and builds
-    a safe parallel example that doesn't expose the actual answer.
+    Content is produced by the LLM prompt for this step; no per-topic answer
+    bank is embedded in the code. If the model is unavailable, a generic
+    instruction is returned instead of a canned science example.
     """
-    lower = (mission + " " + clue).lower()
-    numbers = [int(n) for n in re.findall(r"\b(\d+)\b", mission)]
+    try:
+        from app.services.socratic.prompts.controller import controller
 
-    # Math — addition
-    if any(w in lower for w in ["+", "plus", "add", "total", "altogether", "sum"]) and len(numbers) >= 2:
-        a, b = numbers[0], numbers[1]
-        # Use different numbers (offset by small prime)
-        sa, sb = a + 3, b + 2
-        return (
-            f" **Worked Example (similar problem):**\n"
-            f"If you had **{sa}  apples** and got **{sb}  more**, how many in total?\n\n"
-            f"  {sa} + {sb} = **{sa + sb}** \n\n"
-            f"Now try the same steps on your problem!"
+        prompt = controller.get_parallel_example_prompt(
+            f"{mission}\n{clue}"
         )
+        raw = controller._call_gemini_llm(prompt)
+        if raw:
+            return f" **Worked Example (similar problem):**\n{raw.strip()}\n\nNow try the same steps on your problem!"
+    except Exception as e:
+        logger.warning(f"Worked-example generation failed: {e}")
 
-    # Math — subtraction
-    if any(w in lower for w in ["-", "minus", "subtract", "left", "remain", "gave", "ate"]) and len(numbers) >= 2:
-        a, b = numbers[0], numbers[1]
-        sa, sb = a + 4, b + 1
-        return (
-            f" **Worked Example (similar problem):**\n"
-            f"If there were **{sa}  oranges** and you ate **{sb}**, how many are left?\n\n"
-            f"  {sa} − {sb} = **{sa - sb}** \n\n"
-            f"Use the same take-away thinking on your problem!"
-        )
-
-    # Science — classification / yes-no / feature
-    if any(w in lower for w in ["vertebrate", "invertebrate", "backbone", "feature", "classify"]):
-        return (
-            f" **Worked Example:**\n"
-            f"Is a **fish** a vertebrate or invertebrate?\n\n"
-            f" A fish **has a backbone** → it is a **Vertebrate** \n\n"
-            f"Now check whether the animal in your problem has a backbone!"
-        )
-
-    # Science — photosynthesis / plants
-    if any(w in lower for w in ["plant", "sunlight", "photosynthesis", "leaf", "roots"]):
-        return (
-            f" **Worked Example:**\n"
-            f"What does a **cactus** need to make its own food?\n\n"
-            f" All plants need **Sunlight ️ + Water ** → **Photosynthesis** \n\n"
-            f"Think about what the plant in your problem needs!"
-        )
-
-    # Science — states of matter
-    if any(w in lower for w in ["evapor", "melt", "boil", "solid", "liquid", "gas", "state"]):
-        return (
-            f" **Worked Example:**\n"
-            f"When **butter** is left in a hot pan, what happens?\n\n"
-            f" Solid butter → heats up → becomes **liquid** (melting) \n\n"
-            f"Think about what state change is happening in your problem!"
-        )
-
-    # Generic fallback
+    # Generic fallback: contains no subject-specific answer.
     return (
-        f" **Worked Example:**\n"
-        f"Here is how to approach a similar question:\n"
-        f"1. Re-read the mission carefully.\n"
-        f"2. Find the key fact or number.\n"
-        f"3. Apply the operation or concept from the clue: _{clue}_\n\n"
-        f"Now apply the same steps to your problem!"
+        f" **Worked Example (similar problem):**\n"
+        f"Try a smaller version of this question using different numbers or objects, "
+        f"then apply the same steps to your problem.\n\n"
+        f"Clue to reuse: _{clue}_\n\n"
+        f"Now apply the same thinking here!"
     )
 
 

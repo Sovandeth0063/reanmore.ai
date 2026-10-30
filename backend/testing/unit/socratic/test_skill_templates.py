@@ -12,6 +12,31 @@ import pytest
 from app.services.socratic.skills import skill_registry
 
 
+def test_add_within_10_prefers_simple_counting():
+    problem = {"op": "+", "a": 2, "b": 2}
+    skill = skill_registry.match(problem)
+    assert skill is not None
+    assert skill.skill_id == "add_within_10"
+
+    steps = skill.build_steps(problem)
+    assert len(steps) == 2
+    assert steps[0].concept == "count_first_group"
+    assert steps[0].expected_answer == "2"
+    assert steps[1].concept == "count_all"
+    assert steps[1].expected_answer == "4"
+
+    # Small sums use concrete object pictures, never make-a-ten or bar models.
+    for step in steps:
+        assert step.visual_spec["type"] == "objects"
+        assert step.visual_spec["groups"] == [2, 2]
+        text = f"{step.mission} {step.clue} {step.your_turn}".lower()
+        assert "make 10" not in text and "bar model" not in text
+
+    # The parallel example must be equally simple and use different numbers.
+    ex = skill.make_distinct_example(problem)
+    assert {2, 4}.isdisjoint({ex["a"], ex["b"], ex["sum"]})
+
+
 def test_add_within_20_skill():
     problem = {"op": "+", "a": 8, "b": 6}
     skill = skill_registry.match(problem)
@@ -29,6 +54,24 @@ def test_add_within_20_skill():
     problem_numbers = {8, 6, 14}
     example_numbers = {ex["a"], ex["b"], ex["sum"]}
     assert problem_numbers.isdisjoint(example_numbers)
+
+
+def test_sub_within_10_uses_simple_take_away():
+    problem = {"op": "-", "a": 5, "b": 2}
+    skill = skill_registry.match(problem)
+    assert skill is not None
+    assert skill.skill_id == "sub_within_10"
+
+    steps = skill.build_steps(problem)
+    assert len(steps) == 2
+    assert steps[0].concept == "count_starting_group"
+    assert steps[0].expected_answer == "5"
+    assert steps[1].concept == "count_left"
+    assert steps[1].expected_answer == "3"
+    assert steps[1].visual_spec["type"] == "objects"
+
+    ex = skill.make_distinct_example(problem)
+    assert {5, 2, 3}.isdisjoint({ex["a"], ex["b"], ex["answer"]})
 
 
 def test_sub_within_20_skill():

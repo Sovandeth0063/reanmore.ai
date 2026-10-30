@@ -1,0 +1,43 @@
+[
+  {
+    "collection": "biology_concepts",
+    "keyword": "Mitosis",
+    "text": "Mitosis is a process of cell division that results in two genetically identical daughter cells. The phases in chronological order are: 1. Prophase (chromatin condenses into chromosomes and the nuclear envelope breaks down), 2. Metaphase (chromosomes line up along the equator of the cell), 3. Anaphase (sister chromatids are pulled apart to opposite poles), 4. Telophase (nuclear membranes reform around each set of chromosomes and chromosomes decondense).",
+    "steps": [
+      "Confirm the starting phase where chromosomes condense: Prophase",
+      "Confirm the alignment phase in the middle: Metaphase",
+      "Confirm the separation phase of sister chromatids: Anaphase",
+      "Confirm the final phase reforming the nuclear envelope: Telophase"
+    ]
+  },
+  {
+    "collection": "biology_concepts",
+    "keyword": "Photosynthesis",
+    "text": "Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize nutrients from carbon dioxide and water. It involves: 1. Light-dependent reactions (energy from sunlight is absorbed by chlorophyll and converted into chemical energy in the form of ATP and NADPH), 2. Light-independent reactions (Calvin Cycle uses ATP and NADPH to convert carbon dioxide into sugar/glucose).",
+    "steps": [
+      "Identify the initial reaction capturing sunlight: Light-dependent reactions",
+      "Identify the chemical products of the light reactions: ATP and NADPH",
+      "Identify the carbon fixation cycle creating sugar: Calvin Cycle"
+    ]
+  },
+  {
+    "collection": "physics_laws",
+    "keyword": "Kinematics Equations",
+    "text": "Kinematics equations describe the motion of an object under constant acceleration. The three primary equations are: 1. Final velocity: v = u + a*t, 2. Displacement: s = u*t + 0.5*a*t^2, 3. Velocity squared: v^2 = u^2 + 2*a*s, where u is initial velocity, v is final velocity, a is acceleration, t is time, and s is displacement.",
+    "steps": [
+      "Select the relevant variables from the query (s, u, v, a, t)",
+      "Choose the appropriate kinematic equation relating the variables",
+      "Substitute the values and solve for the unknown variable"
+    ]
+  },
+  {
+    "collection": "physics_laws",
+    "keyword": "Coulomb's Law",
+    "text": "Coulomb's Law states that the electrostatic force of attraction or repulsion between two point charges is directly proportional to the product of the magnitudes of charges and inversely proportional to the square of the distance between them: F = k * (q1 * q2) / r^2, where F is force, q1 and q2 are charges, r is distance, and k is Coulomb's constant (8.99 * 10^9 N*m^2/C^2).",
+    "steps": [
+      "Identify the magnitude of charges q1 and q2",
+      "Identify the distance r between the charges",
+      "Apply Coulomb's formula: F = k * q1 * q2 / r^2 to find the force"
+    ]
+  }
+]

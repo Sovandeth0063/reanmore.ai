@@ -80,8 +80,19 @@ services:
           cpus: '2.0'
           memory: 1536M
 
-  # Frontend is run locally via `npm run dev` in /frontend for instant hot-reloading.
-  # (Vite proxies /api to http://localhost:9000)
+  # 4. Frontend Web Application (React 19 + Vite, served by Nginx on port 80)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: reanmore-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - orchestrator
+    networks:
+      - reanmore-network
 
 networks:
   reanmore-network:

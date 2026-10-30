@@ -166,3 +166,31 @@ export function answersMatch(studentRaw: string, expectedRaw: string, acceptable
 export function isAnswerCorrect(studentRaw: string, expectedRaw: string, acceptableAnswers?: string[]): boolean {
   return answersMatch(studentRaw, expectedRaw, acceptableAnswers);
 }
+
+/**
+ * Decides whether the quick number keypad makes sense for a step.
+ * Science/conceptual steps (e.g. "does water stay liquid or float up?") must
+ * not show a number pad — the correct answer lives in the picture/cards.
+ */
+export function expectsNumericAnswer(step: {
+  inputFormat?: string | undefined;
+  options?: string[] | undefined;
+  correctAnswer?: string | undefined;
+  expectedAnswer?: string | undefined;
+  expected_answer?: string | undefined;
+  yourTurn?: string | undefined;
+  questionEng?: string | undefined;
+  mission?: string | undefined;
+}): boolean {
+  if (step.options && step.options.length > 0) return false;
+  if (step.inputFormat === 'number') return true;
+
+  const expected = (step.correctAnswer || step.expectedAnswer || step.expected_answer || '').trim();
+  if (/^[-+]?\d+(?:[.,]\d+)?$/.test(expected)) return true;
+
+  const text = `${step.yourTurn || ''} ${step.mission || ''} ${step.questionEng || ''}`;
+  if (/\d+\s*[+\-×÷*/]\s*\d+/.test(text)) return true;
+  if (/\bhow many\b|\bhow much\b/i.test(text)) return true;
+
+  return false;
+}
