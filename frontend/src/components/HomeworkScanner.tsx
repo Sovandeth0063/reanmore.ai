@@ -20,7 +20,9 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
 }) => {
   const isKhmer = language === 'km';
   const effectiveGrade = Math.min(Math.max(grade || 2, 1), 3);
-  const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm'>('capture');
+  // Mirrors backend ENABLE_API_OCR (Phase 4). Off in the v2.1 MVP.
+  const OCR_ENABLED = import.meta.env.VITE_ENABLE_OCR === 'true';
+  const [stage, setStage] = useState<'capture' | 'preview' | 'analyzing' | 'confirm' | 'error'>('capture');
   const [imageUri, setImageUri] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [detectedProblems, setDetectedProblems] = useState<HomeworkProblem[]>([]);
@@ -88,34 +90,38 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
     setStage('analyzing');
     setAnalysisError(null);
 
-    if (uploadedFile) {
-      try {
-        const result = await processHomeworkImage(uploadedFile);
-        if (result.success && result.problems && result.problems.length > 0) {
-          const cleanedProblems = result.problems.map((p, idx) => ({
-            ...p,
-            titleEng: cleanOcrText(p.titleEng || `Exercise ${idx + 1}`),
-            problemStatementEng: cleanOcrText(p.problemStatementEng || p.problemStatementKhmer || ''),
-            problemStatementKhmer: p.problemStatementKhmer ? cleanOcrText(p.problemStatementKhmer) : cleanOcrText(p.problemStatementEng || ''),
-          }));
-
-          setDetectedProblems(cleanedProblems);
-          setSelectedProblem(cleanedProblems[0]);
-          setSelectedProblemIds(new Set(cleanedProblems.map(p => p.id)));
-          setStage('confirm');
-          return;
-        } else if (result.error) {
-          setAnalysisError(result.error);
-        }
-      } catch (err: any) {
-        console.error('Failed to process image via OCR:', err);
-        setAnalysisError(err?.message || 'Error communicating with OCR service');
-      }
+    if (!uploadedFile) {
+      setStage('capture');
+      return;
     }
 
-    // Fallback if sample was chosen or if processing returned empty
-    setSelectedProblemIds(new Set(detectedProblems.map(p => p.id)));
-    setStage('confirm');
+    try {
+      const result = await processHomeworkImage(uploadedFile);
+      if (result.success && result.problems && result.problems.length > 0) {
+        const cleanedProblems = result.problems.map((p, idx) => ({
+          ...p,
+          titleEng: cleanOcrText(p.titleEng || `Exercise ${idx + 1}`),
+          problemStatementEng: cleanOcrText(p.problemStatementEng || p.problemStatementKhmer || ''),
+          problemStatementKhmer: p.problemStatementKhmer ? cleanOcrText(p.problemStatementKhmer) : cleanOcrText(p.problemStatementEng || ''),
+        }));
+
+        setDetectedProblems(cleanedProblems);
+        setSelectedProblem(cleanedProblems[0]);
+        setSelectedProblemIds(new Set(cleanedProblems.map(p => p.id)));
+        setStage('confirm');
+        return;
+      }
+      setAnalysisError(
+        result.error ||
+          'Worksheet scanning is unavailable right now. Please type your question into the chat.'
+      );
+    } catch (err: any) {
+      console.error('Failed to process image via OCR:', err);
+      setAnalysisError(err?.message || 'Error communicating with the worksheet scanner');
+    }
+
+    // Never pretend an extraction succeeded: show an explicit unavailable state.
+    setStage('error');
   };
 
   return (
@@ -143,7 +149,8 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
         {/* Stage 1: Capture / Select Sample */}
         {stage === 'capture' && (
           <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-5 text-center">
-            {/* Camera Frame */}
+            {/* Camera Frame (Phase 4; hidden while ENABLE_API_OCR=false) */}
+            {OCR_ENABLED ? (
             <div className="relative w-full aspect-4/3 max-h-56 bg-[#E8F5E9] rounded-2xl border-3 border-dashed border-[#1B4332] flex flex-col items-center justify-center p-4 text-center group hover:bg-[#40916C]/30 transition-colors">
               {/* Viewfinder Corners */}
               <div className="absolute top-3 left-3 w-5 h-5 border-t-4 border-l-4 border-[#1B4332] rounded-tl-lg" />
@@ -179,6 +186,19 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
                 {isKhmer ? 'ជ្រើសរើសរូបថត' : 'Upload Photo'}
               </button>
             </div>
+            ) : (
+              <div className="p-4 sm:p-5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-left space-y-1">
+                <p className="text-sm font-black text-amber-900 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                  {isKhmer ? 'ការថតរូបលំហាត់នឹងមកដល់ Phase 4' : 'Photo scanning is coming in Phase 4'}
+                </p>
+                <p className="text-xs font-bold text-amber-900/80">
+                  {isKhmer
+                    ? 'សម្រាប់ឥឡូវនេះ សូមជ្រើសរើសមុខវិជ្ជាខាងក្រោម ឬវាយសំណួររបស់អ្នកក្នុងឆាត។'
+                    : 'For now, choose a subject below to practise, or type your question in the chat.'}
+                </p>
+              </div>
+            )}
 
             {/* Choose Subject: Math or Science */}
             <div className="space-y-3 pt-2 text-left">
@@ -312,7 +332,43 @@ export const HomeworkScanner: React.FC<HomeworkScannerProps> = ({
           </div>
         )}
 
-        {/* Stage 4: Confirm Analyzed Question */}
+        {/* Stage 4: Scanner unavailable / deferred */}
+        {stage === 'error' && (
+          <div className="p-6 sm:p-8 text-center space-y-4">
+            <TunsayAvatar size="lg" state="confused" showBadge={false} className="mx-auto" />
+            <div className="space-y-1.5">
+              <h3 className="text-base sm:text-lg font-black text-[#1B4332] font-heading">
+                {isKhmer ? 'ការថតរូបមិនអាចប្រើបានទេ' : "Photo scanning isn't available yet"}
+              </h3>
+              <p className="text-xs sm:text-sm font-bold text-[#1B4332]/75 max-w-md mx-auto">
+                {analysisError ||
+                  (isKhmer
+                    ? 'ការអានរូបថតលំហាត់នឹងមកដល់ Phase 4។'
+                    : 'Worksheet OCR is deferred to Phase 4 in this build.')}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setStage('capture')}
+                className="flex-1 py-3 px-4 rounded-2xl border-3 border-[#1B4332] bg-white text-[#1B4332] font-black text-xs sm:text-sm shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 hover:bg-gray-50 active:translate-y-0.5 transition-all cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4 stroke-[2.5]" />
+                {isKhmer ? 'ជ្រើសរើសលំហាត់គំរូ' : 'Choose a sample exercise'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex-1 py-3 px-4 rounded-2xl bg-[#2D6A4F] text-white font-black text-xs sm:text-sm border-3 border-[#1B4332] shadow-[3px_3px_0px_#1B4332] flex items-center justify-center gap-1.5 hover:bg-[#40916C] active:translate-y-0.5 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                {isKhmer ? 'វាយសំណួររបស់ខ្ញុំ' : 'Type my question instead'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Stage 5: Confirm Analyzed Question */}
         {stage === 'confirm' && (
           <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 flex flex-col h-full">
             {/* Mascot Banner */}
