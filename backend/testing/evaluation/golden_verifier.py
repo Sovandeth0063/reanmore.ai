@@ -98,8 +98,13 @@ def evaluate_single_worksheet(ws: Dict[str, Any]) -> Dict[str, Any]:
     # 3. Decompose Steps
     steps = skill.build_steps(parsed)
     result["steps_count"] = len(steps)
-    if not (2 <= len(steps) <= 4):
-        result["errors"].append(f"Invalid step count: {len(steps)} (expected 2-4)")
+    # Direct facts (sum/difference <= 10) get exactly one meaningful step; the
+    # operands are already printed, so extra "count this group" steps are filler.
+    min_steps = 1 if skill.skill_id in {"add_within_10", "sub_within_10"} else 2
+    if not (min_steps <= len(steps) <= 4):
+        result["errors"].append(
+            f"Invalid step count: {len(steps)} (expected {min_steps}-4 for {skill.skill_id})"
+        )
 
     # 4. Mathematical Verification via SymPy CAS
     last_step = steps[-1] if steps else None

@@ -123,6 +123,6 @@ Execute from `backend/`:
 
 ### Exit Criteria
 - [ ] In-process CAS runs 100% offline without network requests or external microservice calls.
-- [ ] All 6 skill templates generate valid 2-4 milestone step cards and answer-safe visual specs.
+- [ ] All skill templates generate the appropriate number of milestone cards (1 for direct facts within 10, 2-4 for strategy-driven problems) and answer-safe visual specs.
 - [ ] `make_distinct_example()` produces numbers with zero overlap with the student's problem.
 - [ ] Parse verifier flags mismatched numbers and triggers child confirmation without deducting quota.

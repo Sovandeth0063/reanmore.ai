@@ -19,18 +19,17 @@ def test_add_within_10_prefers_simple_counting():
     assert skill.skill_id == "add_within_10"
 
     steps = skill.build_steps(problem)
-    assert len(steps) == 2
-    assert steps[0].concept == "count_first_group"
-    assert steps[0].expected_answer == "2"
-    assert steps[1].concept == "count_all"
-    assert steps[1].expected_answer == "4"
+    assert len(steps) == 1
+    assert steps[0].concept == "count_all"
+    assert steps[0].expected_answer == "4"
 
-    # Small sums use concrete object pictures, never make-a-ten or bar models.
-    for step in steps:
-        assert step.visual_spec["type"] == "objects"
-        assert step.visual_spec["groups"] == [2, 2]
-        text = f"{step.mission} {step.clue} {step.your_turn}".lower()
-        assert "make 10" not in text and "bar model" not in text
+    # Direct facts ask for the one non-trivial act (the total); they must not
+    # ask the child to transcribe an operand that is already on screen.
+    text = f"{steps[0].mission} {steps[0].clue} {steps[0].your_turn}".lower()
+    assert "first group" not in text and "second group" not in text
+    assert "make 10" not in text and "bar model" not in text
+    assert steps[0].visual_spec["type"] == "objects"
+    assert steps[0].visual_spec["groups"] == [2, 2]
 
     # The parallel example must be equally simple and use different numbers.
     ex = skill.make_distinct_example(problem)
@@ -63,12 +62,11 @@ def test_sub_within_10_uses_simple_take_away():
     assert skill.skill_id == "sub_within_10"
 
     steps = skill.build_steps(problem)
-    assert len(steps) == 2
-    assert steps[0].concept == "count_starting_group"
-    assert steps[0].expected_answer == "5"
-    assert steps[1].concept == "count_left"
-    assert steps[1].expected_answer == "3"
-    assert steps[1].visual_spec["type"] == "objects"
+    assert len(steps) == 1
+    assert steps[0].concept == "count_left"
+    assert steps[0].expected_answer == "3"
+    assert "start with" not in steps[0].your_turn.lower()
+    assert steps[0].visual_spec["type"] == "objects"
 
     ex = skill.make_distinct_example(problem)
     assert {5, 2, 3}.isdisjoint({ex["a"], ex["b"], ex["answer"]})

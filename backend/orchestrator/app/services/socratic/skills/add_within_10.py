@@ -1,8 +1,9 @@
 """
 File: orchestrator/app/services/socratic/skills/add_within_10.py
 Description: Very simple addition within 10 for early primary grades.
-             Uses a 'count the groups, then count them all' strategy with
-             concrete object pictures. Deliberately avoids make-a-ten,
+             Single-step 'count them all' strategy with concrete object
+             pictures. The operands are already printed and drawn, so the
+             only question asked is the total. Deliberately avoids make-a-ten,
              bar models, and word-problem stories so that a question like
              2 + 2 is explained as simply as it was asked.
 
@@ -83,38 +84,14 @@ class AddWithin10Skill:
             str(ex["a"] + step) for step in range(1, ex["b"] + 1)
         )
 
+        # Direct facts have exactly one meaningful cognitive act: find the total.
+        # The operands are already printed and drawn, so do not ask the child to
+        # transcribe the first/second group back to us.
         step1 = StepTemplate(
             step_number=1,
-            title="Count the First Group",
-            mission="Let's look at the two groups of apples.",
-            clue="First, count the apples in the first group.",
-            helpful_example=(
-                f"Here is an easy one: {ex['a']} + {ex['b']}. "
-                f"First, count the first group. It has {ex['a']} {_apples(ex['a'])}."
-            ),
-            your_turn="How many apples are in the first group?",
-            expected_answer=str(a),
-            concept="count_first_group",
-            visual_spec={
-                "type": "objects",
-                "groups": [a, b],
-                "item_type": _ITEM,
-                "title_eng": "Count the first group.",
-                "title_khmer": "រាប់ក្រុមទីមួយ។",
-            },
-            hints=[
-                "Point to each apple in the first group. Count: one, two, three...",
-                "The first group is the group on the left.",
-                f"In our easy example, the first group had {ex['a']} apples. "
-                "Count your first group the same way.",
-            ],
-        )
-
-        step2 = StepTemplate(
-            step_number=2,
             title="Count Them All",
-            mission="Now let's count both groups together.",
-            clue=f"Start at {a} and count on {b} more.",
+            mission=f"Let's put {a} {_apples(a)} and {b} {_apples(b)} together.",
+            clue="Count every apple in both groups to find how many there are in all.",
             helpful_example=(
                 f"For {ex['a']} + {ex['b']}, start at {ex['a']} and count on: "
                 f"{example_count_on}. So {ex['a']} + {ex['b']} = {ex['sum']}."
@@ -127,7 +104,7 @@ class AddWithin10Skill:
                 "groups": [a, b],
                 "item_type": _ITEM,
                 "title_eng": "Count every apple.",
-                "title_khmer": "រាប់ផ្លែប៉ោមទាំងអស់។",
+                "title_khmer": "រាប់ផ្លែប៉ោមទាំងអស់",
             },
             hints=[
                 "Count every apple in both groups. Touch each apple as you count.",
@@ -137,7 +114,7 @@ class AddWithin10Skill:
             ],
         )
 
-        return [step1, step2]
+        return [step1]
 
 
 # Register skill

@@ -1,9 +1,10 @@
 """
 File: orchestrator/app/services/socratic/skills/sub_within_10.py
 Description: Very simple subtraction within 10 for early primary grades.
-             Uses a 'start with all, then take some away' strategy with
-             concrete object pictures. Deliberately avoids borrowing and
-             bar-model language.
+             Single-step 'take some away, count what is left' strategy with
+             concrete object pictures. The starting number is already printed
+             and drawn, so it is not re-asked. Deliberately avoids borrowing
+             and bar-model language.
 
              Target: Grades 1-2 | Visual Model: objects
 """
@@ -70,39 +71,14 @@ class SubWithin10Skill:
         answer = a - b
         ex = self.make_distinct_example(problem)
 
-        step1 = StepTemplate(
-            step_number=1,
-            title="Start With All of Them",
-            mission="Let's start with all the apples.",
-            clue=f"We begin with {a} {_apples(a)}.",
-            helpful_example=(
-                f"Here is an easy one: {ex['a']} - {ex['b']}. "
-                f"We start with {ex['a']} {_apples(ex['a'])}."
-            ),
-            your_turn="How many apples do we start with?",
-            expected_answer=str(a),
-            concept="count_starting_group",
-            visual_spec={
-                "type": "objects",
-                "groups": [a],
-                "item_type": _ITEM,
-                "title_eng": "Start with all the apples.",
-                "title_khmer": "ចាប់ផ្តើមដោយផ្លែប៉ោមទាំងអស់។",
-            },
-            hints=[
-                "Point to each apple and count: one, two, three...",
-                "Count every apple in the picture.",
-                f"In our easy example, we started with {ex['a']} {_apples(ex['a'])}. "
-                "Count your apples the same way.",
-            ],
-        )
-
+        # Direct facts have exactly one meaningful cognitive act: take away and
+        # count what remains. The starting number is already printed and drawn.
         # List the remaining apples for the parallel example only.
         example_left = ", ".join(str(i) for i in range(1, ex["answer"] + 1))
-        step2 = StepTemplate(
-            step_number=2,
+        step1 = StepTemplate(
+            step_number=1,
             title="Take Some Away",
-            mission=f"Now take {b} {_apples(b)} away.",
+            mission=f"Start with {a} {_apples(a)} and take {b} away.",
             clue=f"Take {b} {_apples(b)} away from {a} {_apples(a)}. Count what is left.",
             helpful_example=(
                 f"For {ex['a']} - {ex['b']}, take {ex['b']} {_apples(ex['b'])} away. "
@@ -117,7 +93,7 @@ class SubWithin10Skill:
                 "groups": [a],
                 "item_type": _ITEM,
                 "title_eng": f"Take {b} away. How many are left?",
-                "title_khmer": f"ដក {b} ចេញ។ នៅសល់ប៉ុន្មាន?",
+                "title_khmer": f"ដក {b} ចេញ។ តើនៅសល់ប៉ុន្មាន?",
             },
             hints=[
                 "Count the apples that are left. Do not count the ones we took away.",
@@ -127,7 +103,7 @@ class SubWithin10Skill:
             ],
         )
 
-        return [step1, step2]
+        return [step1]
 
 
 # Register skill

@@ -762,7 +762,9 @@ def initial_problem_node(state: TutorState) -> Dict[str, Any]:
             if matched_skill:
                 logger.info(f"[SkillTemplate] Matched deterministic skill: {matched_skill.skill_id}")
                 templates = matched_skill.build_steps(parsed_prob)
-                if templates and len(templates) >= 2:
+                # Direct-fact skills (within 10) intentionally return a single
+                # meaningful step; strategy skills return 2+.
+                if templates and len(templates) >= 1:
                     coerced_steps = []
                     for t in templates:
                         v_spec = t.visual_spec or synthesize_visual_data_for_step(problem, {"mission": t.mission, "your_turn": t.your_turn}, subject)

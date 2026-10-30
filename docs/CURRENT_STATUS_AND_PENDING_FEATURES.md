@@ -11,7 +11,7 @@
 
 ReanMore is an offline-first, $0.00 cloud inference Socratic STEM homework tutor for elementary students in Grades 1–6 (Mathematics & Science). 
 
-Instead of dumping direct answers, ReanMore decomposes problems into 2–4 bite-sized pedagogical milestones, enforces 3-tier progressive hints paired with **deterministic SVG visual models** (Ten-Frames, Number Lines, Base-Ten Blocks, Array Grids, Fraction Bars, Bar Models), and strictly quarantines premature answers via **Leak Guard v2**.
+Instead of dumping direct answers, ReanMore decomposes problems into 1–4 purposeful pedagogical milestones (one step for direct facts, 2–4 for strategy-driven problems), enforces 3-tier progressive hints paired with **deterministic SVG visual models** (Ten-Frames, Number Lines, Base-Ten Blocks, Array Grids, Fraction Bars, Bar Models), and strictly quarantines premature answers via **Leak Guard v2**.
 
 This document summarizes **what has been completed and verified** and the roadmap for **what is left: classroom field testing plus two explicitly deferred features (OCR photo ingress, full Khmer NLP)**. The Khmer UI toggle and dynamic `/api/translate` ship in v2.1; Khmer segmentation/parser/MoEYS ingestion do not.
 

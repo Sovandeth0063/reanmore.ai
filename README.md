@@ -10,7 +10,7 @@
 
 **ReanMore.ai** is an agentic AI tutoring platform built specifically for young learners (ages 6–12). While generic chatbots give away answers and encourage passive copying, ReanMore acts as an encouraging, pedagogical Socratic guide:
 
-- **Strict Socratic Decomposition:** Breaks complex math problems into 2–4 bite-sized milestones (Mission, Clue, Helpful Example, Your Turn).
+- **Strict Socratic Decomposition:** Breaks problems into 1–4 purposeful milestones (Mission, Clue, Helpful Example, Your Turn): one real step for direct facts, 2–4 for strategy-driven problems. It never asks the child to re-transcribe numbers already on screen.
 - **Relatable Concrete Analogies:** Replaces dry academic jargon with warm, memorable kid stories (*"Cookie Bakery Boxes"*, *"Tall Ten-Towers"*, *"Crayon Box Sharing"*, and *"Apple Baskets"*).
 - **100% Offline & Private:** Sized specifically to run on a single local laptop or classroom workstation (AMD Ryzen / Intel Core i7, 16 GB RAM, RTX 4050 6 GB VRAM or CPU).
 - **Zero Cloud API Costs:** Powered by a local resident Ollama instance (`qwen3.5:4b`, 3.4 GB VRAM) paired with an in-process SymPy Computer Algebra System (CAS).
