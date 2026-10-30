@@ -34,6 +34,29 @@ for _p in (str(REPO_ROOT), str(ORCHESTRATOR_DIR), str(PROJECT_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+# Embedded Qdrant takes an exclusive lock on its storage folder. Copy the
+# curriculum store into a per-session temp dir so the test suite can run while a
+# developer backend (or a parallel evaluator) is using the real one.
+if "QDRANT_PATH" not in os.environ:
+    import shutil
+    import tempfile
+
+    _qdrant_tmp = tempfile.mkdtemp(prefix="reanmore_qdrant_")
+    _qdrant_src = Path(REPO_ROOT) / "orchestrator" / "data" / "qdrant"
+    if _qdrant_src.is_dir():
+        for _entry in _qdrant_src.iterdir():
+            if _entry.name == ".lock":
+                continue
+            _dest = Path(_qdrant_tmp) / _entry.name
+            try:
+                if _entry.is_dir():
+                    shutil.copytree(_entry, _dest, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(_entry, _dest)
+            except OSError:
+                pass
+    os.environ["QDRANT_PATH"] = _qdrant_tmp
+
 
 _STUB_WIDGET = {
     "total_steps": 2,

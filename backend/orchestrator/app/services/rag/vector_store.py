@@ -36,7 +36,7 @@ class ScienceVectorStore:
             logger.info(f"Connecting to Qdrant server at: {qdrant_url}")
             self.client = QdrantClient(url=qdrant_url)
         else:
-            local_path = path or os.path.join(
+            local_path = path or os.getenv("QDRANT_PATH") or os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
                 "data", "qdrant"
             )

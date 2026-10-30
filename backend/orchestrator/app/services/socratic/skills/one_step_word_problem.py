@@ -44,7 +44,7 @@ class OneStepWordProblemSkill:
         }
 
     def build_steps(self, problem: Dict[str, Any]) -> List[StepTemplate]:
-        item = problem.get("item", "items")
+        item = problem.get("item") or "items"
         op = problem.get("op", "-")
 
         if "a" in problem and "b" in problem:
@@ -68,6 +68,51 @@ class OneStepWordProblemSkill:
 
         forbidden = {total, part1, part2, missing_part}
         ex = self.make_distinct_example(problem, forbidden)
+
+        if op == "*":
+            # One-step multiplication word problem: equal groups -> one total.
+            # Asking "how many groups?" would just re-read a number already in
+            # the story, so there is a single meaningful question.
+            group_count = int(problem["a"])
+            per_group = int(problem["b"])
+            product = group_count * per_group
+            ex_pairs = [(4, 3), (3, 5), (2, 6), (4, 5), (3, 7), (6, 4), (2, 9)]
+            ex_a, ex_b = next(
+                ((x, y) for x, y in ex_pairs
+                 if {x, y, x * y}.isdisjoint({group_count, per_group, product})),
+                (4, 3),
+            )
+            skip_partial = ", ".join(
+                str(per_group * i) for i in range(1, group_count)
+            ) or str(per_group)
+
+            step1 = StepTemplate(
+                step_number=1,
+                title="Find the Total",
+                mission=f"Each group has {per_group} {item}. There are {group_count} equal groups.",
+                clue="Multiply the number of groups by the number in each group.",
+                helpful_example=(
+                    f"For {ex_a} groups of {ex_b}: {ex_a} × {ex_b} = "
+                    f"{ex_a * ex_b} {item} in all."
+                ),
+                your_turn=f"How many {item} are there in all?",
+                expected_answer=str(product),
+                concept="repeated_addition",
+                visual_spec={
+                    "type": "array_grid",
+                    "mode": "current",
+                    "params": {"rows": group_count, "cols": per_group},
+                    "labels": [f"{group_count} groups of {per_group}"],
+                    "alt_text": f"Array grid of {group_count} rows by {per_group} columns.",
+                },
+                hints=[
+                    f"Add {per_group} repeatedly {group_count} times.",
+                    f"Skip count by {per_group}s: {skip_partial}...",
+                    f"In our example: {ex_a} × {ex_b} = {ex_a * ex_b}. "
+                    f"For your problem, multiply {group_count} by {per_group}.",
+                ],
+            )
+            return [step1]
 
         if op == "+":
             # Addition word problem: Part + Part = Total

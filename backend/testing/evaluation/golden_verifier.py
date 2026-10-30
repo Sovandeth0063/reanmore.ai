@@ -101,6 +101,9 @@ def evaluate_single_worksheet(ws: Dict[str, Any]) -> Dict[str, Any]:
     # Direct facts (sum/difference <= 10) get exactly one meaningful step; the
     # operands are already printed, so extra "count this group" steps are filler.
     min_steps = 1 if skill.skill_id in {"add_within_10", "sub_within_10"} else 2
+    if skill.skill_id == "one_step_word_problem" and parsed.get("op") == "*":
+        # A single-step multiplication story has one meaningful act: find the total.
+        min_steps = 1
     if not (min_steps <= len(steps) <= 4):
         result["errors"].append(
             f"Invalid step count: {len(steps)} (expected {min_steps}-4 for {skill.skill_id})"

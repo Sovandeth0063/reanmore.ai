@@ -258,7 +258,7 @@ All system, learner, and curriculum gaps are triaged into PostgreSQL `gap_events
 Backend (from `backend/`):
 
 ```powershell
-& .venv\Scripts\python.exe -m pytest -q                 # 649 passed
+& .venv\Scripts\python.exe -m pytest -q                 # 651 passed
 & .venv\Scripts\python.exe testing\evaluation\golden_verifier.py        # 50/50 worksheets
 & .venv\Scripts\python.exe testing\evaluation\adversarial_evaluator.py  # 100/100 probes, 0 leaks
 & .venv\Scripts\python.exe testing\tools\run_release_gate.py            # pre-release gate

@@ -39,6 +39,17 @@ def test_addition_word_problem_confident():
     assert res.needs_confirmation is False
 
 
+def test_multiplication_word_problem_uses_equal_groups():
+    text = "There are 5 boxes. Each box has 8 apples. How many apples are there altogether?"
+    res = verify_and_parse_word_problem(text, grade_level="grade_1_3")
+    assert res.is_valid is True
+    assert res.parsed_problem["op"] == "*"
+    assert res.parsed_problem["a"] == 5
+    assert res.parsed_problem["b"] == 8
+    assert res.parsed_problem["expected_answer"] == "40"
+    assert res.parsed_problem.get("item") == "apples"
+
+
 def test_ambiguous_word_problem_triggers_child_confirmation():
     # Multi-number ambiguous question
     text = "Dara has 15 marbles, gives 7 to Bopha, then finds 4 more. How many left?"

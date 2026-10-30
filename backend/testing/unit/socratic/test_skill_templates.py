@@ -72,6 +72,28 @@ def test_sub_within_10_uses_simple_take_away():
     assert {5, 2, 3}.isdisjoint({ex["a"], ex["b"], ex["answer"]})
 
 
+def test_one_step_multiplication_word_problem():
+    problem = {
+        "type": "word_problem",
+        "is_word_problem": True,
+        "a": 5,
+        "b": 8,
+        "op": "*",
+        "item": "apples",
+    }
+    skill = skill_registry.match(problem)
+    assert skill is not None
+    assert skill.skill_id == "one_step_word_problem"
+
+    steps = skill.build_steps(problem)
+    assert len(steps) == 1
+    assert steps[0].expected_answer == "40"
+    assert steps[0].concept == "repeated_addition"
+    assert steps[0].visual_spec["type"] == "array_grid"
+    assert steps[0].visual_spec["params"] == {"rows": 5, "cols": 8}
+    assert "40" not in " ".join(steps[0].hints)
+
+
 def test_sub_within_20_skill():
     problem = {"op": "-", "a": 14, "b": 6}
     skill = skill_registry.match(problem)

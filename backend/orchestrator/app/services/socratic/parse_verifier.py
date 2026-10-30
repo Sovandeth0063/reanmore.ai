@@ -125,16 +125,21 @@ def verify_and_parse_word_problem(text: str, grade_level: str = "grade_1_3") -> 
         "more", "altogether", "in all", "together", "plus", "sum", "total", "buys more", "finds", "how many in all"
     ])
     is_multiplication = any(k in lower_text for k in [
-        "each", "times", "groups of", "rows of", "per", "every"
+        "each", "every", "per", "times", "groups of", "rows of",
+        "boxes of", "packs of", "bags of", "bottles of", "pairs of",
     ])
 
-    # Resolving cues: if "in all" / "more" present and no explicit "away" / "to someone", favor addition
-    if is_addition and not any(k in lower_text for k in ["away", "left", "lost", "fewer", "gives to", "gave to"]):
-        op = "+"
-    elif is_subtraction and not is_addition:
-        op = "-"
-    elif is_multiplication:
+    # "altogether" / "in all" describe the question being asked, not the
+    # operation. A strong equal-groups cue ("each box has 8", "5 rows of 6")
+    # must win over them, otherwise "5 boxes of 8, how many altogether?" is
+    # mis-solved as 5 + 8.
+    strong_subtraction = any(k in lower_text for k in [
+        "away", "left", "lost", "fewer", "gives to", "gave to", "eats", "ate"
+    ])
+    if is_multiplication and not strong_subtraction:
         op = "*"
+    elif is_addition and not strong_subtraction:
+        op = "+"
     elif is_subtraction:
         op = "-"
     else:
@@ -177,6 +182,14 @@ def verify_and_parse_word_problem(text: str, grade_level: str = "grade_1_3") -> 
     if issues:
         confidence = max(0.50, confidence - 0.10 * len(issues))
 
+    item = None
+    if op == "*":
+        item_match = re.search(
+            r"(?:each|every|per)\b[^.]*?\b\d+\s+([a-zA-Z]+)", clean_text, re.IGNORECASE
+        )
+        if item_match:
+            item = item_match.group(1).lower()
+
     parsed_problem = {
         "type": "word_problem",
         "is_word_problem": True,
@@ -186,15 +199,18 @@ def verify_and_parse_word_problem(text: str, grade_level: str = "grade_1_3") -> 
         "b": part1,
         "op": op,
         "expected_answer": format_exact_fraction(expected),
-        "num_extracted": len(num_tuples)
+        "num_extracted": len(num_tuples),
     }
+    if item:
+        parsed_problem["item"] = item
 
     needs_confirm = confidence < 0.90
     confirm_prompt = None
     if needs_confirm:
+        op_symbol = {"*": "×", "-": "−"}.get(op, op)
         confirm_prompt = (
-            f"🌟 Did you mean: Start with {format_exact_fraction(total)}, then {op} {format_exact_fraction(part1)}? "
-            f"({format_exact_fraction(total)} {op} {format_exact_fraction(part1)} = ?)"
+            f"🌟 Did you mean: Start with {format_exact_fraction(total)}, then {op_symbol} {format_exact_fraction(part1)}? "
+            f"({format_exact_fraction(total)} {op_symbol} {format_exact_fraction(part1)} = ?)"
         )
 
     return ParseVerificationResult(

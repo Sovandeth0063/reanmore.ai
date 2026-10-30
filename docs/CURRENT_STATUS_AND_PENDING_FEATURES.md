@@ -3,7 +3,7 @@
 > **Authoritative Architecture:** [`ReanMore_Architecture_v2.1.md`](ReanMore_Architecture_v2.1.md)  
 > **Collaborator Guide:** [`plans/README.md`](plans/README.md)  
 > **Target Release:** v2.1 (English-first MVP, 100% Offline Local Model, 4-Container Stack)  
-> **Verification Status:** **649/649 backend tests + 50/50 golden worksheets + 100/100 adversarial probes (2026-10-30) ✅**
+> **Verification Status:** **651/651 backend tests + 50/50 golden worksheets + 100/100 adversarial probes (2026-10-30) ✅**
 
 ---
 
@@ -145,7 +145,7 @@ flowchart TD
   * The active `backend/docker-compose.yml` is the 4-container stack; the compose
     qualification test now asserts exactly 4 services (Postgres, Ollama, Orchestrator,
     Frontend).
-* **Verification:** full backend suite still green after the move (649 passed).
+* **Verification:** full backend suite still green after the move (651 passed).
 
 ---
 
@@ -155,7 +155,7 @@ flowchart TD
 # From backend/
 cd backend
 
-# 1. Full backend suite (649 tests: unit + integration)
+# 1. Full backend suite (651 tests: unit + integration)
 & .venv\Scripts\python.exe -m pytest -q
 
 # 2. 50 Golden Math Worksheets Benchmark
