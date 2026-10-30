@@ -3,6 +3,7 @@ import { StepItem, Language } from '../types';
 import { Lightbulb, RefreshCw, CheckCircle, AlertCircle, ArrowRight, Volume2 } from 'lucide-react';
 import { cleanBilingualOption } from '../utils/language';
 import { VisualWidget } from './VisualWidget';
+import { OptionIcon } from './OptionIcon';
 import { fastValidateStepAnswer } from '../services/answerValidationService';
 import { expectsNumericAnswer } from '../utils/answerNormalization';
 
@@ -120,7 +121,7 @@ export const StepCard: React.FC<StepCardProps> = ({
               ? `ជំហានទី ${step.stepNumber} នៃ ${step.totalSteps}` 
               : `Step ${step.stepNumber} of ${step.totalSteps}`}
           </span>
-          <h4 className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332] font-heading truncate">
+          <h4 className="text-sm sm:text-base lg:text-lg font-black text-[#1B4332] font-heading min-w-0 line-clamp-2 break-words">
             {isKhmer ? step.questionKhmer : step.questionEng}
           </h4>
         </div>
@@ -207,7 +208,10 @@ export const StepCard: React.FC<StepCardProps> = ({
                       : 'bg-white border-[#1B4332] text-[#1B4332] hover:bg-[#40916C] shadow-[2px_2px_0px_#1B4332] sm:shadow-[3px_3px_0px_#1B4332] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#1B4332]'
                   }`}
                 >
-                  <span className="truncate pr-2">{displayOpt}</span>
+                  <span className="flex items-center gap-2 min-w-0 flex-1">
+                    <OptionIcon label={displayOpt} />
+                    <span className="break-words whitespace-normal">{displayOpt}</span>
+                  </span>
                   {isSelected && feedback === 'correct' && (
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#1B4332] stroke-[3] shrink-0" />
                   )}

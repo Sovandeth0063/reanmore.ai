@@ -279,6 +279,9 @@ export function VisualWidget({ visualData, step, language, onSelect }: Props) {
       return null;
 
     case 'multiple_choice_images':
+      // The step card already renders the answer options; rendering the widget
+      // too duplicates every choice on screen.
+      if (step?.options && step.options.length > 0) return null;
       return (
         <MultipleChoiceWidget
           options={v.options ?? []}
@@ -288,6 +291,7 @@ export function VisualWidget({ visualData, step, language, onSelect }: Props) {
       );
 
     case 'multiple_choice_multi_select':
+      if (step?.options && step.options.length > 0) return null;
       return (
         <MultipleChoiceWidget
           options={v.options ?? []}
@@ -378,6 +382,8 @@ export function VisualWidget({ visualData, step, language, onSelect }: Props) {
       // label matches the hidden answer. Otherwise they stay decorative so a
       // tap can never submit the wrong group.
       const stepOptions = Boolean(step?.options && step.options.length > 0);
+      // Avoid rendering the same categories twice (widget + answer buttons).
+      if (stepOptions) return null;
       const knownAnswers =
         (step as any)?.acceptableAnswers || (step as any)?.acceptable_answers || [];
       const canTapCards =

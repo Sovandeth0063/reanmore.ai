@@ -4,6 +4,9 @@
  * Answers are hidden — student picks, then validation is server-side.
  */
 import { useState } from 'react';
+import { ListChecks } from 'lucide-react';
+import { OptionIcon } from '../OptionIcon';
+import { stripEmojis } from '../chat/chatUtils';
 
 interface Option {
   label: string;
@@ -17,12 +20,25 @@ interface Props {
   onSelect?: ((selected: string[]) => void) | undefined;
 }
 
-function parseOption(opt: Option | string): Option {
+interface ParsedOption {
+  key: string;
+  name: string;
+}
+
+function parseOption(opt: Option | string, idx: number): ParsedOption {
+  const fallbackLetter = String.fromCharCode(65 + idx);
+
   if (typeof opt === 'string') {
-    const match = opt.match(/^([A-D])\s+(.+)$/);
-    return match ? { label: match[1], name: match[2] } : { label: opt, name: opt };
+    const clean = stripEmojis(opt).replace(/\s+/g, ' ').trim();
+    const match = clean.match(/^([A-D])[\s\).:-]+(.+)$/);
+    const name = match ? match[2].trim() : clean;
+    return { key: name || fallbackLetter, name: name || fallbackLetter };
   }
-  return opt;
+
+  const name = stripEmojis(opt.name || opt.label || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return { key: name || fallbackLetter, name: name || fallbackLetter };
 }
 
 export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) {
@@ -30,14 +46,14 @@ export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) 
 
   const parsed = options.map(parseOption);
 
-  const toggle = (label: string) => {
+  const toggle = (key: string) => {
     setSelected(prev => {
       const next = new Set(prev);
       if (multiSelect) {
-        next.has(label) ? next.delete(label) : next.add(label);
+        next.has(key) ? next.delete(key) : next.add(key);
       } else {
         next.clear();
-        next.add(label);
+        next.add(key);
       }
       onSelect?.([...next]);
       return next;
@@ -46,28 +62,38 @@ export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) 
 
   return (
     <div className="w-full bg-white/70 rounded-2xl border-2 border-orange-200 p-4 mb-3">
-      <div className="text-xs font-bold text-orange-700 mb-3 uppercase tracking-wider">
+      <div className="text-xs font-bold text-orange-700 mb-3 uppercase tracking-wider flex items-center gap-1.5">
+        <ListChecks className="w-4 h-4" aria-hidden="true" />
         {multiSelect ? 'Select ALL that apply' : 'Choose the best answer'}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {parsed.map(opt => {
-          const isSel = selected.has(opt.label);
+          const isSel = selected.has(opt.key);
           return (
             <button
-              key={opt.label}
-              onClick={() => toggle(opt.label)}
+              key={opt.key}
+              type="button"
+              onClick={() => toggle(opt.key)}
               className={[
                 'flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition-all font-semibold text-sm cursor-pointer',
-                isSel ? 'bg-orange-500 border-orange-700 text-white scale-[0.98] shadow-sm' : 'bg-white border-gray-200 hover:border-orange-300 text-gray-800',
+                isSel
+                  ? 'bg-orange-500 border-orange-700 text-white scale-[0.98] shadow-sm'
+                  : 'bg-white border-gray-200 hover:border-orange-300 text-gray-800',
               ].join(' ')}
             >
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 border-2 ${
-                isSel ? 'bg-white text-orange-800 border-white' : 'bg-orange-50 text-orange-900 border-orange-200'
-              }`}>
-                {opt.label}
+              <div
+                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border-2 ${
+                  isSel
+                    ? 'bg-white text-orange-800 border-white'
+                    : 'bg-orange-50 text-orange-900 border-orange-200'
+                }`}
+              >
+                <OptionIcon label={opt.name} className="w-4 h-4" />
               </div>
-              <div className="min-w-0">
-                <div className="font-bold text-xs sm:text-sm truncate">{opt.name}</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-xs sm:text-sm break-words whitespace-normal">
+                  {opt.name}
+                </div>
               </div>
             </button>
           );
@@ -79,4 +105,3 @@ export function MultipleChoiceWidget({ options, multiSelect, onSelect }: Props) 
     </div>
   );
 }
-

@@ -284,22 +284,26 @@ export function extractStepWidgetFromMessage(msg: ChatMessage): ExtractedStepWid
 export function mapWidgetToStepItems(widget: any): StepItem[] {
   if (!widget || !Array.isArray(widget.steps)) return [];
   const total = widget.total_steps || widget.steps.length;
+  const clean = (value: unknown): string =>
+    stripEmojis(String(value ?? '')).replace(/\s+/g, ' ').trim();
   return widget.steps.map((s: any, idx: number) => {
     const stepNum = s.step_number || idx + 1;
-    const mission = s.mission || s.title || `Step ${stepNum}`;
-    const yourTurn = s.your_turn || mission;
-    const expectedAns = String(s.expected_answer || s.expectedAnswer || '').trim();
+    const mission = clean(s.mission || s.title || `Step ${stepNum}`);
+    const yourTurn = clean(s.your_turn || mission);
+    const expectedAns = clean(s.expected_answer || s.expectedAnswer || '');
     const isNum = /^-?\d+(\.\d+)?$/.test(expectedAns);
-    const options = s.options && Array.isArray(s.options) && s.options.length > 0 ? s.options : undefined;
+    const options = s.options && Array.isArray(s.options) && s.options.length > 0
+      ? s.options.map((opt: unknown) => clean(opt)).filter(Boolean)
+      : undefined;
     const inputFormat = options ? 'mcq' : (isNum ? 'number' : 'text');
-    const hints = Array.isArray(s.hints) ? s.hints : [];
-    const clue = s.clue || hints[0] || 'Please review the question and hints carefully.';
-    const example = s.helpful_example || hints[1] || 'Try thinking one step at a time!';
-    const acceptableAnswers = Array.isArray(s.acceptable_answers)
+    const hints = Array.isArray(s.hints) ? s.hints.map((hint: unknown) => clean(hint)) : [];
+    const clue = clean(s.clue) || hints[0] || 'Please review the question and hints carefully.';
+    const example = clean(s.helpful_example) || hints[1] || 'Try thinking one step at a time!';
+    const acceptableAnswers = (Array.isArray(s.acceptable_answers)
       ? s.acceptable_answers
       : Array.isArray(s.acceptableAnswers)
       ? s.acceptableAnswers
-      : undefined;
+      : undefined)?.map((answer: unknown) => clean(answer));
     return {
       id: `step-${stepNum}`,
       stepNumber: stepNum,
@@ -315,7 +319,7 @@ export function mapWidgetToStepItems(widget: any): StepItem[] {
       expectedAnswer: expectedAns,
       expected_answer: expectedAns,
       mission,
-      title: s.title || `Step ${stepNum}`,
+      title: clean(s.title) || `Step ${stepNum}`,
       clue,
       helpfulExample: example,
       yourTurn,
@@ -332,7 +336,7 @@ export function mapWidgetToStepItems(widget: any): StepItem[] {
       explainDifferently: {
         simpleKhmer: mission,
         simpleEng: mission,
-        analogyTitle: s.title || 'Guidance',
+        analogyTitle: clean(s.title) || 'Guidance',
         analogyKhmer: example,
         analogyEng: example,
         analogyType: 'apples',
