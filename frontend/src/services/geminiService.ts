@@ -146,69 +146,6 @@ export function parseSteps(text: string): string[] {
 }
 
 // ──────────────────────────────────────────────
-// 4. Better Fallback Messages (Socratic Redirect)
-// ──────────────────────────────────────────────
-function getSocraticFallback(
-  _language: Language,
-  prompt: string,
-): { textKhmer: string; textEng: string } {
-  const promptLower = prompt.toLowerCase();
-
-  // Math-related fallback
-  const mathKeywords = [
-    "plus",
-    "add",
-    "minus",
-    "subtract",
-    "times",
-    "multiply",
-    "divide",
-    "fraction",
-    "+",
-    "-",
-    "×",
-    "÷",
-    "=",
-    "?",
-  ];
-  const isMath = mathKeywords.some((kw) => promptLower.includes(kw));
-
-  if (isMath) {
-    return {
-      textKhmer: `តោះយើងមើលសំណួរនេះជាមួយគ្នា! ជំហានទី ១៖ តើអ្នកឃើញលេខអ្វីខ្លះក្នុងសំណួរនេះ? ចុចលើរូបភាពឬវាយប្រាប់ខ្ញុំពីលេខទាំងនោះណា!`,
-      textEng: `Let's look at this together! Step 1: What numbers do you see in the question? Tap or tell me what they are!`,
-    };
-  }
-
-  // Science-related fallback
-  const scienceKeywords = [
-    "plant",
-    "water",
-    "animal",
-    "earth",
-    "sun",
-    "moon",
-    "weather",
-    "body",
-    "food",
-  ];
-  const isScience = scienceKeywords.some((kw) => promptLower.includes(kw));
-
-  if (isScience) {
-    return {
-      textKhmer: `ចំណង់ចំណូលចិត្តណាស់! តោះយើងស្វែងយល់ពីវិទ្យាសាស្ត្រនេះជាមួយគ្នា។ ជំហានទី ១៖ តើអ្នកដឹងអ្វីខ្លះអំពីប្រធានបទនេះរួចហើយ?`,
-      textEng: `Great curiosity! Let's explore this science topic together. Step 1: What do you already know about this?`,
-    };
-  }
-
-  // Generic Socratic fallback
-  return {
-    textKhmer: `សួស្តី! ខ្ញុំគឺ ReanMore។ តើយើងរៀនមុខវិជ្ជាអ្វីថ្ងៃនេះ? អ្នកអាចសួរខ្ញុំអំពីគណិតវិទ្យា វិទ្យាសាស្ត្រ ឬភាសាអង់គ្លេស!`,
-    textEng: `Hi! I'm ReanMore. What subject shall we learn today? You can ask me about Math, Science, or English!`,
-  };
-}
-
-// ──────────────────────────────────────────────
 // Main API Function
 // ──────────────────────────────────────────────
 export interface TutorResponse {
@@ -284,14 +221,14 @@ export async function askReanMoreTutor(
     };
   } catch (err) {
     console.error("tutorApi query error:", err);
+    const code = (err as { code?: string } | null)?.code;
+    const suffix = code ? ` (${code})` : "";
+    return {
+      textKhmer: `ខ្ញុំមិនអាចភ្ជាប់ទៅសេវាគ្រូបង្រៀនបានទេ${suffix}។ សូមពិនិត្យថាម៉ាស៊ីនមេដំណើរការនៅ port 9000 ហើយព្យាយាមម្តងទៀត។`,
+      textEng: `I can't reach the tutor service${suffix}. Please make sure the backend is running on port 9000, then try again.`,
+      isSafetyRefusal: false,
+    };
   }
-
-  // ── Fallback: Socratic redirect ──
-  const fallback = getSocraticFallback(language, userPrompt);
-  return {
-    ...fallback,
-    isSafetyRefusal: false,
-  };
 }
 
 export const askTunsayTutor = askReanMoreTutor;
